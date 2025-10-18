@@ -1,62 +1,56 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-
-interface InvestmentData {
-  country: string;
-  positionName: string;
-  quantity: number;
-  currentPrice: number;
-  originallyInvested: number;
-  expectedPrice5Years: number;
-  announcedDividend: number;
-}
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface InvestmentFormProps {
-  onCalculate: (data: InvestmentData) => void;
+  onSearch: (country: string, symbol: string, quantity: number, apiKey: string) => void;
+  isLoading: boolean;
 }
 
 const countries = [
-  { code: "AT", name: "Austria", dividendTax: 0.275, capitalGainsTax: 0.275 },
-  { code: "DE", name: "Germany", dividendTax: 0.26375, capitalGainsTax: 0.26375 },
-  { code: "US", name: "United States", dividendTax: 0.15, capitalGainsTax: 0.20 },
-  { code: "UK", name: "United Kingdom", dividendTax: 0.125, capitalGainsTax: 0.20 },
-  { code: "CH", name: "Switzerland", dividendTax: 0.35, capitalGainsTax: 0 },
+  { code: "AT", name: "Austria" },
+  { code: "DE", name: "Germany" },
+  { code: "US", name: "United States" },
+  { code: "UK", name: "United Kingdom" },
+  { code: "CH", name: "Switzerland" },
 ];
 
-export function InvestmentForm({ onCalculate }: InvestmentFormProps) {
-  const [formData, setFormData] = useState<InvestmentData>({
-    country: "AT",
-    positionName: "",
-    quantity: 0,
-    currentPrice: 0,
-    originallyInvested: 0,
-    expectedPrice5Years: 0,
-    announcedDividend: 0,
-  });
+export const InvestmentForm = ({ onSearch, isLoading }: InvestmentFormProps) => {
+  const [country, setCountry] = useState("");
+  const [symbol, setSymbol] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [apiKey, setApiKey] = useState(localStorage.getItem('alpha_vantage_key') || "");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onCalculate(formData);
+    if (country && symbol && quantity && apiKey) {
+      onSearch(country, symbol.toUpperCase(), parseFloat(quantity), apiKey);
+    }
   };
 
   return (
-    <Card className="p-6">
+    <Card className="p-6 bg-card border-border">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="country">Country of Residence</Label>
-            <Select value={formData.country} onValueChange={(value) => setFormData({ ...formData, country: value })}>
-              <SelectTrigger id="country">
+            <Label htmlFor="country" className="text-terminal-yellow">Country of Residence</Label>
+            <Select value={country} onValueChange={setCountry} required>
+              <SelectTrigger id="country" className="bg-input border-border">
                 <SelectValue placeholder="Select country" />
               </SelectTrigger>
               <SelectContent>
-                {countries.map((country) => (
-                  <SelectItem key={country.code} value={country.code}>
-                    {country.name}
+                {countries.map((c) => (
+                  <SelectItem key={c.code} value={c.code}>
+                    {c.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -64,85 +58,63 @@ export function InvestmentForm({ onCalculate }: InvestmentFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="positionName">Stock/Position Name</Label>
+            <Label htmlFor="symbol" className="text-terminal-yellow">Stock Symbol</Label>
             <Input
-              id="positionName"
-              placeholder="e.g., AAPL, VWCE"
-              value={formData.positionName}
-              onChange={(e) => setFormData({ ...formData, positionName: e.target.value })}
+              id="symbol"
+              value={symbol}
+              onChange={(e) => setSymbol(e.target.value)}
+              placeholder="e.g., AAPL"
+              className="bg-input border-border font-mono uppercase"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="quantity">Quantity</Label>
+            <Label htmlFor="quantity" className="text-terminal-yellow">Quantity</Label>
             <Input
               id="quantity"
               type="number"
               step="0.01"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
               placeholder="0"
-              value={formData.quantity || ""}
-              onChange={(e) => setFormData({ ...formData, quantity: parseFloat(e.target.value) || 0 })}
+              className="bg-input border-border font-mono"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="currentPrice">Current Price</Label>
+            <Label htmlFor="apiKey" className="text-terminal-yellow">
+              Alpha Vantage API Key
+              <a 
+                href="https://www.alphavantage.co/support/#api-key" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-terminal-blue text-xs ml-2 hover:underline"
+              >
+                (Get free key)
+              </a>
+            </Label>
             <Input
-              id="currentPrice"
-              type="number"
-              step="0.01"
-              placeholder="0.00"
-              value={formData.currentPrice || ""}
-              onChange={(e) => setFormData({ ...formData, currentPrice: parseFloat(e.target.value) || 0 })}
+              id="apiKey"
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="Enter your API key"
+              className="bg-input border-border font-mono"
               required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="originallyInvested">Originally Invested</Label>
-            <Input
-              id="originallyInvested"
-              type="number"
-              step="0.01"
-              placeholder="0.00"
-              value={formData.originallyInvested || ""}
-              onChange={(e) => setFormData({ ...formData, originallyInvested: parseFloat(e.target.value) || 0 })}
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="expectedPrice5Years">Expected Price (5 Years)</Label>
-            <Input
-              id="expectedPrice5Years"
-              type="number"
-              step="0.01"
-              placeholder="0.00"
-              value={formData.expectedPrice5Years || ""}
-              onChange={(e) => setFormData({ ...formData, expectedPrice5Years: parseFloat(e.target.value) || 0 })}
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="announcedDividend">Annual Dividend per Share</Label>
-            <Input
-              id="announcedDividend"
-              type="number"
-              step="0.01"
-              placeholder="0.00"
-              value={formData.announcedDividend || ""}
-              onChange={(e) => setFormData({ ...formData, announcedDividend: parseFloat(e.target.value) || 0 })}
             />
           </div>
         </div>
 
-        <Button type="submit" className="w-full">
-          Calculate Investment Analysis
+        <Button 
+          type="submit" 
+          className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+          disabled={isLoading}
+        >
+          {isLoading ? "Fetching Data..." : "Analyze Investment"}
         </Button>
       </form>
     </Card>
   );
-}
+};

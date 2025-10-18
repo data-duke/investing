@@ -2,16 +2,8 @@ import { useState } from "react";
 import { InvestmentForm } from "@/components/InvestmentForm";
 import { AnalysisTable } from "@/components/AnalysisTable";
 import { TrendingUp } from "lucide-react";
-
-interface InvestmentData {
-  country: string;
-  positionName: string;
-  quantity: number;
-  currentPrice: number;
-  originallyInvested: number;
-  expectedPrice5Years: number;
-  announcedDividend: number;
-}
+import { fetchStockData } from "@/services/stockApi";
+import { useToast } from "@/hooks/use-toast";
 
 interface AnalysisData {
   currentPrice: number;
@@ -44,8 +36,52 @@ const countries = {
 const Index = () => {
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const [positionName, setPositionName] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
-  const calculateAnalysis = (data: InvestmentData) => {
+  const handleSearch = async (country: string, symbol: string, quantity: number, apiKey: string) => {
+    setIsLoading(true);
+    try {
+      const stockData = await fetchStockData(symbol, apiKey);
+      
+      // Store API key for future use (in real app, use secure storage)
+      localStorage.setItem('alpha_vantage_key', apiKey);
+      
+      // Calculate based on fetched data
+      calculateAnalysis({
+        country,
+        positionName: stockData.name,
+        quantity,
+        currentPrice: stockData.currentPrice,
+        originallyInvested: stockData.currentPrice * quantity, // Computed
+        expectedPrice5Years: stockData.currentPrice * 1.5, // Simple projection (could be improved)
+        announcedDividend: stockData.dividend,
+      });
+      
+      toast({
+        title: "Data fetched successfully",
+        description: `Retrieved data for ${stockData.name}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to fetch stock data",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const calculateAnalysis = (data: {
+    country: string;
+    positionName: string;
+    quantity: number;
+    currentPrice: number;
+    originallyInvested: number;
+    expectedPrice5Years: number;
+    announcedDividend: number;
+  }) => {
     const country = countries[data.country as keyof typeof countries];
     const transactionCost = 0.01; // 1% transaction cost
 
@@ -115,7 +151,7 @@ const Index = () => {
         </div>
 
         <div className="space-y-6">
-          <InvestmentForm onCalculate={calculateAnalysis} />
+          <InvestmentForm onSearch={handleSearch} isLoading={isLoading} />
           <AnalysisTable data={analysisData} positionName={positionName} />
         </div>
       </div>
