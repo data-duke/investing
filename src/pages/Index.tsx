@@ -9,20 +9,16 @@ interface AnalysisData {
   currentPrice: number;
   originallyInvested: number;
   currentValue: number;
-  expectedValue5Years: number;
-  ebitdaProfit: number;
-  capitalGain: number;
-  profitPercent: number;
-  dividendPerShare: number;
-  totalDividendAnnual: number;
-  dividendPerShareMonthly: number;
-  dividendCosts: number;
-  dividendCostPercent: number;
-  totalEbitdaDividendQuarterly: number;
-  totalEbitdaDividendMonthly: number;
-  totalDividendMonthly: number;
-  roiFromDividends: number;
-  shareQuantityRatio: number;
+  currentGain: number;
+  currentGainPercent: number;
+  grossDividendAnnual: number;
+  netDividendAnnual: number;
+  dividendTaxRate: number;
+  projectedValue1Year: number;
+  projectedValue3Years: number;
+  projectedValue5Years: number;
+  estimatedCAGR: number;
+  quantity: number;
 }
 
 const countries = {
@@ -39,19 +35,37 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleSearch = async (country: string, symbol: string, quantity: number) => {
+  const handleSearch = async (country: string, symbol: string, amount: number, inputQuantity: number) => {
     setIsLoading(true);
     try {
       const stockData = await fetchStockData(symbol);
+      
+      // Determine quantity and amount
+      let finalQuantity = inputQuantity;
+      let finalAmount = amount;
+      
+      if (amount && !inputQuantity) {
+        // Calculate quantity from amount
+        finalQuantity = amount / stockData.currentPrice;
+      } else if (inputQuantity && !amount) {
+        // Calculate amount from quantity
+        finalAmount = inputQuantity * stockData.currentPrice;
+      } else if (amount && inputQuantity) {
+        // Both provided - use quantity and recalculate amount
+        finalAmount = inputQuantity * stockData.currentPrice;
+        toast({
+          title: "Note",
+          description: "Both amount and quantity provided. Using quantity to calculate investment amount.",
+        });
+      }
       
       // Calculate based on fetched data
       calculateAnalysis({
         country,
         positionName: stockData.name,
-        quantity,
+        quantity: finalQuantity,
         currentPrice: stockData.currentPrice,
-        originallyInvested: stockData.currentPrice * quantity, // Computed
-        expectedPrice5Years: stockData.currentPrice * 1.5, // Simple projection (could be improved)
+        originallyInvested: finalAmount,
         announcedDividend: stockData.dividend,
       });
       
@@ -76,59 +90,42 @@ const Index = () => {
     quantity: number;
     currentPrice: number;
     originallyInvested: number;
-    expectedPrice5Years: number;
     announcedDividend: number;
   }) => {
     const country = countries[data.country as keyof typeof countries];
-    const transactionCost = 0.01; // 1% transaction cost
-
-    // Basic calculations
+    
+    // Current value and gain/loss
     const currentValue = data.currentPrice * data.quantity;
-    const expectedValue5Years = data.expectedPrice5Years * data.quantity;
-    
-    // Capital gains
-    const grossCapitalGain = expectedValue5Years - data.originallyInvested;
-    const capitalGainsTax = grossCapitalGain * country.capitalGainsTax;
-    const transactionCosts = expectedValue5Years * transactionCost;
-    const capitalGain = grossCapitalGain - capitalGainsTax - transactionCosts;
-    
-    // Profit calculations
-    const ebitdaProfit = currentValue - data.originallyInvested;
-    const profitPercent = (ebitdaProfit / data.originallyInvested) * 100;
+    const currentGain = currentValue - data.originallyInvested;
+    const currentGainPercent = (currentGain / data.originallyInvested) * 100;
     
     // Dividend calculations
-    const totalDividendAnnual = data.announcedDividend * data.quantity;
-    const dividendCosts = totalDividendAnnual * country.dividendTax;
-    const netDividendAnnual = totalDividendAnnual - dividendCosts;
-    const dividendPerShareMonthly = data.announcedDividend / 12;
-    const totalDividendMonthly = totalDividendAnnual / 12;
-    const totalEbitdaDividendMonthly = netDividendAnnual / 12;
-    const totalEbitdaDividendQuarterly = netDividendAnnual / 4;
+    const grossDividendAnnual = data.announcedDividend * data.quantity;
+    const netDividendAnnual = grossDividendAnnual * (1 - country.dividendTax);
     
-    const roiFromDividends = data.originallyInvested > 0 
-      ? (netDividendAnnual / data.originallyInvested) * 100 
-      : 0;
+    // Estimate CAGR (simplified - using historical average of ~8% for stocks)
+    // In a real implementation, this would be fetched from historical data
+    const estimatedCAGR = 0.08; // 8% annual growth rate
     
-    const dividendCostPercent = country.dividendTax * 100;
+    // Future value projections based on CAGR
+    const projectedValue1Year = currentValue * Math.pow(1 + estimatedCAGR, 1);
+    const projectedValue3Years = currentValue * Math.pow(1 + estimatedCAGR, 3);
+    const projectedValue5Years = currentValue * Math.pow(1 + estimatedCAGR, 5);
 
     setAnalysisData({
       currentPrice: data.currentPrice,
       originallyInvested: data.originallyInvested,
       currentValue,
-      expectedValue5Years,
-      ebitdaProfit,
-      capitalGain,
-      profitPercent,
-      dividendPerShare: data.announcedDividend,
-      totalDividendAnnual,
-      dividendPerShareMonthly,
-      dividendCosts,
-      dividendCostPercent,
-      totalEbitdaDividendQuarterly,
-      totalEbitdaDividendMonthly,
-      totalDividendMonthly,
-      roiFromDividends,
-      shareQuantityRatio: 0, // This would need total shares data
+      currentGain,
+      currentGainPercent,
+      grossDividendAnnual,
+      netDividendAnnual,
+      dividendTaxRate: country.dividendTax * 100,
+      projectedValue1Year,
+      projectedValue3Years,
+      projectedValue5Years,
+      estimatedCAGR: estimatedCAGR * 100,
+      quantity: data.quantity,
     });
     
     setPositionName(data.positionName);

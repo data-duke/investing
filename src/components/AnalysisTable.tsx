@@ -1,23 +1,19 @@
 import { Card } from "@/components/ui/card";
 
-interface AnalysisData {
+export interface AnalysisData {
   currentPrice: number;
   originallyInvested: number;
   currentValue: number;
-  expectedValue5Years: number;
-  ebitdaProfit: number;
-  capitalGain: number;
-  profitPercent: number;
-  dividendPerShare: number;
-  totalDividendAnnual: number;
-  dividendPerShareMonthly: number;
-  dividendCosts: number;
-  dividendCostPercent: number;
-  totalEbitdaDividendQuarterly: number;
-  totalEbitdaDividendMonthly: number;
-  totalDividendMonthly: number;
-  roiFromDividends: number;
-  shareQuantityRatio: number;
+  currentGain: number;
+  currentGainPercent: number;
+  grossDividendAnnual: number;
+  netDividendAnnual: number;
+  dividendTaxRate: number;
+  projectedValue1Year: number;
+  projectedValue3Years: number;
+  projectedValue5Years: number;
+  estimatedCAGR: number;
+  quantity: number;
 }
 
 interface AnalysisTableProps {
@@ -28,93 +24,119 @@ interface AnalysisTableProps {
 export const AnalysisTable = ({ data, positionName }: AnalysisTableProps) => {
   if (!data) {
     return (
-      <Card className="p-8 text-center bg-card border-border">
-        <p className="text-muted-foreground font-mono">Enter investment details to see analysis_</p>
+      <Card className="p-6 bg-card border-border">
+        <p className="text-muted-foreground text-center">
+          Enter investment details above to see analysis
+        </p>
       </Card>
     );
   }
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "EUR",
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'EUR',
       minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(value);
   };
 
   const formatPercent = (value: number) => {
-    return `${value.toFixed(2)}%`;
+    return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
   };
 
   const getValueColor = (value: number) => {
-    if (value > 0) return "text-terminal-green";
-    if (value < 0) return "text-terminal-red";
-    return "text-foreground";
+    if (value > 0) return "text-green-500";
+    if (value < 0) return "text-red-500";
+    return "text-muted-foreground";
   };
 
-  const rows = [
-    { label: "Current Price", value: formatCurrency(data.currentPrice) },
-    { label: "Originally Invested", value: formatCurrency(data.originallyInvested) },
-    { label: "Current Value", value: formatCurrency(data.currentValue) },
-    { label: "Expected Value (5Y)", value: formatCurrency(data.expectedValue5Years) },
-    { 
-      label: "EBITDA Profit", 
-      value: formatCurrency(data.ebitdaProfit),
-      colored: true,
-      rawValue: data.ebitdaProfit
-    },
-    { 
-      label: "Capital Gain", 
-      value: formatCurrency(data.capitalGain),
-      colored: true,
-      rawValue: data.capitalGain
-    },
-    { 
-      label: "Profit %", 
-      value: formatPercent(data.profitPercent),
-      colored: true,
-      rawValue: data.profitPercent
-    },
-    { label: "Dividend/Share (Annual)", value: formatCurrency(data.dividendPerShare) },
-    { label: "Total Dividend (Annual)", value: formatCurrency(data.totalDividendAnnual) },
-    { label: "Dividend/Share (Monthly)", value: formatCurrency(data.dividendPerShareMonthly) },
-    { label: "Dividend Costs", value: formatCurrency(data.dividendCosts) },
-    { label: "Dividend Cost %", value: formatPercent(data.dividendCostPercent) },
-    { label: "EBITDA Dividend (Q)", value: formatCurrency(data.totalEbitdaDividendQuarterly) },
-    { label: "EBITDA Dividend (M)", value: formatCurrency(data.totalEbitdaDividendMonthly) },
-    { label: "Total Dividend (M)", value: formatCurrency(data.totalDividendMonthly) },
-    { 
-      label: "ROI from Dividends", 
-      value: formatPercent(data.roiFromDividends),
-      colored: true,
-      rawValue: data.roiFromDividends
-    },
-  ];
-
   return (
-    <Card className="p-4 md:p-6 bg-card border-border">
-      <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 text-terminal-yellow font-mono">
-        {positionName}
-      </h2>
-      <div className="space-y-3">
-        {rows.map((row, index) => (
-          <div 
-            key={index}
-            className="flex justify-between items-center py-2 border-b border-border last:border-b-0"
-          >
-            <span className="text-sm md:text-base text-muted-foreground font-mono">
-              {row.label}
-            </span>
-            <span 
-              className={`text-sm md:text-base font-mono font-semibold ${
-                row.colored ? getValueColor(row.rawValue ?? 0) : 'text-foreground'
-              }`}
-            >
-              {row.value}
-            </span>
+    <div className="space-y-6">
+      <Card className="p-6 bg-card border-border">
+        <h2 className="text-2xl font-bold text-foreground mb-6">{positionName}</h2>
+        
+        {/* Investment Summary Section */}
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold text-terminal-yellow mb-4">Investment Summary</h3>
+          <div className="space-y-3 font-mono">
+            <div className="flex justify-between items-center py-2 border-b border-border">
+              <span className="text-muted-foreground">Initial Investment:</span>
+              <span className="text-foreground font-semibold">{formatCurrency(data.originallyInvested)}</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-border">
+              <span className="text-muted-foreground">Current Price per Share:</span>
+              <span className="text-foreground">{formatCurrency(data.currentPrice)}</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-border">
+              <span className="text-muted-foreground">Quantity Owned:</span>
+              <span className="text-foreground">{data.quantity.toFixed(2)} shares</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-border">
+              <span className="text-muted-foreground">Current Market Value:</span>
+              <span className="text-foreground font-semibold">{formatCurrency(data.currentValue)}</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-border">
+              <span className="text-muted-foreground">Gain/Loss:</span>
+              <span className={`font-semibold ${getValueColor(data.currentGain)}`}>
+                {formatCurrency(data.currentGain)} ({formatPercent(data.currentGainPercent)})
+              </span>
+            </div>
           </div>
-        ))}
-      </div>
-    </Card>
+        </div>
+
+        {/* Dividends Section */}
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold text-terminal-yellow mb-4">Dividends</h3>
+          {data.grossDividendAnnual > 0 ? (
+            <div className="space-y-3 font-mono">
+              <div className="flex justify-between items-center py-2 border-b border-border">
+                <span className="text-muted-foreground">Gross Annual Dividend:</span>
+                <span className="text-foreground">{formatCurrency(data.grossDividendAnnual)}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-border">
+                <span className="text-muted-foreground">Tax Rate:</span>
+                <span className="text-foreground">{data.dividendTaxRate.toFixed(2)}%</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-border">
+                <span className="text-muted-foreground">Net Annual Dividend (After Tax):</span>
+                <span className="text-foreground font-semibold">{formatCurrency(data.netDividendAnnual)}</span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-muted-foreground italic">No dividends applicable for this asset.</p>
+          )}
+        </div>
+
+        {/* Future Value Projections Section */}
+        <div>
+          <h3 className="text-xl font-semibold text-terminal-yellow mb-4">Future Value Projections</h3>
+          <div className="space-y-3 font-mono mb-4">
+            <div className="flex justify-between items-center py-2 border-b border-border">
+              <span className="text-muted-foreground">1 Year:</span>
+              <span className="text-foreground">{formatCurrency(data.projectedValue1Year)}</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-border">
+              <span className="text-muted-foreground">3 Years:</span>
+              <span className="text-foreground">{formatCurrency(data.projectedValue3Years)}</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-border">
+              <span className="text-muted-foreground">5 Years:</span>
+              <span className="text-foreground">{formatCurrency(data.projectedValue5Years)}</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-border">
+              <span className="text-muted-foreground">Estimated CAGR:</span>
+              <span className="text-foreground">{data.estimatedCAGR.toFixed(2)}%</span>
+            </div>
+          </div>
+          <div className="bg-muted/50 p-4 rounded-md">
+            <p className="text-sm text-muted-foreground italic">
+              <strong>Disclaimer:</strong> Projections are based on historical data and estimated growth rates. 
+              Past performance does not predict future results. These are estimates only and actual returns may vary significantly.
+            </p>
+          </div>
+        </div>
+      </Card>
+    </div>
   );
 };

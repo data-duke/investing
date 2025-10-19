@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 
 interface InvestmentFormProps {
-  onSearch: (country: string, symbol: string, quantity: number) => void;
+  onSearch: (country: string, symbol: string, amount: number, quantity: number) => void;
   isLoading: boolean;
 }
 
@@ -27,12 +27,13 @@ const countries = [
 export const InvestmentForm = ({ onSearch, isLoading }: InvestmentFormProps) => {
   const [country, setCountry] = useState("");
   const [symbol, setSymbol] = useState("");
+  const [amount, setAmount] = useState("");
   const [quantity, setQuantity] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (country && symbol && quantity) {
-      onSearch(country, symbol.toUpperCase(), parseFloat(quantity));
+    if (country && symbol && (amount || quantity)) {
+      onSearch(country, symbol.toUpperCase(), amount ? parseFloat(amount) : 0, quantity ? parseFloat(quantity) : 0);
     }
   };
 
@@ -69,16 +70,36 @@ export const InvestmentForm = ({ onSearch, isLoading }: InvestmentFormProps) => 
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="quantity" className="text-terminal-yellow">Quantity</Label>
+            <Label htmlFor="amount" className="text-terminal-yellow">Investment Amount (EUR)</Label>
+            <Input
+              id="amount"
+              type="number"
+              step="0.01"
+              value={amount}
+              onChange={(e) => {
+                setAmount(e.target.value);
+                if (e.target.value) setQuantity("");
+              }}
+              placeholder="e.g., 1000"
+              className="bg-input border-border font-mono"
+            />
+          </div>
+
+          <div className="text-center text-muted-foreground text-sm">OR</div>
+
+          <div className="space-y-2">
+            <Label htmlFor="quantity" className="text-terminal-yellow">Quantity (Number of Shares)</Label>
             <Input
               id="quantity"
               type="number"
               step="0.01"
               value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              placeholder="0"
+              onChange={(e) => {
+                setQuantity(e.target.value);
+                if (e.target.value) setAmount("");
+              }}
+              placeholder="e.g., 10"
               className="bg-input border-border font-mono"
-              required
             />
           </div>
 
