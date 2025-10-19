@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 
 interface InvestmentFormProps {
-  onSearch: (country: string, symbol: string, quantity: number, apiKey: string) => void;
+  onSearch: (country: string, symbol: string, quantity: number) => void;
   isLoading: boolean;
 }
 
@@ -28,12 +28,11 @@ export const InvestmentForm = ({ onSearch, isLoading }: InvestmentFormProps) => 
   const [country, setCountry] = useState("");
   const [symbol, setSymbol] = useState("");
   const [quantity, setQuantity] = useState("");
-  const [apiKey, setApiKey] = useState(localStorage.getItem('alpha_vantage_key') || "");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (country && symbol && quantity && apiKey) {
-      onSearch(country, symbol.toUpperCase(), parseFloat(quantity), apiKey);
+    if (country && symbol && quantity) {
+      onSearch(country, symbol.toUpperCase(), parseFloat(quantity));
     }
   };
 
@@ -83,28 +82,6 @@ export const InvestmentForm = ({ onSearch, isLoading }: InvestmentFormProps) => 
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="apiKey" className="text-terminal-yellow">
-              Alpha Vantage API Key
-              <a 
-                href="https://www.alphavantage.co/support/#api-key" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-terminal-blue text-xs ml-2 hover:underline"
-              >
-                (Get free key)
-              </a>
-            </Label>
-            <Input
-              id="apiKey"
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="Enter your API key"
-              className="bg-input border-border font-mono"
-              required
-            />
-          </div>
         </div>
 
         <Button 

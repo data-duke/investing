@@ -39,13 +39,10 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleSearch = async (country: string, symbol: string, quantity: number, apiKey: string) => {
+  const handleSearch = async (country: string, symbol: string, quantity: number) => {
     setIsLoading(true);
     try {
-      const stockData = await fetchStockData(symbol, apiKey);
-      
-      // Store API key for future use (in real app, use secure storage)
-      localStorage.setItem('alpha_vantage_key', apiKey);
+      const stockData = await fetchStockData(symbol);
       
       // Calculate based on fetched data
       calculateAnalysis({

@@ -1,4 +1,4 @@
-const ALPHA_VANTAGE_BASE_URL = 'https://www.alphavantage.co/query';
+import { supabase } from "@/integrations/supabase/client";
 
 export interface StockData {
   symbol: string;
@@ -7,45 +7,21 @@ export interface StockData {
   name: string;
 }
 
-export const fetchStockData = async (symbol: string, apiKey: string): Promise<StockData> => {
+export const fetchStockData = async (symbol: string): Promise<StockData> => {
   try {
-    // Fetch quote data
-    const quoteResponse = await fetch(
-      `${ALPHA_VANTAGE_BASE_URL}?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${apiKey}`
-    );
-    const quoteData = await quoteResponse.json();
+    const { data, error } = await supabase.functions.invoke('fetch-stock-data', {
+      body: { symbol }
+    });
 
-    if (quoteData['Error Message']) {
-      throw new Error('Invalid stock symbol');
+    if (error) {
+      throw new Error(error.message);
     }
 
-    if (quoteData['Note']) {
-      throw new Error('API rate limit exceeded. Please wait a minute.');
+    if (data.error) {
+      throw new Error(data.error);
     }
 
-    const quote = quoteData['Global Quote'];
-    if (!quote || !quote['05. price']) {
-      throw new Error('Stock data not found');
-    }
-
-    const currentPrice = parseFloat(quote['05. price']);
-
-    // Fetch company overview for dividend
-    const overviewResponse = await fetch(
-      `${ALPHA_VANTAGE_BASE_URL}?function=OVERVIEW&symbol=${symbol}&apikey=${apiKey}`
-    );
-    const overviewData = await overviewResponse.json();
-
-    const dividend = overviewData['DividendPerShare'] 
-      ? parseFloat(overviewData['DividendPerShare']) 
-      : 0;
-
-    return {
-      symbol: symbol.toUpperCase(),
-      currentPrice,
-      dividend,
-      name: overviewData['Name'] || symbol.toUpperCase(),
-    };
+    return data as StockData;
   } catch (error) {
     throw new Error(error instanceof Error ? error.message : 'Failed to fetch stock data');
   }
