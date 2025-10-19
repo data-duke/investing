@@ -29,20 +29,29 @@ serve(async (req) => {
     );
     const quoteData = await quoteResponse.json();
 
+    console.log('API Response:', JSON.stringify(quoteData));
+
     if (quoteData['Error Message']) {
       console.error('Invalid stock symbol:', symbol);
-      throw new Error('Invalid stock symbol');
+      throw new Error(`Invalid stock symbol: ${symbol}. Please verify the ticker symbol.`);
     }
 
     if (quoteData['Note']) {
       console.error('API rate limit exceeded');
-      throw new Error('API rate limit exceeded. Please wait a minute.');
+      throw new Error('Alpha Vantage API rate limit exceeded (5 requests/minute on free tier). Please wait a minute and try again.');
     }
 
     const quote = quoteData['Global Quote'];
-    if (!quote || !quote['05. price']) {
-      console.error('Stock data not found for symbol:', symbol);
-      throw new Error('Stock data not found');
+    if (!quote || Object.keys(quote).length === 0) {
+      console.error('Empty response from API for symbol:', symbol);
+      console.error('Full response:', JSON.stringify(quoteData));
+      throw new Error(`No stock data available for symbol: ${symbol}. The symbol may be invalid or not supported by the API.`);
+    }
+
+    if (!quote['05. price']) {
+      console.error('Price data missing for symbol:', symbol);
+      console.error('Available fields:', Object.keys(quote));
+      throw new Error(`Price data not available for symbol: ${symbol}`);
     }
 
     const currentPrice = parseFloat(quote['05. price']);
