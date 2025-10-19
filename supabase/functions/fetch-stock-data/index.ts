@@ -6,6 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const ALPHA_VANTAGE_BASE_URL = 'https://www.alphavantage.co/query';
 const apiKey = Deno.env.get('ALPHA_VANTAGE_API_KEY');
 
@@ -15,6 +16,11 @@ serve(async (req) => {
   }
 
   try {
+    if (!apiKey) {
+      console.error('ALPHA_VANTAGE_API_KEY is not configured');
+      throw new Error('API key not configured. Please contact support.');
+    }
+
     const { symbol } = await req.json();
     
     if (!symbol) {
@@ -22,14 +28,24 @@ serve(async (req) => {
     }
 
     console.log(`Fetching stock data for symbol: ${symbol}`);
+    console.log(`Using API key: ${apiKey ? 'Set (length: ' + apiKey.length + ')' : 'NOT SET'}`);
 
     // Fetch quote data
-    const quoteResponse = await fetch(
-      `${ALPHA_VANTAGE_BASE_URL}?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${apiKey}`
-    );
+    const quoteUrl = `${ALPHA_VANTAGE_BASE_URL}?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${apiKey}`;
+    console.log('Calling Alpha Vantage API...');
+    
+    const quoteResponse = await fetch(quoteUrl);
+    
+    if (!quoteResponse.ok) {
+      console.error('API request failed:', quoteResponse.status, quoteResponse.statusText);
+      throw new Error(`Alpha Vantage API request failed: ${quoteResponse.status}`);
+    }
+    
     const quoteData = await quoteResponse.json();
 
-    console.log('API Response:', JSON.stringify(quoteData));
+    console.log('API Response received');
+    console.log('Response keys:', Object.keys(quoteData));
+    console.log('Full response:', JSON.stringify(quoteData, null, 2));
 
     if (quoteData['Error Message']) {
       console.error('Invalid stock symbol:', symbol);
