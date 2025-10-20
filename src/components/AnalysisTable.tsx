@@ -14,6 +14,8 @@ export interface AnalysisData {
   projectedValue5Years: number;
   estimatedCAGR: number;
   quantity: number;
+  exchangeRate?: number;
+  currentPriceUSD?: number;
 }
 
 interface AnalysisTableProps {
@@ -55,6 +57,16 @@ export const AnalysisTable = ({ data, positionName }: AnalysisTableProps) => {
     <div className="space-y-6">
       <Card className="p-6 bg-card border-border">
         <h2 className="text-2xl font-bold text-foreground mb-6">{positionName}</h2>
+        
+        {/* Exchange Rate Info */}
+        {data.exchangeRate && data.currentPriceUSD && (
+          <div className="mb-6 p-3 bg-muted/50 rounded-md">
+            <p className="text-sm text-muted-foreground">
+              Exchange Rate: <span className="font-semibold text-foreground">1 USD = {data.exchangeRate.toFixed(4)} EUR</span>
+              {' '} | Price in USD: <span className="font-semibold text-foreground">${data.currentPriceUSD.toFixed(2)}</span>
+            </p>
+          </div>
+        )}
         
         {/* Investment Summary Section */}
         <div className="mb-8">

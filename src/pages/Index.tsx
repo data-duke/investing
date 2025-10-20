@@ -19,6 +19,8 @@ interface AnalysisData {
   projectedValue5Years: number;
   estimatedCAGR: number;
   quantity: number;
+  exchangeRate?: number;
+  currentPriceUSD?: number;
 }
 
 const countries = {
@@ -67,6 +69,8 @@ const Index = () => {
         currentPrice: stockData.currentPrice,
         originallyInvested: finalAmount,
         announcedDividend: stockData.dividend,
+        exchangeRate: stockData.exchangeRate,
+        currentPriceUSD: stockData.currentPriceUSD,
       });
       
       toast({
@@ -91,6 +95,8 @@ const Index = () => {
     currentPrice: number;
     originallyInvested: number;
     announcedDividend: number;
+    exchangeRate?: number;
+    currentPriceUSD?: number;
   }) => {
     const country = countries[data.country as keyof typeof countries];
     
@@ -126,6 +132,8 @@ const Index = () => {
       projectedValue5Years,
       estimatedCAGR: estimatedCAGR * 100,
       quantity: data.quantity,
+      exchangeRate: data.exchangeRate,
+      currentPriceUSD: data.currentPriceUSD,
     });
     
     setPositionName(data.positionName);

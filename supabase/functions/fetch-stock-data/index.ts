@@ -19,6 +19,22 @@ async function fetchJSON(url: string) {
   return res.json();
 }
 
+async function fetchExchangeRate(): Promise<number> {
+  try {
+    // Use exchangerate-api.com free tier for USD to EUR conversion
+    const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+    if (!res.ok) throw new Error('Exchange rate fetch failed');
+    const data = await res.json();
+    const rate = Number(data?.rates?.EUR);
+    if (!Number.isFinite(rate) || rate <= 0) throw new Error('Invalid EUR rate');
+    return rate;
+  } catch (e) {
+    console.warn('Failed to fetch live exchange rate, using fallback:', e);
+    // Fallback rate (approximate)
+    return 0.92;
+  }
+}
+
 async function fetchFromFMP(symbol: string) {
   if (!FMP_API_KEY) throw new Error('FMP key missing');
 
@@ -93,35 +109,49 @@ serve(async (req) => {
 
     console.log(`Fetching data for symbol: ${cleanSymbol} (FMP ${FMP_API_KEY ? 'present' : 'absent'})`);
 
-    let currentPrice = 0;
+    let currentPriceUSD = 0;
     let name = cleanSymbol;
-    let dividend = 0;
+    let dividendUSD = 0;
 
     // Prefer FMP if key is available for reliability + dividends
     if (FMP_API_KEY) {
       try {
         const fmp = await fetchFromFMP(cleanSymbol);
-        currentPrice = fmp.currentPrice;
+        currentPriceUSD = fmp.currentPrice;
         name = fmp.name || cleanSymbol;
-        dividend = fmp.dividend || 0;
+        dividendUSD = fmp.dividend || 0;
       } catch (e) {
         console.warn('FMP fetch failed, falling back to Stooq:', e);
       }
     }
 
     // Fallback to Stooq (no key) if price is not yet set
-    if (!Number.isFinite(currentPrice) || currentPrice <= 0) {
+    if (!Number.isFinite(currentPriceUSD) || currentPriceUSD <= 0) {
       const stooq = await fetchFromStooq(cleanSymbol);
-      currentPrice = stooq.currentPrice;
+      currentPriceUSD = stooq.currentPrice;
       name = stooq.name;
-      dividend = dividend || 0; // Stooq has no dividend data
+      dividendUSD = dividendUSD || 0; // Stooq has no dividend data
     }
 
-    if (!Number.isFinite(currentPrice) || currentPrice <= 0) {
+    if (!Number.isFinite(currentPriceUSD) || currentPriceUSD <= 0) {
       throw new Error(`No price available for symbol: ${cleanSymbol}`);
     }
 
-    const stockData = { symbol: cleanSymbol, currentPrice, dividend, name };
+    // Fetch USD to EUR exchange rate
+    const usdToEur = await fetchExchangeRate();
+    
+    // Convert prices to EUR
+    const currentPrice = currentPriceUSD * usdToEur;
+    const dividend = dividendUSD * usdToEur;
+
+    const stockData = { 
+      symbol: cleanSymbol, 
+      currentPrice, 
+      dividend, 
+      name,
+      exchangeRate: usdToEur,
+      currentPriceUSD 
+    };
 
     return new Response(JSON.stringify(stockData), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
