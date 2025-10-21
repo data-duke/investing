@@ -21,6 +21,7 @@ interface AnalysisData {
   quantity: number;
   exchangeRate?: number;
   currentPriceUSD?: number;
+  source?: string;
 }
 
 const countries = {
@@ -71,6 +72,7 @@ const Index = () => {
         announcedDividend: stockData.dividend,
         exchangeRate: stockData.exchangeRate,
         currentPriceUSD: stockData.currentPriceUSD,
+        source: stockData.source,
       });
       
       toast({
@@ -97,6 +99,7 @@ const Index = () => {
     announcedDividend: number;
     exchangeRate?: number;
     currentPriceUSD?: number;
+    source?: string;
   }) => {
     const country = countries[data.country as keyof typeof countries];
     
@@ -134,6 +137,7 @@ const Index = () => {
       quantity: data.quantity,
       exchangeRate: data.exchangeRate,
       currentPriceUSD: data.currentPriceUSD,
+      source: data.source,
     });
     
     setPositionName(data.positionName);

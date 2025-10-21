@@ -7,6 +7,7 @@ export interface StockData {
   name: string;
   exchangeRate?: number;
   currentPriceUSD?: number;
+  source?: string;
 }
 
 export const fetchStockData = async (symbol: string): Promise<StockData> => {

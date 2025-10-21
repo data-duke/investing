@@ -6,22 +6,30 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const FMP_API_KEY = Deno.env.get('FMP_API_KEY');
-const FMP_BASE = 'https://financialmodelingprep.com/api/v3';
+const FMP_API_KEY = Deno.env.get('FMP_API_KEY')?.trim();
+const FMP_BASES = [
+  'https://financialmodelingprep.com/stable',
+  'https://financialmodelingprep.com/api/v3'
+];
 
-async function fetchJSON(url: string) {
+async function fetchJSON(url: string, logError = true) {
   const res = await fetch(url, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (compatible; LovableBot/1.0; +https://lovable.dev)'
     },
   });
-  if (!res.ok) throw new Error(`${url} -> ${res.status}`);
+  if (!res.ok) {
+    if (logError) {
+      const body = await res.text().catch(() => 'Unable to read body');
+      console.error(`HTTP ${res.status} for ${url.split('?')[0]}: ${body.substring(0, 200)}`);
+    }
+    throw new Error(`${url.split('?')[0]} -> ${res.status}`);
+  }
   return res.json();
 }
 
 async function fetchExchangeRate(): Promise<number> {
   try {
-    // Use exchangerate-api.com free tier for USD to EUR conversion
     const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
     if (!res.ok) throw new Error('Exchange rate fetch failed');
     const data = await res.json();
@@ -30,17 +38,90 @@ async function fetchExchangeRate(): Promise<number> {
     return rate;
   } catch (e) {
     console.warn('Failed to fetch live exchange rate, using fallback:', e);
-    // Fallback rate (approximate)
     return 0.92;
   }
+}
+
+async function tryFMPEndpoint(endpoint: string): Promise<any> {
+  if (!FMP_API_KEY) throw new Error('FMP key missing');
+  
+  let lastError: Error | null = null;
+  for (const base of FMP_BASES) {
+    try {
+      const url = `${base}${endpoint}?apikey=${FMP_API_KEY}`;
+      const data = await fetchJSON(url, false);
+      console.log(`✓ FMP success: ${base}${endpoint.split('?')[0]}`);
+      return data;
+    } catch (e) {
+      lastError = e as Error;
+    }
+  }
+  throw lastError || new Error('All FMP bases failed');
+}
+
+async function fetchDividendFromFMP(symbol: string, currentPrice: number): Promise<number> {
+  // Strategy 1: key-metrics-ttm
+  try {
+    const metrics = await tryFMPEndpoint(`/key-metrics-ttm/${encodeURIComponent(symbol)}`);
+    const dps = Number(metrics?.[0]?.dividendPerShareTTM);
+    if (Number.isFinite(dps) && dps > 0) {
+      console.log(`✓ Dividend from key-metrics-ttm: ${dps}`);
+      return dps;
+    }
+  } catch (e) {
+    console.log('Strategy 1 (key-metrics-ttm) failed:', (e as Error).message);
+  }
+
+  // Strategy 2: historical-price-full/stock_dividend
+  try {
+    const divHistory = await tryFMPEndpoint(`/historical-price-full/stock_dividend/${encodeURIComponent(symbol)}`);
+    if (divHistory?.historical && Array.isArray(divHistory.historical)) {
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      
+      const recentDividends = divHistory.historical.filter((d: any) => {
+        const divDate = new Date(d.date);
+        return divDate >= oneYearAgo;
+      });
+      
+      const totalDiv = recentDividends.reduce((sum: number, d: any) => {
+        const amount = Number(d.dividend || d.cashAmount || 0);
+        return sum + amount;
+      }, 0);
+      
+      if (totalDiv > 0) {
+        console.log(`✓ Dividend from stock_dividend history (365d sum): ${totalDiv}`);
+        return totalDiv;
+      }
+    }
+  } catch (e) {
+    console.log('Strategy 2 (stock_dividend) failed:', (e as Error).message);
+  }
+
+  // Strategy 3: ratios-ttm (dividendYieldTTM * price)
+  try {
+    const ratios = await tryFMPEndpoint(`/ratios-ttm/${encodeURIComponent(symbol)}`);
+    const yieldTTM = Number(ratios?.[0]?.dividendYieldTTM);
+    if (Number.isFinite(yieldTTM) && yieldTTM > 0) {
+      const estimatedDiv = yieldTTM * currentPrice;
+      console.log(`✓ Dividend from ratios-ttm (yield ${yieldTTM} * price): ${estimatedDiv}`);
+      return estimatedDiv;
+    }
+  } catch (e) {
+    console.log('Strategy 3 (ratios-ttm) failed:', (e as Error).message);
+  }
+
+  console.log('All dividend strategies failed, returning 0');
+  return 0;
 }
 
 async function fetchFromFMP(symbol: string) {
   if (!FMP_API_KEY) throw new Error('FMP key missing');
 
   // Quote for price and possibly name
-  const quote = await fetchJSON(`${FMP_BASE}/quote/${encodeURIComponent(symbol)}?apikey=${FMP_API_KEY}`);
+  const quote = await tryFMPEndpoint(`/quote/${encodeURIComponent(symbol)}`);
   if (!Array.isArray(quote) || quote.length === 0) throw new Error('FMP quote empty');
+  
   const q = quote[0];
   const currentPrice = Number(q?.price ?? q?.previousClose ?? q?.open);
   if (!Number.isFinite(currentPrice)) throw new Error('FMP price invalid');
@@ -48,32 +129,28 @@ async function fetchFromFMP(symbol: string) {
   // Company name (quote.name is usually present, otherwise profile)
   let name: string = q?.name || symbol;
   if (!name || name === symbol) {
-    const profile = await fetchJSON(`${FMP_BASE}/profile/${encodeURIComponent(symbol)}?apikey=${FMP_API_KEY}`);
-    if (Array.isArray(profile) && profile[0]?.companyName) name = profile[0].companyName;
+    try {
+      const profile = await tryFMPEndpoint(`/profile/${encodeURIComponent(symbol)}`);
+      if (Array.isArray(profile) && profile[0]?.companyName) {
+        name = profile[0].companyName;
+      }
+    } catch (_) {
+      console.log('Profile fetch failed, using symbol as name');
+    }
   }
 
-  // Dividend per share TTM
-  let dividend = 0;
-  try {
-    const metrics = await fetchJSON(`${FMP_BASE}/key-metrics-ttm/${encodeURIComponent(symbol)}?apikey=${FMP_API_KEY}`);
-    const m = Array.isArray(metrics) && metrics.length > 0 ? metrics[0] : null;
-    const dps = Number(m?.dividendPerShareTTM);
-    if (Number.isFinite(dps) && dps > 0) dividend = dps;
-  } catch (_) {
-    // Ignore DPS errors, keep dividend = 0
-  }
+  // Fetch dividend with multiple fallback strategies
+  const dividend = await fetchDividendFromFMP(symbol, currentPrice);
 
-  return { currentPrice, name, dividend };
+  return { currentPrice, name, dividend, source: 'FMP' };
 }
 
 async function fetchFromStooq(symbol: string) {
-  // Stooq free CSV quote. May require ".us" suffix for US tickers.
   const tryOnce = async (sym: string) => {
     const url = `https://stooq.com/q/l/?s=${encodeURIComponent(sym)}&f=sd2t2ohlcv&h&e=csv`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Stooq request failed: ${res.status}`);
     const csv = await res.text();
-    // Expect header + one data line
     const lines = csv.trim().split(/\r?\n/);
     if (lines.length < 2) throw new Error('Stooq CSV empty');
     const headers = lines[0].split(',').map(s => s.trim().toLowerCase());
@@ -89,11 +166,11 @@ async function fetchFromStooq(symbol: string) {
 
   try {
     const price = await tryOnce(symbol.toLowerCase());
-    return { currentPrice: price, name: symbol, dividend: 0 };
+    return { currentPrice: price, name: symbol, dividend: 0, source: 'Stooq' };
   } catch (_) {
     const alt = `${symbol.toLowerCase()}.us`;
-    const price = await tryOnce(alt); // let error bubble if this fails too
-    return { currentPrice: price, name: symbol, dividend: 0 };
+    const price = await tryOnce(alt);
+    return { currentPrice: price, name: symbol, dividend: 0, source: 'Stooq' };
   }
 }
 
@@ -107,11 +184,12 @@ serve(async (req) => {
     const cleanSymbol = String(symbol ?? '').trim().toUpperCase();
     if (!cleanSymbol) throw new Error('Stock symbol is required');
 
-    console.log(`Fetching data for symbol: ${cleanSymbol} (FMP ${FMP_API_KEY ? 'present' : 'absent'})`);
+    console.log(`\n=== Fetching ${cleanSymbol} (FMP key: ${FMP_API_KEY ? 'present' : 'absent'}) ===`);
 
     let currentPriceUSD = 0;
     let name = cleanSymbol;
     let dividendUSD = 0;
+    let source = 'Unknown';
 
     // Prefer FMP if key is available for reliability + dividends
     if (FMP_API_KEY) {
@@ -120,17 +198,19 @@ serve(async (req) => {
         currentPriceUSD = fmp.currentPrice;
         name = fmp.name || cleanSymbol;
         dividendUSD = fmp.dividend || 0;
+        source = fmp.source;
       } catch (e) {
         console.warn('FMP fetch failed, falling back to Stooq:', e);
       }
     }
 
-    // Fallback to Stooq (no key) if price is not yet set
+    // Fallback to Stooq if price is not yet set
     if (!Number.isFinite(currentPriceUSD) || currentPriceUSD <= 0) {
       const stooq = await fetchFromStooq(cleanSymbol);
       currentPriceUSD = stooq.currentPrice;
       name = stooq.name;
       dividendUSD = dividendUSD || 0; // Stooq has no dividend data
+      source = stooq.source;
     }
 
     if (!Number.isFinite(currentPriceUSD) || currentPriceUSD <= 0) {
@@ -144,13 +224,16 @@ serve(async (req) => {
     const currentPrice = currentPriceUSD * usdToEur;
     const dividend = dividendUSD * usdToEur;
 
+    console.log(`✓ Final: ${name} @ $${currentPriceUSD.toFixed(2)} (€${currentPrice.toFixed(2)}), Div: $${dividendUSD.toFixed(2)} (€${dividend.toFixed(2)}), Source: ${source}`);
+
     const stockData = { 
       symbol: cleanSymbol, 
       currentPrice, 
       dividend, 
       name,
       exchangeRate: usdToEur,
-      currentPriceUSD 
+      currentPriceUSD,
+      source
     };
 
     return new Response(JSON.stringify(stockData), {

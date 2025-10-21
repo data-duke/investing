@@ -16,6 +16,7 @@ export interface AnalysisData {
   quantity: number;
   exchangeRate?: number;
   currentPriceUSD?: number;
+  source?: string;
 }
 
 interface AnalysisTableProps {
@@ -116,7 +117,16 @@ export const AnalysisTable = ({ data, positionName }: AnalysisTableProps) => {
               </div>
             </div>
           ) : (
-            <p className="text-muted-foreground italic">No dividends applicable for this asset.</p>
+            <div>
+              <p className="text-muted-foreground italic mb-2">No dividends applicable for this asset.</p>
+              {data.source === 'Stooq' && (
+                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-md p-3">
+                  <p className="text-sm text-yellow-600 dark:text-yellow-400">
+                    ℹ️ Dividend data unavailable (using fallback data source). This may be due to API limitations or the stock may not pay dividends.
+                  </p>
+                </div>
+              )}
+            </div>
           )}
         </div>
 
