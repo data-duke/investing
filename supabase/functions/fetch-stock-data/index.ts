@@ -7,6 +7,7 @@ const corsHeaders = {
 };
 
 const FMP_API_KEY = Deno.env.get('FMP_API_KEY')?.trim();
+const ALPHA_VANTAGE_API_KEY = Deno.env.get('ALPHA_VANTAGE_API_KEY')?.trim();
 const FMP_BASES = [
   'https://financialmodelingprep.com/stable',
   'https://financialmodelingprep.com/api/v3'
@@ -40,6 +41,69 @@ async function fetchExchangeRate(): Promise<number> {
     console.warn('Failed to fetch live exchange rate, using fallback:', e);
     return 0.92;
   }
+}
+
+async function fetchAlphaJSON(url: string) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Alpha Vantage HTTP ${res.status}`);
+  const data = await res.json();
+  
+  // Check for API errors or rate limits
+  if (data['Note']) throw new Error(`Alpha Vantage rate limit: ${data['Note']}`);
+  if (data['Information']) throw new Error(`Alpha Vantage info: ${data['Information']}`);
+  if (data['Error Message']) throw new Error(`Alpha Vantage error: ${data['Error Message']}`);
+  
+  return data;
+}
+
+async function fetchDividendFromAV(symbol: string): Promise<{ dividend: number; name?: string }> {
+  if (!ALPHA_VANTAGE_API_KEY) return { dividend: 0 };
+  
+  // Strategy 1: Try OVERVIEW endpoint for DividendPerShare
+  try {
+    const url = `https://www.alphavantage.co/query?function=OVERVIEW&symbol=${encodeURIComponent(symbol)}&apikey=${ALPHA_VANTAGE_API_KEY}`;
+    const data = await fetchAlphaJSON(url);
+    
+    const dps = Number(data.DividendPerShare);
+    const name = data.Name || undefined;
+    
+    if (Number.isFinite(dps) && dps > 0) {
+      console.log(`✓ Dividend from Alpha Vantage OVERVIEW: $${dps.toFixed(2)}`);
+      return { dividend: dps, name };
+    }
+  } catch (e) {
+    console.log('Alpha Vantage OVERVIEW failed:', (e as Error).message);
+  }
+  
+  // Strategy 2: Try TIME_SERIES_MONTHLY_ADJUSTED for TTM sum
+  try {
+    const url = `https://www.alphavantage.co/query?function=TIME_SERIES_MONTHLY_ADJUSTED&symbol=${encodeURIComponent(symbol)}&apikey=${ALPHA_VANTAGE_API_KEY}`;
+    const data = await fetchAlphaJSON(url);
+    
+    const timeSeries = data['Monthly Adjusted Time Series'];
+    if (timeSeries && typeof timeSeries === 'object') {
+      const dates = Object.keys(timeSeries).sort().reverse(); // Most recent first
+      let ttmDividend = 0;
+      
+      for (let i = 0; i < Math.min(12, dates.length); i++) {
+        const monthData = timeSeries[dates[i]];
+        const divAmount = Number(monthData['7. dividend amount']);
+        if (Number.isFinite(divAmount)) {
+          ttmDividend += divAmount;
+        }
+      }
+      
+      if (ttmDividend > 0) {
+        console.log(`✓ Dividend from Alpha Vantage TIME_SERIES (TTM sum): $${ttmDividend.toFixed(2)}`);
+        return { dividend: ttmDividend };
+      }
+    }
+  } catch (e) {
+    console.log('Alpha Vantage TIME_SERIES_MONTHLY_ADJUSTED failed:', (e as Error).message);
+  }
+  
+  console.log('Alpha Vantage dividend fetch returned 0');
+  return { dividend: 0 };
 }
 
 async function tryFMPEndpoint(endpoint: string): Promise<any> {
@@ -215,6 +279,19 @@ serve(async (req) => {
 
     if (!Number.isFinite(currentPriceUSD) || currentPriceUSD <= 0) {
       throw new Error(`No price available for symbol: ${cleanSymbol}`);
+    }
+
+    // Try Alpha Vantage for dividends if we don't have them yet
+    if ((!dividendUSD || dividendUSD <= 0) && ALPHA_VANTAGE_API_KEY) {
+      console.log('Attempting Alpha Vantage dividend fetch...');
+      const avResult = await fetchDividendFromAV(cleanSymbol);
+      if (avResult.dividend > 0) {
+        dividendUSD = avResult.dividend;
+        // Update name if we only have the ticker and AV provided a better name
+        if (avResult.name && (name === cleanSymbol || name === symbol)) {
+          name = avResult.name;
+        }
+      }
     }
 
     // Fetch USD to EUR exchange rate
