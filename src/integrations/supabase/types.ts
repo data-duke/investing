@@ -14,7 +14,118 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      portfolio_snapshots: {
+        Row: {
+          created_at: string
+          current_price_eur: number
+          current_value_eur: number
+          dividend_annual_eur: number | null
+          exchange_rate: number | null
+          id: string
+          portfolio_id: string
+          snapshot_date: string
+        }
+        Insert: {
+          created_at?: string
+          current_price_eur: number
+          current_value_eur: number
+          dividend_annual_eur?: number | null
+          exchange_rate?: number | null
+          id?: string
+          portfolio_id: string
+          snapshot_date?: string
+        }
+        Update: {
+          created_at?: string
+          current_price_eur?: number
+          current_value_eur?: number
+          dividend_annual_eur?: number | null
+          exchange_rate?: number | null
+          id?: string
+          portfolio_id?: string
+          snapshot_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolio_snapshots_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "portfolios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portfolios: {
+        Row: {
+          country: string
+          created_at: string
+          id: string
+          name: string
+          original_investment_eur: number
+          original_price_eur: number
+          purchase_date: string
+          quantity: number
+          symbol: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          country: string
+          created_at?: string
+          id?: string
+          name: string
+          original_investment_eur: number
+          original_price_eur: number
+          purchase_date?: string
+          quantity: number
+          symbol: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          country?: string
+          created_at?: string
+          id?: string
+          name?: string
+          original_investment_eur?: number
+          original_price_eur?: number
+          purchase_date?: string
+          quantity?: number
+          symbol?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolios_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

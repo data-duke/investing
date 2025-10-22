@@ -2,3 +2,6 @@ project_id = "gsgowetqzqeviqtxgofl"
 
 [functions.fetch-stock-data]
 verify_jwt = false
+
+[functions.fetch-stock-news]
+verify_jwt = false

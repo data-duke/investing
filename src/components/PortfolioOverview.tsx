@@ -1,0 +1,72 @@
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Portfolio } from "@/hooks/usePortfolio";
+import { TrendingUp, DollarSign, PiggyBank, Award } from "lucide-react";
+
+interface PortfolioOverviewProps {
+  portfolios: Portfolio[];
+}
+
+export const PortfolioOverview = ({ portfolios }: PortfolioOverviewProps) => {
+  const totalValue = portfolios.reduce((sum, p) => sum + (p.current_value_eur || 0), 0);
+  const totalInvested = portfolios.reduce((sum, p) => sum + Number(p.original_investment_eur), 0);
+  const totalGain = totalValue - totalInvested;
+  const totalGainPercent = totalInvested > 0 ? (totalGain / totalInvested) * 100 : 0;
+  const totalDividends = portfolios.reduce((sum, p) => sum + (p.dividend_annual_eur || 0), 0);
+
+  const topPerformer = portfolios.reduce((best, current) => {
+    const currentGain = current.gain_loss_percent || 0;
+    const bestGain = best.gain_loss_percent || 0;
+    return currentGain > bestGain ? current : best;
+  }, portfolios[0]);
+
+  const stats = [
+    {
+      title: "Total Portfolio Value",
+      value: `€${totalValue.toFixed(2)}`,
+      icon: DollarSign,
+      description: `Invested: €${totalInvested.toFixed(2)}`,
+    },
+    {
+      title: "Total Gain/Loss",
+      value: `€${totalGain.toFixed(2)}`,
+      icon: TrendingUp,
+      description: `${totalGainPercent >= 0 ? '+' : ''}${totalGainPercent.toFixed(2)}%`,
+      className: totalGain >= 0 ? "text-green-600" : "text-red-600",
+    },
+    {
+      title: "Annual Dividends",
+      value: `€${totalDividends.toFixed(2)}`,
+      icon: PiggyBank,
+      description: "Expected annual income",
+    },
+    {
+      title: "Top Performer",
+      value: topPerformer?.symbol || "N/A",
+      icon: Award,
+      description: topPerformer ? `+${(topPerformer.gain_loss_percent || 0).toFixed(2)}%` : "N/A",
+      className: "text-primary",
+    },
+  ];
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {stats.map((stat) => {
+        const Icon = stat.icon;
+        return (
+          <Card key={stat.title}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+              <Icon className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${stat.className || ''}`}>
+                {stat.value}
+              </div>
+              <p className="text-xs text-muted-foreground">{stat.description}</p>
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
+  );
+};
