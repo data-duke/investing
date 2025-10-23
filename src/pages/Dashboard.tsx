@@ -13,13 +13,114 @@ import { fetchStockData } from "@/services/stockApi";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+interface AggregatedPosition {
+  symbol: string;
+  name: string;
+  country: string;
+  totalQuantity: number;
+  totalOriginalInvestment: number;
+  avgOriginalPrice: number;
+  current_price_eur?: number;
+  current_value_eur?: number;
+  gain_loss_eur?: number;
+  gain_loss_percent?: number;
+  dividend_annual_eur?: number;
+  lots: Portfolio[];
+}
+
 const Dashboard = () => {
   const { user, signOut } = useAuth();
   const { portfolios, loading, fetchPortfolios } = usePortfolio();
   const [enrichedPortfolios, setEnrichedPortfolios] = useState<Portfolio[]>([]);
+  const [aggregatedPositions, setAggregatedPositions] = useState<AggregatedPosition[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const { toast } = useToast();
+
+  // Load initial data from latest snapshots
+  useEffect(() => {
+    const loadInitialData = async () => {
+      if (portfolios.length === 0) return;
+
+      // Fetch latest snapshot for each portfolio
+      const enriched = await Promise.all(
+        portfolios.map(async (portfolio) => {
+          const { data: snapshots } = await supabase
+            .from('portfolio_snapshots')
+            .select('*')
+            .eq('portfolio_id', portfolio.id)
+            .order('snapshot_date', { ascending: false })
+            .limit(1);
+
+          if (snapshots && snapshots.length > 0) {
+            const snap = snapshots[0];
+            return {
+              ...portfolio,
+              current_price_eur: Number(snap.current_price_eur),
+              current_value_eur: Number(snap.current_value_eur),
+              gain_loss_eur: Number(snap.current_value_eur) - Number(portfolio.original_investment_eur),
+              gain_loss_percent: ((Number(snap.current_value_eur) - Number(portfolio.original_investment_eur)) / Number(portfolio.original_investment_eur)) * 100,
+              dividend_annual_eur: Number(snap.dividend_annual_eur),
+            };
+          }
+          return portfolio;
+        })
+      );
+
+      setEnrichedPortfolios(enriched);
+      aggregatePositions(enriched);
+    };
+
+    if (!loading) {
+      loadInitialData();
+    }
+  }, [portfolios, loading]);
+
+  const aggregatePositions = (portfolios: Portfolio[]) => {
+    const grouped = new Map<string, AggregatedPosition>();
+
+    portfolios.forEach((p) => {
+      const existing = grouped.get(p.symbol);
+      if (existing) {
+        existing.totalQuantity += Number(p.quantity);
+        existing.totalOriginalInvestment += Number(p.original_investment_eur);
+        existing.lots.push(p);
+        
+        if (p.current_value_eur) {
+          existing.current_value_eur = (existing.current_value_eur || 0) + p.current_value_eur;
+        }
+        if (p.dividend_annual_eur) {
+          existing.dividend_annual_eur = (existing.dividend_annual_eur || 0) + p.dividend_annual_eur;
+        }
+      } else {
+        grouped.set(p.symbol, {
+          symbol: p.symbol,
+          name: p.name,
+          country: p.country,
+          totalQuantity: Number(p.quantity),
+          totalOriginalInvestment: Number(p.original_investment_eur),
+          avgOriginalPrice: 0, // Will calculate below
+          current_price_eur: p.current_price_eur,
+          current_value_eur: p.current_value_eur,
+          dividend_annual_eur: p.dividend_annual_eur,
+          lots: [p],
+        });
+      }
+    });
+
+    // Calculate weighted averages and gains
+    const aggregated = Array.from(grouped.values()).map((pos) => {
+      pos.avgOriginalPrice = pos.totalOriginalInvestment / pos.totalQuantity;
+      if (pos.current_value_eur) {
+        pos.gain_loss_eur = pos.current_value_eur - pos.totalOriginalInvestment;
+        pos.gain_loss_percent = (pos.gain_loss_eur / pos.totalOriginalInvestment) * 100;
+      }
+      return pos;
+    });
+
+    setAggregatedPositions(aggregated);
+  };
 
   const refreshPrices = async () => {
     if (portfolios.length === 0) return;
@@ -27,7 +128,6 @@ const Dashboard = () => {
     setIsRefreshing(true);
     const updated: Portfolio[] = [];
 
-    // Get tax rates based on country
     const countries: Record<string, { dividendTax: number }> = {
       AT: { dividendTax: 0.275 },
       DE: { dividendTax: 0.26375 },
@@ -44,12 +144,10 @@ const Dashboard = () => {
         const gainLoss = currentValue - Number(portfolio.original_investment_eur);
         const gainLossPercent = (gainLoss / Number(portfolio.original_investment_eur)) * 100;
 
-        // Calculate net dividend after tax
         const country = countries[portfolio.country as keyof typeof countries];
         const grossDividend = stockData.dividend * Number(portfolio.quantity);
         const netDividend = country ? grossDividend * (1 - country.dividendTax) : grossDividend;
 
-        // Create snapshot
         await supabase.from('portfolio_snapshots').insert({
           portfolio_id: portfolio.id,
           current_price_eur: currentPrice,
@@ -69,26 +167,20 @@ const Dashboard = () => {
         });
       } catch (error) {
         console.error(`Error refreshing ${portfolio.symbol}:`, error);
-        // Keep existing data if refresh fails
         updated.push(portfolio);
       }
     }
 
     setEnrichedPortfolios(updated);
+    aggregatePositions(updated);
+    setLastUpdated(new Date());
     setIsRefreshing(false);
+    
     toast({
       title: "Prices updated",
       description: "Portfolio data has been refreshed.",
     });
   };
-
-  useEffect(() => {
-    if (!loading && portfolios.length > 0) {
-      refreshPrices();
-    } else {
-      setEnrichedPortfolios([]);
-    }
-  }, [portfolios, loading]);
 
   if (loading) {
     return (
@@ -113,7 +205,7 @@ const Dashboard = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8 space-y-6">
-        {enrichedPortfolios.length === 0 ? (
+        {portfolios.length === 0 ? (
           <Card>
             <CardHeader>
               <CardTitle>Welcome to Your Portfolio Tracker</CardTitle>
@@ -130,8 +222,22 @@ const Dashboard = () => {
           </Card>
         ) : (
           <>
+            {isRefreshing && (
+              <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 flex items-center gap-3">
+                <RefreshCw className="h-4 w-4 animate-spin text-primary" />
+                <span className="text-sm font-medium">Refreshing prices...</span>
+              </div>
+            )}
+            
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Portfolio Overview</h2>
+              <div>
+                <h2 className="text-xl font-semibold">Portfolio Overview</h2>
+                {lastUpdated && (
+                  <p className="text-xs text-muted-foreground">
+                    Last updated: {lastUpdated.toLocaleTimeString()}
+                  </p>
+                )}
+              </div>
               <Button
                 variant="outline"
                 size="sm"
@@ -147,10 +253,28 @@ const Dashboard = () => {
 
             <div className="grid md:grid-cols-2 gap-6">
               <PortfolioChart portfolios={enrichedPortfolios} />
-              <AllocationChart portfolios={enrichedPortfolios} />
+              <AllocationChart portfolios={aggregatedPositions.map(p => ({
+                id: p.symbol,
+                symbol: p.symbol,
+                name: p.name,
+                country: p.country,
+                quantity: p.totalQuantity,
+                original_price_eur: p.avgOriginalPrice,
+                original_investment_eur: p.totalOriginalInvestment,
+                purchase_date: '',
+                current_price_eur: p.current_price_eur,
+                current_value_eur: p.current_value_eur,
+                gain_loss_eur: p.gain_loss_eur,
+                gain_loss_percent: p.gain_loss_percent,
+                dividend_annual_eur: p.dividend_annual_eur,
+              } as Portfolio))} />
             </div>
 
-            <HoldingsTable portfolios={enrichedPortfolios} onRefresh={fetchPortfolios} />
+            <HoldingsTable 
+              portfolios={enrichedPortfolios} 
+              aggregatedPositions={aggregatedPositions}
+              onRefresh={fetchPortfolios} 
+            />
 
             <Button onClick={() => setIsAddDialogOpen(true)} className="w-full">
               <Plus className="mr-2 h-4 w-4" />

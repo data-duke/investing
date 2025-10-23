@@ -6,18 +6,44 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { usePortfolio } from "@/hooks/usePortfolio";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { signIn, user } = useAuth();
+  const { addInvestment } = usePortfolio();
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user) navigate("/");
-  }, [user, navigate]);
+    if (user) {
+      // Check for pending investment
+      const pendingStr = sessionStorage.getItem('pendingInvestment');
+      if (pendingStr) {
+        const pending = JSON.parse(pendingStr);
+        addInvestment({
+          symbol: pending.symbol,
+          name: pending.name,
+          country: pending.country,
+          quantity: pending.quantity,
+          original_price_eur: pending.originalPrice,
+          original_investment_eur: pending.originallyInvested,
+          purchase_date: pending.purchase_date,
+        }).then(() => {
+          sessionStorage.removeItem('pendingInvestment');
+          toast({
+            title: "Investment saved!",
+            description: "Your investment has been added to your portfolio.",
+          });
+          navigate("/dashboard");
+        });
+      } else {
+        navigate("/");
+      }
+    }
+  }, [user, navigate, addInvestment, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

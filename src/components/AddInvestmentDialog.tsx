@@ -56,12 +56,14 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
         finalQuantity = finalAmount / stockData.currentPrice;
       }
 
+      const originalPriceEur = finalAmount / finalQuantity;
+      
       await addInvestment({
         symbol: symbol.toUpperCase(),
         name: stockData.name,
         country,
         quantity: finalQuantity,
-        original_price_eur: stockData.currentPrice,
+        original_price_eur: originalPriceEur,
         original_investment_eur: finalAmount,
         purchase_date: purchaseDate.toISOString(),
       });
@@ -140,6 +142,9 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
               }}
               placeholder="e.g., 1000"
             />
+            <p className="text-xs text-muted-foreground">
+              💡 Tip: Enter both amount and quantity to preserve your exact average purchase price
+            </p>
           </div>
 
           <div className="text-center text-sm text-muted-foreground">OR</div>

@@ -13,6 +13,10 @@ const FMP_BASES = [
   'https://financialmodelingprep.com/api/v3'
 ];
 
+// In-memory dividend cache with 24h TTL
+const dividendCache = new Map<string, { dividendUSD: number; cachedAt: number }>();
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
 async function fetchJSON(url: string, logError = true) {
   const res = await fetch(url, {
     headers: {
@@ -283,13 +287,24 @@ serve(async (req) => {
 
     // Try Alpha Vantage for dividends if we don't have them yet
     if ((!dividendUSD || dividendUSD <= 0) && ALPHA_VANTAGE_API_KEY) {
-      console.log('Attempting Alpha Vantage dividend fetch...');
-      const avResult = await fetchDividendFromAV(cleanSymbol);
-      if (avResult.dividend > 0) {
-        dividendUSD = avResult.dividend;
-        // Update name if we only have the ticker and AV provided a better name
-        if (avResult.name && (name === cleanSymbol || name === symbol)) {
-          name = avResult.name;
+      // Check cache first
+      const cached = dividendCache.get(cleanSymbol);
+      const now = Date.now();
+      
+      if (cached && (now - cached.cachedAt) < CACHE_TTL_MS) {
+        console.log(`✓ Using cached dividend for ${cleanSymbol}: $${cached.dividendUSD.toFixed(2)}`);
+        dividendUSD = cached.dividendUSD;
+      } else {
+        console.log('Attempting Alpha Vantage dividend fetch...');
+        const avResult = await fetchDividendFromAV(cleanSymbol);
+        if (avResult.dividend > 0) {
+          dividendUSD = avResult.dividend;
+          // Cache the result
+          dividendCache.set(cleanSymbol, { dividendUSD, cachedAt: now });
+          // Update name if we only have the ticker and AV provided a better name
+          if (avResult.name && (name === cleanSymbol || name === symbol)) {
+            name = avResult.name;
+          }
         }
       }
     }

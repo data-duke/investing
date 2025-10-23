@@ -45,12 +45,14 @@ export const AnalysisTable = ({ data, positionName, isLoggedIn, onNavigateToSign
     
     setIsSaving(true);
     try {
+      const originalPriceEur = data.originallyInvested / data.quantity;
+      
       const result = await addInvestment({
         symbol: data.symbol,
         name: data.name || positionName,
         country: data.country,
         quantity: data.quantity,
-        original_price_eur: data.currentPrice,
+        original_price_eur: originalPriceEur,
         original_investment_eur: data.originallyInvested,
         purchase_date: new Date().toISOString(),
       });
@@ -71,6 +73,24 @@ export const AnalysisTable = ({ data, positionName, isLoggedIn, onNavigateToSign
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleSignUpClick = () => {
+    if (!data || !data.symbol || !data.country) return;
+    
+    // Store pending investment in sessionStorage
+    const pendingInvestment = {
+      symbol: data.symbol,
+      name: data.name || positionName,
+      country: data.country,
+      quantity: data.quantity,
+      originallyInvested: data.originallyInvested,
+      originalPrice: data.originallyInvested / data.quantity,
+      purchase_date: new Date().toISOString(),
+    };
+    
+    sessionStorage.setItem('pendingInvestment', JSON.stringify(pendingInvestment));
+    onNavigateToSignup();
   };
   if (!data) {
     return (
@@ -242,7 +262,7 @@ export const AnalysisTable = ({ data, positionName, isLoggedIn, onNavigateToSign
                 Create a free account to save and monitor your portfolio performance
               </p>
             </div>
-            <Button onClick={onNavigateToSignup} size="lg">
+            <Button onClick={handleSignUpClick} size="lg">
               Sign Up Free
             </Button>
           </div>
