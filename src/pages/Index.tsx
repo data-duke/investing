@@ -1,11 +1,13 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { InvestmentForm } from "@/components/InvestmentForm";
 import { AnalysisTable } from "@/components/AnalysisTable";
 import { TrendingUp } from "lucide-react";
 import { fetchStockData } from "@/services/stockApi";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
-interface AnalysisData {
+export interface AnalysisData {
   currentPrice: number;
   originallyInvested: number;
   currentValue: number;
@@ -22,6 +24,9 @@ interface AnalysisData {
   exchangeRate?: number;
   currentPriceUSD?: number;
   source?: string;
+  symbol?: string;
+  name?: string;
+  country?: string;
 }
 
 const countries = {
@@ -36,10 +41,14 @@ const Index = () => {
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const [positionName, setPositionName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [lastSearchParams, setLastSearchParams] = useState<{ country: string; symbol: string } | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   const handleSearch = async (country: string, symbol: string, amount: number, inputQuantity: number) => {
     setIsLoading(true);
+    setLastSearchParams({ country, symbol });
     try {
       const stockData = await fetchStockData(symbol);
       
@@ -65,6 +74,7 @@ const Index = () => {
       // Calculate based on fetched data
       calculateAnalysis({
         country,
+        symbol,
         positionName: stockData.name,
         quantity: finalQuantity,
         currentPrice: stockData.currentPrice,
@@ -92,6 +102,7 @@ const Index = () => {
 
   const calculateAnalysis = (data: {
     country: string;
+    symbol: string;
     positionName: string;
     quantity: number;
     currentPrice: number;
@@ -138,6 +149,9 @@ const Index = () => {
       exchangeRate: data.exchangeRate,
       currentPriceUSD: data.currentPriceUSD,
       source: data.source,
+      symbol: data.symbol,
+      name: data.positionName,
+      country: data.country,
     });
     
     setPositionName(data.positionName);
@@ -158,7 +172,13 @@ const Index = () => {
 
         <div className="space-y-6">
           <InvestmentForm onSearch={handleSearch} isLoading={isLoading} />
-          <AnalysisTable data={analysisData} positionName={positionName} />
+          <AnalysisTable 
+            data={analysisData} 
+            positionName={positionName}
+            isLoggedIn={!!user}
+            onNavigateToSignup={() => navigate('/signup')}
+            onNavigateToDashboard={() => navigate('/dashboard')}
+          />
         </div>
       </div>
     </div>

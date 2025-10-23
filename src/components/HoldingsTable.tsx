@@ -3,8 +3,9 @@ import { Portfolio, usePortfolio } from "@/hooks/usePortfolio";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Trash2, Pencil } from "lucide-react";
 import { StockNewsSection } from "./StockNewsSection";
+import { EditInvestmentDialog } from "./EditInvestmentDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +25,7 @@ interface HoldingsTableProps {
 export const HoldingsTable = ({ portfolios, onRefresh }: HoldingsTableProps) => {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [editPortfolio, setEditPortfolio] = useState<Portfolio | null>(null);
   const { deleteInvestment } = usePortfolio();
 
   const handleDelete = async () => {
@@ -97,22 +99,90 @@ export const HoldingsTable = ({ portfolios, onRefresh }: HoldingsTableProps) => 
                       </TableCell>
                       <TableCell className="text-right">{weight.toFixed(1)}%</TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteId(portfolio.id);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditPortfolio(portfolio);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteId(portfolio.id);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                     {isExpanded && (
                       <TableRow>
-                        <TableCell colSpan={8} className="bg-muted/30">
-                          <StockNewsSection symbol={portfolio.symbol} />
+                        <TableCell colSpan={8} className="bg-muted/30 p-6">
+                          <div className="space-y-6">
+                            {/* Detailed Financial Information */}
+                            <div className="grid md:grid-cols-2 gap-6">
+                              <Card>
+                                <CardHeader>
+                                  <CardTitle className="text-sm">Investment Details</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2 text-sm">
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Purchase Date:</span>
+                                    <span>{new Date(portfolio.purchase_date).toLocaleDateString()}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Original Investment:</span>
+                                    <span>€{Number(portfolio.original_investment_eur).toFixed(2)}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Shares Owned:</span>
+                                    <span>{portfolio.quantity}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Country:</span>
+                                    <span>{portfolio.country}</span>
+                                  </div>
+                                </CardContent>
+                              </Card>
+
+                              <Card>
+                                <CardHeader>
+                                  <CardTitle className="text-sm">Dividends & Returns</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2 text-sm">
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Annual Dividend (Net):</span>
+                                    <span className="font-semibold">
+                                      {portfolio.dividend_annual_eur ? `€${portfolio.dividend_annual_eur.toFixed(2)}` : 'N/A'}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Total Return:</span>
+                                    <span className={portfolio.gain_loss_eur && portfolio.gain_loss_eur >= 0 ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}>
+                                      {portfolio.gain_loss_eur ? `€${portfolio.gain_loss_eur.toFixed(2)}` : 'N/A'}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Return %:</span>
+                                    <span className={portfolio.gain_loss_percent && portfolio.gain_loss_percent >= 0 ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}>
+                                      {portfolio.gain_loss_percent ? `${portfolio.gain_loss_percent >= 0 ? '+' : ''}${portfolio.gain_loss_percent.toFixed(2)}%` : 'N/A'}
+                                    </span>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            </div>
+
+                            {/* Stock News Section */}
+                            <StockNewsSection symbol={portfolio.symbol} />
+                          </div>
                         </TableCell>
                       </TableRow>
                     )}
@@ -138,6 +208,13 @@ export const HoldingsTable = ({ portfolios, onRefresh }: HoldingsTableProps) => 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <EditInvestmentDialog
+        portfolio={editPortfolio}
+        open={!!editPortfolio}
+        onOpenChange={(open) => !open && setEditPortfolio(null)}
+        onSuccess={onRefresh}
+      />
     </>
   );
 };

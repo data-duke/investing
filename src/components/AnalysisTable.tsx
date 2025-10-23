@@ -1,4 +1,9 @@
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { usePortfolio } from "@/hooks/usePortfolio";
+import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
+import { Save, TrendingUp } from "lucide-react";
 
 export interface AnalysisData {
   currentPrice: number;
@@ -17,14 +22,56 @@ export interface AnalysisData {
   exchangeRate?: number;
   currentPriceUSD?: number;
   source?: string;
+  symbol?: string;
+  name?: string;
+  country?: string;
 }
 
 interface AnalysisTableProps {
   data: AnalysisData | null;
   positionName: string;
+  isLoggedIn: boolean;
+  onNavigateToSignup: () => void;
+  onNavigateToDashboard: () => void;
 }
 
-export const AnalysisTable = ({ data, positionName }: AnalysisTableProps) => {
+export const AnalysisTable = ({ data, positionName, isLoggedIn, onNavigateToSignup, onNavigateToDashboard }: AnalysisTableProps) => {
+  const [isSaving, setIsSaving] = useState(false);
+  const { addInvestment } = usePortfolio();
+  const { toast } = useToast();
+
+  const handleSaveToPortfolio = async () => {
+    if (!data || !data.symbol || !data.country) return;
+    
+    setIsSaving(true);
+    try {
+      const result = await addInvestment({
+        symbol: data.symbol,
+        name: data.name || positionName,
+        country: data.country,
+        quantity: data.quantity,
+        original_price_eur: data.currentPrice,
+        original_investment_eur: data.originallyInvested,
+        purchase_date: new Date().toISOString(),
+      });
+
+      if (!result.error) {
+        toast({
+          title: "Investment saved!",
+          description: "Your investment has been added to your portfolio.",
+        });
+        onNavigateToDashboard();
+      }
+    } catch (error) {
+      toast({
+        title: "Error saving investment",
+        description: error instanceof Error ? error.message : "Failed to save",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
   if (!data) {
     return (
       <Card className="p-6 bg-card border-border">
@@ -159,6 +206,48 @@ export const AnalysisTable = ({ data, positionName }: AnalysisTableProps) => {
           </div>
         </div>
       </Card>
+
+      {/* Save to Portfolio CTA */}
+      {isLoggedIn ? (
+        <Card className="p-6 bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold mb-1 flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-primary" />
+                Track this investment
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Save to your portfolio and monitor performance over time
+              </p>
+            </div>
+            <Button 
+              onClick={handleSaveToPortfolio}
+              disabled={isSaving}
+              size="lg"
+            >
+              <Save className="mr-2 h-4 w-4" />
+              {isSaving ? "Saving..." : "Save to Portfolio"}
+            </Button>
+          </div>
+        </Card>
+      ) : (
+        <Card className="p-6 bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
+          <div className="text-center space-y-4">
+            <div>
+              <h3 className="text-xl font-semibold mb-2 flex items-center justify-center gap-2">
+                <TrendingUp className="h-6 w-6 text-primary" />
+                Want to track your investments?
+              </h3>
+              <p className="text-muted-foreground">
+                Create a free account to save and monitor your portfolio performance
+              </p>
+            </div>
+            <Button onClick={onNavigateToSignup} size="lg">
+              Sign Up Free
+            </Button>
+          </div>
+        </Card>
+      )}
     </div>
   );
 };

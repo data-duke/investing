@@ -27,6 +27,15 @@ const Dashboard = () => {
     setIsRefreshing(true);
     const updated: Portfolio[] = [];
 
+    // Get tax rates based on country
+    const countries: Record<string, { dividendTax: number }> = {
+      AT: { dividendTax: 0.275 },
+      DE: { dividendTax: 0.26375 },
+      US: { dividendTax: 0.15 },
+      UK: { dividendTax: 0.125 },
+      CH: { dividendTax: 0.35 },
+    };
+
     for (const portfolio of portfolios) {
       try {
         const stockData = await fetchStockData(portfolio.symbol);
@@ -35,12 +44,17 @@ const Dashboard = () => {
         const gainLoss = currentValue - Number(portfolio.original_investment_eur);
         const gainLossPercent = (gainLoss / Number(portfolio.original_investment_eur)) * 100;
 
+        // Calculate net dividend after tax
+        const country = countries[portfolio.country as keyof typeof countries];
+        const grossDividend = stockData.dividend * Number(portfolio.quantity);
+        const netDividend = country ? grossDividend * (1 - country.dividendTax) : grossDividend;
+
         // Create snapshot
         await supabase.from('portfolio_snapshots').insert({
           portfolio_id: portfolio.id,
           current_price_eur: currentPrice,
           current_value_eur: currentValue,
-          dividend_annual_eur: stockData.dividend * Number(portfolio.quantity),
+          dividend_annual_eur: netDividend,
           exchange_rate: stockData.exchangeRate,
           snapshot_date: new Date().toISOString(),
         });
@@ -51,10 +65,11 @@ const Dashboard = () => {
           current_value_eur: currentValue,
           gain_loss_eur: gainLoss,
           gain_loss_percent: gainLossPercent,
-          dividend_annual_eur: stockData.dividend * Number(portfolio.quantity),
+          dividend_annual_eur: netDividend,
         });
       } catch (error) {
         console.error(`Error refreshing ${portfolio.symbol}:`, error);
+        // Keep existing data if refresh fails
         updated.push(portfolio);
       }
     }
