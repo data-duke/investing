@@ -19,6 +19,7 @@ export const EditInvestmentDialog = ({ portfolio, open, onOpenChange, onSuccess 
   const [purchaseDate, setPurchaseDate] = useState(
     portfolio?.purchase_date ? new Date(portfolio.purchase_date).toISOString().split('T')[0] : ""
   );
+  const [tag, setTag] = useState(portfolio?.tag || "");
   const [isLoading, setIsLoading] = useState(false);
   const { updateInvestment } = usePortfolio();
   const { toast } = useToast();
@@ -31,11 +32,16 @@ export const EditInvestmentDialog = ({ portfolio, open, onOpenChange, onSuccess 
     const parsedQuantity = parseFloat(quantity);
     const parsedPrice = parseFloat(originalPrice);
     
+    // Generate auto tag if no custom tag provided
+    const autoTag = new Date(purchaseDate).toISOString().split('T')[0];
+    
     const result = await updateInvestment(portfolio.id, {
       quantity: parsedQuantity,
       original_price_eur: parsedPrice,
       original_investment_eur: parsedQuantity * parsedPrice,
       purchase_date: new Date(purchaseDate).toISOString(),
+      tag: tag.trim() || undefined,
+      auto_tag_date: tag.trim() ? undefined : autoTag,
     });
 
     setIsLoading(false);
@@ -92,6 +98,19 @@ export const EditInvestmentDialog = ({ portfolio, open, onOpenChange, onSuccess 
               onChange={(e) => setPurchaseDate(e.target.value)}
               required
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="tag">Tag (optional)</Label>
+            <Input
+              id="tag"
+              value={tag}
+              onChange={(e) => setTag(e.target.value)}
+              placeholder="e.g., 'tech-stocks', 'retirement'"
+            />
+            <p className="text-xs text-muted-foreground">
+              Group your investments with custom tags for easy filtering
+            </p>
           </div>
 
           <div className="flex justify-end gap-2">

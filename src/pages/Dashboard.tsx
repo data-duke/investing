@@ -8,10 +8,12 @@ import { PortfolioChart } from "@/components/PortfolioChart";
 import { AllocationChart } from "@/components/AllocationChart";
 import { HoldingsTable } from "@/components/HoldingsTable";
 import { AddInvestmentDialog } from "@/components/AddInvestmentDialog";
-import { LogOut, Plus, RefreshCw } from "lucide-react";
+import { TagFilterBar } from "@/components/TagFilterBar";
+import { LogOut, Plus, RefreshCw, TrendingUp } from "lucide-react";
 import { fetchStockData } from "@/services/stockApi";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 interface AggregatedPosition {
   symbol: string;
@@ -30,18 +32,48 @@ interface AggregatedPosition {
 
 const Dashboard = () => {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { portfolios, loading, fetchPortfolios } = usePortfolio();
   const [enrichedPortfolios, setEnrichedPortfolios] = useState<Portfolio[]>([]);
   const [aggregatedPositions, setAggregatedPositions] = useState<AggregatedPosition[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoadingEnriched, setIsLoadingEnriched] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Check for new investment to highlight
+  useEffect(() => {
+    const newId = searchParams.get('newId');
+    if (newId) {
+      setHighlightedId(newId);
+      // Remove the parameter from URL
+      setSearchParams({});
+      // Clear highlight after animation
+      setTimeout(() => setHighlightedId(null), 4000);
+      
+      // Scroll to the new investment (on mobile)
+      setTimeout(() => {
+        const element = document.getElementById(`investment-${newId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 300);
+    }
+  }, [searchParams, setSearchParams]);
 
   // Load initial data from latest snapshots
   useEffect(() => {
     const loadInitialData = async () => {
-      if (portfolios.length === 0) return;
+      if (portfolios.length === 0) {
+        setIsLoadingEnriched(false);
+        return;
+      }
+
+      setIsLoadingEnriched(true);
 
       // Fetch latest snapshot for each portfolio
       const enriched = await Promise.all(
@@ -55,13 +87,14 @@ const Dashboard = () => {
 
           if (snapshots && snapshots.length > 0) {
             const snap = snapshots[0];
+            const dividend = portfolio.manual_dividend_eur ?? Number(snap.dividend_annual_eur);
             return {
               ...portfolio,
               current_price_eur: Number(snap.current_price_eur),
               current_value_eur: Number(snap.current_value_eur),
               gain_loss_eur: Number(snap.current_value_eur) - Number(portfolio.original_investment_eur),
               gain_loss_percent: ((Number(snap.current_value_eur) - Number(portfolio.original_investment_eur)) / Number(portfolio.original_investment_eur)) * 100,
-              dividend_annual_eur: Number(snap.dividend_annual_eur),
+              dividend_annual_eur: dividend,
             };
           }
           return portfolio;
@@ -70,6 +103,7 @@ const Dashboard = () => {
 
       setEnrichedPortfolios(enriched);
       aggregatePositions(enriched);
+      setIsLoadingEnriched(false);
     };
 
     if (!loading) {
@@ -90,10 +124,12 @@ const Dashboard = () => {
         if (p.current_value_eur) {
           existing.current_value_eur = (existing.current_value_eur || 0) + p.current_value_eur;
         }
-        if (p.dividend_annual_eur) {
-          existing.dividend_annual_eur = (existing.dividend_annual_eur || 0) + p.dividend_annual_eur;
+        const dividend = p.manual_dividend_eur ?? p.dividend_annual_eur ?? 0;
+        if (dividend) {
+          existing.dividend_annual_eur = (existing.dividend_annual_eur || 0) + dividend;
         }
       } else {
+        const dividend = p.manual_dividend_eur ?? p.dividend_annual_eur ?? 0;
         grouped.set(p.symbol, {
           symbol: p.symbol,
           name: p.name,
@@ -103,7 +139,7 @@ const Dashboard = () => {
           avgOriginalPrice: 0, // Will calculate below
           current_price_eur: p.current_price_eur,
           current_value_eur: p.current_value_eur,
-          dividend_annual_eur: p.dividend_annual_eur,
+          dividend_annual_eur: dividend,
           lots: [p],
         });
       }
@@ -144,9 +180,14 @@ const Dashboard = () => {
         const gainLoss = currentValue - Number(portfolio.original_investment_eur);
         const gainLossPercent = (gainLoss / Number(portfolio.original_investment_eur)) * 100;
 
-        const country = countries[portfolio.country as keyof typeof countries];
-        const grossDividend = stockData.dividend * Number(portfolio.quantity);
-        const netDividend = country ? grossDividend * (1 - country.dividendTax) : grossDividend;
+        // Use manual dividend if set, otherwise fetch from API
+        let netDividend = portfolio.manual_dividend_eur ?? 0;
+        
+        if (!portfolio.manual_dividend_eur) {
+          const country = countries[portfolio.country as keyof typeof countries];
+          const grossDividend = stockData.dividend * Number(portfolio.quantity);
+          netDividend = country ? grossDividend * (1 - country.dividendTax) : grossDividend;
+        }
 
         await supabase.from('portfolio_snapshots').insert({
           portfolio_id: portfolio.id,
@@ -182,6 +223,73 @@ const Dashboard = () => {
     });
   };
 
+  // Extract unique tags
+  const allTags = Array.from(
+    new Set(
+      enrichedPortfolios
+        .map((p) => p.tag || p.auto_tag_date)
+        .filter(Boolean) as string[]
+    )
+  ).sort();
+
+  // Filter portfolios by selected tags
+  const filteredPortfolios = selectedTags.length > 0
+    ? enrichedPortfolios.filter((p) => {
+        const itemTag = p.tag || p.auto_tag_date;
+        return itemTag && selectedTags.includes(itemTag);
+      })
+    : enrichedPortfolios;
+
+  // Recalculate aggregated positions for filtered data
+  const displayAggregatedPositions = selectedTags.length > 0
+    ? (() => {
+        const grouped = new Map<string, AggregatedPosition>();
+        filteredPortfolios.forEach((p) => {
+          const existing = grouped.get(p.symbol);
+          if (existing) {
+            existing.totalQuantity += Number(p.quantity);
+            existing.totalOriginalInvestment += Number(p.original_investment_eur);
+            existing.lots.push(p);
+            if (p.current_value_eur) {
+              existing.current_value_eur = (existing.current_value_eur || 0) + p.current_value_eur;
+            }
+            const dividend = p.manual_dividend_eur ?? p.dividend_annual_eur ?? 0;
+            if (dividend) {
+              existing.dividend_annual_eur = (existing.dividend_annual_eur || 0) + dividend;
+            }
+          } else {
+            const dividend = p.manual_dividend_eur ?? p.dividend_annual_eur ?? 0;
+            grouped.set(p.symbol, {
+              symbol: p.symbol,
+              name: p.name,
+              country: p.country,
+              totalQuantity: Number(p.quantity),
+              totalOriginalInvestment: Number(p.original_investment_eur),
+              avgOriginalPrice: Number(p.original_price_eur),
+              current_price_eur: p.current_price_eur,
+              current_value_eur: p.current_value_eur,
+              dividend_annual_eur: dividend,
+              lots: [p],
+            });
+          }
+        });
+        return Array.from(grouped.values()).map((pos) => {
+          pos.avgOriginalPrice = pos.totalOriginalInvestment / pos.totalQuantity;
+          if (pos.current_value_eur) {
+            pos.gain_loss_eur = pos.current_value_eur - pos.totalOriginalInvestment;
+            pos.gain_loss_percent = (pos.gain_loss_eur / pos.totalOriginalInvestment) * 100;
+          }
+          return pos;
+        });
+      })()
+    : aggregatedPositions;
+
+  const handleTagToggle = (tag: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -194,7 +302,10 @@ const Dashboard = () => {
     <div className="min-h-screen bg-background">
       <header className="border-b">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Investment Portfolio</h1>
+          <div className="flex items-center gap-3">
+            <TrendingUp className="h-6 w-6 text-primary" />
+            <h1 className="text-2xl font-bold">Investing Lovable</h1>
+          </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">{user?.email}</span>
             <Button variant="ghost" size="icon" onClick={() => signOut()}>
@@ -249,31 +360,27 @@ const Dashboard = () => {
               </Button>
             </div>
 
-            <PortfolioOverview portfolios={enrichedPortfolios} />
+            <PortfolioOverview portfolios={filteredPortfolios} isLoading={isLoadingEnriched} />
+
+            <TagFilterBar
+              allTags={allTags}
+              selectedTags={selectedTags}
+              onTagToggle={handleTagToggle}
+              onClearAll={() => setSelectedTags([])}
+              filteredCount={filteredPortfolios.length}
+              totalCount={enrichedPortfolios.length}
+            />
 
             <div className="grid md:grid-cols-2 gap-6">
-              <PortfolioChart portfolios={enrichedPortfolios} />
-              <AllocationChart portfolios={aggregatedPositions.map(p => ({
-                id: p.symbol,
-                symbol: p.symbol,
-                name: p.name,
-                country: p.country,
-                quantity: p.totalQuantity,
-                original_price_eur: p.avgOriginalPrice,
-                original_investment_eur: p.totalOriginalInvestment,
-                purchase_date: '',
-                current_price_eur: p.current_price_eur,
-                current_value_eur: p.current_value_eur,
-                gain_loss_eur: p.gain_loss_eur,
-                gain_loss_percent: p.gain_loss_percent,
-                dividend_annual_eur: p.dividend_annual_eur,
-              } as Portfolio))} />
+              <PortfolioChart portfolios={filteredPortfolios} />
+              <AllocationChart aggregatedPositions={displayAggregatedPositions} />
             </div>
 
             <HoldingsTable 
-              portfolios={enrichedPortfolios} 
-              aggregatedPositions={aggregatedPositions}
-              onRefresh={fetchPortfolios} 
+              portfolios={filteredPortfolios} 
+              aggregatedPositions={displayAggregatedPositions}
+              onRefresh={fetchPortfolios}
+              highlightedId={highlightedId}
             />
 
             <Button onClick={() => setIsAddDialogOpen(true)} className="w-full">

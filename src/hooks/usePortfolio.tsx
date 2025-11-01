@@ -17,6 +17,11 @@ export interface Portfolio {
   gain_loss_eur?: number;
   gain_loss_percent?: number;
   dividend_annual_eur?: number;
+  manual_dividend_eur?: number;
+  dividend_last_fetched?: string;
+  exchange_suffix?: string;
+  tag?: string;
+  auto_tag_date?: string;
 }
 
 export const usePortfolio = () => {

@@ -19,25 +19,37 @@ const Login = () => {
 
   useEffect(() => {
     if (user) {
-      // Check for pending investment
-      const pendingStr = sessionStorage.getItem('pendingInvestment');
-      if (pendingStr) {
-        const pending = JSON.parse(pendingStr);
+      // Check if there's a pending investment to process
+      const pendingInvestmentStr = sessionStorage.getItem('pendingInvestment');
+      if (pendingInvestmentStr) {
+        const pendingInvestment = JSON.parse(pendingInvestmentStr);
+        
+        // Add the investment with auto-generated tag
+        const autoTag = new Date(pendingInvestment.purchase_date).toISOString().split('T')[0];
+        
         addInvestment({
-          symbol: pending.symbol,
-          name: pending.name,
-          country: pending.country,
-          quantity: pending.quantity,
-          original_price_eur: pending.originalPrice,
-          original_investment_eur: pending.originallyInvested,
-          purchase_date: pending.purchase_date,
-        }).then(() => {
-          sessionStorage.removeItem('pendingInvestment');
-          toast({
-            title: "Investment saved!",
-            description: "Your investment has been added to your portfolio.",
-          });
-          navigate("/dashboard");
+          symbol: pendingInvestment.symbol,
+          name: pendingInvestment.name,
+          country: pendingInvestment.country,
+          quantity: pendingInvestment.quantity,
+          original_price_eur: pendingInvestment.originalPrice,
+          original_investment_eur: pendingInvestment.originallyInvested,
+          purchase_date: pendingInvestment.purchase_date,
+          tag: pendingInvestment.tag || undefined,
+          auto_tag_date: pendingInvestment.tag ? undefined : autoTag,
+        }).then((result) => {
+          if (!result.error && result.data) {
+            // Clear the pending investment
+            sessionStorage.removeItem('pendingInvestment');
+            
+            toast({
+              title: "Investment saved!",
+              description: "Your investment has been added to your portfolio.",
+            });
+            
+            // Navigate with the new investment ID for highlighting
+            navigate(`/dashboard?newId=${result.data.id}`);
+          }
         });
       } else {
         navigate("/");

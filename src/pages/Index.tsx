@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { InvestmentForm } from "@/components/InvestmentForm";
 import { AnalysisTable } from "@/components/AnalysisTable";
+import { Button } from "@/components/ui/button";
 import { TrendingUp } from "lucide-react";
 import { fetchStockData } from "@/services/stockApi";
 import { useToast } from "@/hooks/use-toast";
@@ -160,12 +161,32 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <div className="mb-8 text-center">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <TrendingUp className="h-10 w-10 text-primary" />
-            <h1 className="text-4xl font-bold text-foreground">Investment Analyzer</h1>
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-center gap-3 flex-1">
+              <TrendingUp className="h-10 w-10 text-primary" />
+              <h1 className="text-4xl font-bold text-foreground">Investing Lovable</h1>
+            </div>
+            {user && (
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/dashboard')}
+                className="ml-4"
+              >
+                Go to Portfolio
+              </Button>
+            )}
+            {!user && (
+              <Button 
+                variant="ghost" 
+                onClick={() => navigate('/login')}
+                className="ml-4"
+              >
+                Login
+              </Button>
+            )}
           </div>
-          <p className="text-muted-foreground text-lg">
+          <p className="text-muted-foreground text-lg text-center">
             Make informed investment decisions with comprehensive cost-benefit analysis
           </p>
         </div>

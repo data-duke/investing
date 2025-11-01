@@ -3,9 +3,11 @@ import { Portfolio, usePortfolio } from "@/hooks/usePortfolio";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronDown, ChevronUp, Trash2, Pencil } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ChevronDown, ChevronUp, Trash2, Pencil, DollarSign } from "lucide-react";
 import { StockNewsSection } from "./StockNewsSection";
 import { EditInvestmentDialog } from "./EditInvestmentDialog";
+import { ManualDividendDialog } from "./ManualDividendDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,12 +38,14 @@ interface HoldingsTableProps {
   portfolios: Portfolio[];
   aggregatedPositions: AggregatedPosition[];
   onRefresh: () => void;
+  highlightedId?: string | null;
 }
 
-export const HoldingsTable = ({ portfolios, aggregatedPositions, onRefresh }: HoldingsTableProps) => {
+export const HoldingsTable = ({ portfolios, aggregatedPositions, onRefresh, highlightedId }: HoldingsTableProps) => {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editPortfolio, setEditPortfolio] = useState<Portfolio | null>(null);
+  const [manualDivDialog, setManualDivDialog] = useState<{ open: boolean; portfolio: Portfolio | null }>({ open: false, portfolio: null });
   const { deleteInvestment } = usePortfolio();
 
   const handleDelete = async () => {
@@ -65,11 +69,13 @@ export const HoldingsTable = ({ portfolios, aggregatedPositions, onRefresh }: Ho
             <TableHeader>
               <TableRow>
                 <TableHead>Stock</TableHead>
+                <TableHead className="text-right">Tag</TableHead>
                 <TableHead className="text-right">Qty</TableHead>
                 <TableHead className="text-right">Avg Price</TableHead>
                 <TableHead className="text-right">Current Price</TableHead>
                 <TableHead className="text-right">Value</TableHead>
                 <TableHead className="text-right">Gain/Loss</TableHead>
+                <TableHead className="text-right">Dividend</TableHead>
                 <TableHead className="text-right">Weight</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -85,7 +91,10 @@ export const HoldingsTable = ({ portfolios, aggregatedPositions, onRefresh }: Ho
                   <>
                     <TableRow
                       key={position.symbol}
-                      className="cursor-pointer hover:bg-muted/50"
+                      id={`investment-${position.lots[0]?.id}`}
+                      className={`cursor-pointer hover:bg-muted/50 transition-all ${
+                        highlightedId === position.lots[0]?.id ? 'animate-pulse bg-primary/20' : ''
+                      }`}
                       onClick={() => setExpandedRow(isExpanded ? null : position.symbol)}
                     >
                       <TableCell>
@@ -99,6 +108,13 @@ export const HoldingsTable = ({ portfolios, aggregatedPositions, onRefresh }: Ho
                             )}
                           </div>
                         </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {position.lots[0]?.tag ? (
+                          <Badge variant="default" className="text-xs">{position.lots[0].tag}</Badge>
+                        ) : position.lots[0]?.auto_tag_date ? (
+                          <Badge variant="outline" className="text-xs">{position.lots[0].auto_tag_date}</Badge>
+                        ) : null}
                       </TableCell>
                       <TableCell className="text-right">{position.totalQuantity.toFixed(2)}</TableCell>
                       <TableCell className="text-right">€{position.avgOriginalPrice.toFixed(2)}</TableCell>
@@ -116,8 +132,27 @@ export const HoldingsTable = ({ portfolios, aggregatedPositions, onRefresh }: Ho
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-right">{weight.toFixed(1)}%</TableCell>
                       <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {position.lots[0]?.manual_dividend_eur ? (
+                            <Badge variant="secondary" className="text-xs">M</Badge>
+                          ) : null}
+                          <span>{position.dividend_annual_eur ? `€${position.dividend_annual_eur.toFixed(2)}` : '-'}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setManualDivDialog({ open: true, portfolio: position.lots[0] });
+                            }}
+                          >
+                            <DollarSign className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">{weight.toFixed(1)}%</TableCell>
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="text-muted-foreground text-xs">
                           {position.lots.length > 1 ? 'Multiple' : 'Single'}
                         </div>

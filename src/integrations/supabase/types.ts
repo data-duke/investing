@@ -57,41 +57,56 @@ export type Database = {
       }
       portfolios: {
         Row: {
+          auto_tag_date: string | null
           country: string
           created_at: string
+          dividend_last_fetched: string | null
+          exchange_suffix: string | null
           id: string
+          manual_dividend_eur: number | null
           name: string
           original_investment_eur: number
           original_price_eur: number
           purchase_date: string
           quantity: number
           symbol: string
+          tag: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          auto_tag_date?: string | null
           country: string
           created_at?: string
+          dividend_last_fetched?: string | null
+          exchange_suffix?: string | null
           id?: string
+          manual_dividend_eur?: number | null
           name: string
           original_investment_eur: number
           original_price_eur: number
           purchase_date?: string
           quantity: number
           symbol: string
+          tag?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          auto_tag_date?: string | null
           country?: string
           created_at?: string
+          dividend_last_fetched?: string | null
+          exchange_suffix?: string | null
           id?: string
+          manual_dividend_eur?: number | null
           name?: string
           original_investment_eur?: number
           original_price_eur?: number
           purchase_date?: string
           quantity?: number
           symbol?: string
+          tag?: string | null
           updated_at?: string
           user_id?: string
         }

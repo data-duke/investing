@@ -33,6 +33,7 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
   const [amount, setAmount] = useState("");
   const [quantity, setQuantity] = useState("");
   const [purchaseDate, setPurchaseDate] = useState<Date | undefined>(new Date());
+  const [tag, setTag] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { addInvestment } = usePortfolio();
   const { toast } = useToast();
@@ -58,6 +59,9 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
 
       const originalPriceEur = finalAmount / finalQuantity;
       
+      // Generate auto tag if no custom tag provided
+      const autoTag = purchaseDate.toISOString().split('T')[0];
+      
       await addInvestment({
         symbol: symbol.toUpperCase(),
         name: stockData.name,
@@ -66,6 +70,8 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
         original_price_eur: originalPriceEur,
         original_investment_eur: finalAmount,
         purchase_date: purchaseDate.toISOString(),
+        tag: tag.trim() || undefined,
+        auto_tag_date: tag.trim() ? undefined : autoTag,
       });
 
       toast({
@@ -82,6 +88,7 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
       setAmount("");
       setQuantity("");
       setPurchaseDate(new Date());
+      setTag("");
     } catch (error) {
       toast({
         variant: "destructive",
@@ -189,6 +196,19 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
                 />
               </PopoverContent>
             </Popover>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="tag">Tag (optional)</Label>
+            <Input
+              id="tag"
+              value={tag}
+              onChange={(e) => setTag(e.target.value)}
+              placeholder="e.g., 'tech-stocks', 'retirement', or leave empty for date tag"
+            />
+            <p className="text-xs text-muted-foreground">
+              Group your investments with custom tags for easy filtering
+            </p>
           </div>
 
           <Button type="submit" className="w-full" disabled={isLoading}>
