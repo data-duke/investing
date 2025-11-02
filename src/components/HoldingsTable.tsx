@@ -8,6 +8,7 @@ import { ChevronDown, ChevronUp, Trash2, Pencil, DollarSign } from "lucide-react
 import { StockNewsSection } from "./StockNewsSection";
 import { EditInvestmentDialog } from "./EditInvestmentDialog";
 import { ManualDividendDialog } from "./ManualDividendDialog";
+import { Fragment } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -88,9 +89,8 @@ export const HoldingsTable = ({ portfolios, aggregatedPositions, onRefresh, high
                   : 0;
 
                 return (
-                  <>
+                  <Fragment key={position.symbol}>
                     <TableRow
-                      key={position.symbol}
                       id={`investment-${position.lots[0]?.id}`}
                       className={`cursor-pointer hover:bg-muted/50 transition-all ${
                         highlightedId === position.lots[0]?.id ? 'animate-pulse bg-primary/20' : ''
@@ -296,7 +296,7 @@ export const HoldingsTable = ({ portfolios, aggregatedPositions, onRefresh, high
                         </TableCell>
                       </TableRow>
                     )}
-                  </>
+                  </Fragment>
                 );
               })}
             </TableBody>

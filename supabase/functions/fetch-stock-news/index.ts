@@ -35,16 +35,13 @@ serve(async (req) => {
 
     const data = await response.json();
 
-    // Check for API errors
-    if (data['Note']) {
-      console.warn('Alpha Vantage rate limit:', data['Note']);
+    // Check for API errors (rate limits, etc.)
+    if (data['Note'] || data['Information']) {
+      console.warn('Alpha Vantage API message:', data['Note'] || data['Information']);
       return new Response(JSON.stringify({ articles: [] }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
       });
-    }
-
-    if (data['Information']) {
-      throw new Error(`Alpha Vantage: ${data['Information']}`);
     }
 
     // Transform news data
