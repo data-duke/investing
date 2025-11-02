@@ -12,6 +12,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useSubscription } from "@/hooks/useSubscription";
+import { UpgradeDialog } from "./UpgradeDialog";
 
 interface AddInvestmentDialogProps {
   open: boolean;
@@ -35,11 +37,20 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
   const [purchaseDate, setPurchaseDate] = useState<Date | undefined>(new Date());
   const [tag, setTag] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { addInvestment } = usePortfolio();
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+  const { addInvestment, portfolios } = usePortfolio();
+  const { subscribed, loading: subLoading } = useSubscription();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check if user has reached free tier limit
+    if (!subLoading && !subscribed && portfolios.length >= 3) {
+      setShowUpgradeDialog(true);
+      return;
+    }
+    
     if (!country || !symbol || (!amount && !quantity) || !purchaseDate) return;
 
     setIsLoading(true);
@@ -216,6 +227,7 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
           </Button>
         </form>
       </DialogContent>
+      <UpgradeDialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog} />
     </Dialog>
   );
 };

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePortfolio, Portfolio } from "@/hooks/usePortfolio";
+import { useSubscription } from "@/hooks/useSubscription";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PortfolioOverview } from "@/components/PortfolioOverview";
@@ -9,7 +10,7 @@ import { AllocationChart } from "@/components/AllocationChart";
 import { HoldingsTable } from "@/components/HoldingsTable";
 import { AddInvestmentDialog } from "@/components/AddInvestmentDialog";
 import { TagFilterBar } from "@/components/TagFilterBar";
-import { LogOut, Plus, RefreshCw, TrendingUp } from "lucide-react";
+import { LogOut, Plus, RefreshCw, TrendingUp, Crown } from "lucide-react";
 import { fetchStockData } from "@/services/stockApi";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -35,6 +36,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { portfolios, loading, fetchPortfolios } = usePortfolio();
+  const { subscribed, refresh: refreshSubscription } = useSubscription();
   const [enrichedPortfolios, setEnrichedPortfolios] = useState<Portfolio[]>([]);
   const [aggregatedPositions, setAggregatedPositions] = useState<AggregatedPosition[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -45,13 +47,26 @@ const Dashboard = () => {
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Check for new investment to highlight
+  // Check for new investment to highlight and subscription upgrade
   useEffect(() => {
     const newId = searchParams.get('newId');
+    const upgraded = searchParams.get('upgraded');
+    
+    if (upgraded === 'true') {
+      refreshSubscription();
+      toast({
+        title: "Welcome to Premium!",
+        description: "You can now add unlimited stock positions.",
+      });
+    }
+    
     if (newId) {
       setHighlightedId(newId);
-      // Remove the parameter from URL
-      setSearchParams({});
+      // Remove the parameters from URL
+      const params = new URLSearchParams(searchParams);
+      params.delete('newId');
+      params.delete('upgraded');
+      setSearchParams(params);
       // Clear highlight after animation
       setTimeout(() => setHighlightedId(null), 4000);
       
@@ -63,7 +78,7 @@ const Dashboard = () => {
         }
       }, 300);
     }
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, refreshSubscription]);
 
   // Load initial data from latest snapshots
   useEffect(() => {
@@ -307,6 +322,33 @@ const Dashboard = () => {
             <h1 className="text-2xl font-bold">Investing Lovable</h1>
           </div>
           <div className="flex items-center gap-2">
+            {!subscribed && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  const { data } = await supabase.functions.invoke('customer-portal');
+                  if (data?.url) window.open(data.url, '_blank');
+                }}
+                className="hidden sm:flex"
+              >
+                <Crown className="h-4 w-4 mr-2" />
+                Upgrade
+              </Button>
+            )}
+            {subscribed && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  const { data } = await supabase.functions.invoke('customer-portal');
+                  if (data?.url) window.open(data.url, '_blank');
+                }}
+                className="hidden sm:flex"
+              >
+                Manage Subscription
+              </Button>
+            )}
             <span className="text-sm text-muted-foreground">{user?.email}</span>
             <Button variant="ghost" size="icon" onClick={() => signOut()}>
               <LogOut className="h-4 w-4" />

@@ -64,7 +64,7 @@ export const HoldingsTable = ({ portfolios, aggregatedPositions, onRefresh, high
         <CardHeader>
           <CardTitle>Holdings</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
