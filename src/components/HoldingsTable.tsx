@@ -65,20 +65,20 @@ export const HoldingsTable = ({ portfolios, aggregatedPositions, onRefresh, high
         <CardHeader>
           <CardTitle>Holdings</CardTitle>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
+        <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Stock</TableHead>
-                <TableHead className="text-right">Tag</TableHead>
-                <TableHead className="text-right">Qty</TableHead>
-                <TableHead className="text-right">Avg Price</TableHead>
-                <TableHead className="text-right">Current Price</TableHead>
+                <TableHead className="text-right hidden md:table-cell">Tag</TableHead>
+                <TableHead className="text-right hidden md:table-cell">Qty</TableHead>
+                <TableHead className="text-right hidden lg:table-cell">Avg Price</TableHead>
+                <TableHead className="text-right hidden lg:table-cell">Current Price</TableHead>
                 <TableHead className="text-right">Value</TableHead>
                 <TableHead className="text-right">Gain/Loss</TableHead>
-                <TableHead className="text-right">Dividend</TableHead>
-                <TableHead className="text-right">Weight</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-right hidden lg:table-cell">Dividend</TableHead>
+                <TableHead className="text-right hidden lg:table-cell">Weight</TableHead>
+                <TableHead className="text-right hidden md:table-cell">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -109,16 +109,16 @@ export const HoldingsTable = ({ portfolios, aggregatedPositions, onRefresh, high
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right hidden md:table-cell">
                         {position.lots[0]?.tag ? (
                           <Badge variant="default" className="text-xs">{position.lots[0].tag}</Badge>
                         ) : position.lots[0]?.auto_tag_date ? (
                           <Badge variant="outline" className="text-xs">{position.lots[0].auto_tag_date}</Badge>
                         ) : null}
                       </TableCell>
-                      <TableCell className="text-right">{position.totalQuantity.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">€{position.avgOriginalPrice.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right hidden md:table-cell">{position.totalQuantity.toFixed(2)}</TableCell>
+                      <TableCell className="text-right hidden lg:table-cell">€{position.avgOriginalPrice.toFixed(2)}</TableCell>
+                      <TableCell className="text-right hidden lg:table-cell">
                         {position.current_price_eur ? `€${position.current_price_eur.toFixed(2)}` : '-'}
                       </TableCell>
                       <TableCell className="text-right">
@@ -132,7 +132,7 @@ export const HoldingsTable = ({ portfolios, aggregatedPositions, onRefresh, high
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right hidden lg:table-cell">
                         <div className="flex items-center justify-end gap-1">
                           {position.lots[0]?.manual_dividend_eur ? (
                             <Badge variant="secondary" className="text-xs">M</Badge>
@@ -151,8 +151,8 @@ export const HoldingsTable = ({ portfolios, aggregatedPositions, onRefresh, high
                           </Button>
                         </div>
                       </TableCell>
-                      <TableCell className="text-right">{weight.toFixed(1)}%</TableCell>
-                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <TableCell className="text-right hidden lg:table-cell">{weight.toFixed(1)}%</TableCell>
+                      <TableCell className="text-right hidden md:table-cell" onClick={(e) => e.stopPropagation()}>
                         <div className="text-muted-foreground text-xs">
                           {position.lots.length > 1 ? 'Multiple' : 'Single'}
                         </div>

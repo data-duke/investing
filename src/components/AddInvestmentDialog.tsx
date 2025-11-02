@@ -113,7 +113,7 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add Investment</DialogTitle>
           <DialogDescription>Add a new stock to your portfolio</DialogDescription>
