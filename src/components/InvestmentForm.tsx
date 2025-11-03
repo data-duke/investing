@@ -22,6 +22,7 @@ const countries = [
   { code: "US", name: "United States" },
   { code: "UK", name: "United Kingdom" },
   { code: "CH", name: "Switzerland" },
+  { code: "RS", name: "Serbia" },
 ];
 
 export const InvestmentForm = ({ onSearch, isLoading }: InvestmentFormProps) => {

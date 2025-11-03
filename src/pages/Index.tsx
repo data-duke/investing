@@ -36,6 +36,7 @@ const countries = {
   US: { name: "United States", dividendTax: 0.15, capitalGainsTax: 0.20 },
   UK: { name: "United Kingdom", dividendTax: 0.125, capitalGainsTax: 0.20 },
   CH: { name: "Switzerland", dividendTax: 0.35, capitalGainsTax: 0 },
+  RS: { name: "Serbia", dividendTax: 0.15, capitalGainsTax: 0.15 },
 };
 
 const Index = () => {
