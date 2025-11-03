@@ -3,7 +3,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Portfolio } from "@/hooks/usePortfolio";
 import { TrendingUp, DollarSign, PiggyBank, Award } from "lucide-react";
 import { useMemo } from "react";
-import { formatCurrency, formatPercentage } from "@/lib/formatters";
 
 interface PortfolioOverviewProps {
   portfolios: Portfolio[];
@@ -30,20 +29,20 @@ export const PortfolioOverview = ({ portfolios, isLoading = false }: PortfolioOv
     return [
       {
         title: "Total Portfolio Value",
-        value: formatCurrency(totalValue),
+        value: `€${totalValue.toFixed(2)}`,
         icon: DollarSign,
-        description: `Invested: ${formatCurrency(totalInvested)}`,
+        description: `Invested: €${totalInvested.toFixed(2)}`,
       },
       {
         title: "Total Gain/Loss",
-        value: formatCurrency(totalGain),
+        value: `€${totalGain.toFixed(2)}`,
         icon: TrendingUp,
-        description: `${totalGainPercent >= 0 ? '+' : ''}${formatPercentage(totalGainPercent, undefined, true)}`,
+        description: `${totalGainPercent >= 0 ? '+' : ''}${totalGainPercent.toFixed(2)}%`,
         className: totalGain >= 0 ? "text-green-600" : "text-red-600",
       },
       {
         title: "Annual Dividends",
-        value: formatCurrency(totalDividends),
+        value: `€${totalDividends.toFixed(2)}`,
         icon: PiggyBank,
         description: "Expected annual income",
       },
@@ -51,7 +50,7 @@ export const PortfolioOverview = ({ portfolios, isLoading = false }: PortfolioOv
         title: "Top Performer",
         value: topPerformer?.symbol || "N/A",
         icon: Award,
-        description: topPerformer ? `+${formatPercentage(topPerformer.gain_loss_percent || 0, undefined, true)}` : "N/A",
+        description: topPerformer ? `+${(topPerformer.gain_loss_percent || 0).toFixed(2)}%` : "N/A",
         className: "text-primary",
       },
     ];
