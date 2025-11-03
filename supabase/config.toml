@@ -6,6 +6,9 @@ verify_jwt = false
 [functions.fetch-stock-news]
 verify_jwt = false
 
+[functions.scrape-stock-price]
+verify_jwt = false
+
 [functions.check-subscription]
 verify_jwt = true
 

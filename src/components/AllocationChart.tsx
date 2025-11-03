@@ -49,7 +49,30 @@ export const AllocationChart = ({ aggregatedPositions }: AllocationChartProps) =
               cy="50%"
               innerRadius={60}
               outerRadius={90}
-              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(1)}%`}
+              label={(props) => {
+                const { cx, cy, midAngle, innerRadius, outerRadius, name, percent } = props;
+                const RADIAN = Math.PI / 180;
+                const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+                const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                
+                return (
+                  <text
+                    x={x}
+                    y={y}
+                    fill="hsl(var(--foreground))"
+                    textAnchor={x > cx ? 'start' : 'end'}
+                    dominantBaseline="central"
+                    className="font-semibold text-xs"
+                    style={{ 
+                      textShadow: '1px 1px 3px hsl(var(--background)), -1px -1px 3px hsl(var(--background))',
+                      paintOrder: 'stroke fill'
+                    }}
+                  >
+                    {`${name} ${(percent * 100).toFixed(1)}%`}
+                  </text>
+                );
+              }}
             >
               {chartData.map((_, index) => (
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

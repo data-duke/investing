@@ -325,6 +325,14 @@ export const HoldingsTable = ({ portfolios, aggregatedPositions, onRefresh, high
         onOpenChange={(open) => !open && setEditPortfolio(null)}
         onSuccess={onRefresh}
       />
+
+      <ManualDividendDialog
+        open={manualDivDialog.open}
+        onOpenChange={(open) => setManualDivDialog({ open, portfolio: null })}
+        portfolioId={manualDivDialog.portfolio?.id || ''}
+        symbol={manualDivDialog.portfolio?.symbol || ''}
+        currentDividend={manualDivDialog.portfolio?.manual_dividend_eur}
+      />
     </>
   );
 };

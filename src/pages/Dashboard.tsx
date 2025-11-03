@@ -185,11 +185,36 @@ const Dashboard = () => {
       US: { dividendTax: 0.15 },
       UK: { dividendTax: 0.125 },
       CH: { dividendTax: 0.35 },
+      RS: { dividendTax: 0.15 },
     };
+
+    let successCount = 0;
+    let failCount = 0;
 
     for (const portfolio of portfolios) {
       try {
-        const stockData = await fetchStockData(portfolio.symbol);
+        let stockData;
+        let dataSource = 'api';
+        
+        // Try API first
+        try {
+          stockData = await fetchStockData(portfolio.symbol);
+        } catch (apiError) {
+          console.log(`API failed for ${portfolio.symbol}, trying scraping...`);
+          
+          // Fallback to web scraping
+          const { data: scrapedData, error: scrapeError } = await supabase.functions.invoke('scrape-stock-price', {
+            body: { symbol: portfolio.symbol }
+          });
+          
+          if (scrapeError || !scrapedData) {
+            throw new Error(`Both API and scraping failed: ${scrapeError?.message || 'Unknown error'}`);
+          }
+          
+          stockData = scrapedData;
+          dataSource = 'scrape';
+        }
+
         const currentPrice = stockData.currentPrice;
         const currentValue = currentPrice * Number(portfolio.quantity);
         const gainLoss = currentValue - Number(portfolio.original_investment_eur);
@@ -221,8 +246,12 @@ const Dashboard = () => {
           gain_loss_percent: gainLossPercent,
           dividend_annual_eur: netDividend,
         });
+        
+        successCount++;
+        console.log(`✓ ${portfolio.symbol} updated via ${dataSource}`);
       } catch (error) {
-        console.error(`Error refreshing ${portfolio.symbol}:`, error);
+        console.error(`✗ Error refreshing ${portfolio.symbol}:`, error);
+        failCount++;
         updated.push(portfolio);
       }
     }
@@ -234,7 +263,8 @@ const Dashboard = () => {
     
     toast({
       title: "Prices updated",
-      description: "Portfolio data has been refreshed.",
+      description: `${successCount} stocks updated successfully${failCount > 0 ? `, ${failCount} failed` : ''}.`,
+      variant: failCount > 0 ? "destructive" : "default",
     });
   };
 
