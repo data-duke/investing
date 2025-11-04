@@ -22,14 +22,24 @@ serve(async (req) => {
   try {
     const { symbol } = await req.json();
     
-    if (!symbol) {
-      throw new Error('Symbol is required');
+    // Validate symbol
+    if (!symbol || typeof symbol !== 'string') {
+      throw new Error('Stock symbol is required');
     }
 
-    console.log(`Attempting to scrape data for ${symbol}`);
+    const trimmedSymbol = symbol.trim();
+    if (trimmedSymbol.length === 0 || trimmedSymbol.length > 10) {
+      throw new Error('Invalid stock symbol length');
+    }
+
+    if (!/^[A-Z0-9.:-]+$/i.test(trimmedSymbol)) {
+      throw new Error('Invalid stock symbol format');
+    }
+
+    console.log(`Attempting to scrape data for ${trimmedSymbol}`);
     
     // Try Yahoo Finance first
-    const yahooData = await scrapeYahooFinance(symbol);
+    const yahooData = await scrapeYahooFinance(trimmedSymbol);
     
     return new Response(
       JSON.stringify(yahooData),

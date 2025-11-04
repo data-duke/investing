@@ -249,8 +249,22 @@ serve(async (req) => {
 
   try {
     const { symbol } = await req.json();
-    const cleanSymbol = String(symbol ?? '').trim().toUpperCase();
-    if (!cleanSymbol) throw new Error('Stock symbol is required');
+
+    // Validate symbol
+    if (!symbol || typeof symbol !== 'string') {
+      throw new Error('Stock symbol is required');
+    }
+
+    const trimmedSymbol = symbol.trim();
+    if (trimmedSymbol.length === 0 || trimmedSymbol.length > 10) {
+      throw new Error('Invalid stock symbol length');
+    }
+
+    if (!/^[A-Z0-9.:-]+$/i.test(trimmedSymbol)) {
+      throw new Error('Invalid stock symbol format');
+    }
+
+    const cleanSymbol = trimmedSymbol.toUpperCase();
 
     console.log(`\n=== Fetching ${cleanSymbol} (FMP key: ${FMP_API_KEY ? 'present' : 'absent'}) ===`);
 

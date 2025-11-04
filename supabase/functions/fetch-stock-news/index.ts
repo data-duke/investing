@@ -16,17 +16,27 @@ serve(async (req) => {
   try {
     const { symbol } = await req.json();
 
-    if (!symbol) {
+    // Validate symbol
+    if (!symbol || typeof symbol !== 'string') {
       throw new Error('Stock symbol is required');
+    }
+
+    const trimmedSymbol = symbol.trim();
+    if (trimmedSymbol.length === 0 || trimmedSymbol.length > 10) {
+      throw new Error('Invalid stock symbol length');
+    }
+
+    if (!/^[A-Z0-9.:-]+$/i.test(trimmedSymbol)) {
+      throw new Error('Invalid stock symbol format');
     }
 
     if (!ALPHA_VANTAGE_API_KEY) {
       throw new Error('Alpha Vantage API key not configured');
     }
 
-    console.log(`Fetching news for symbol: ${symbol}`);
+    console.log(`Fetching news for symbol: ${trimmedSymbol}`);
 
-    const url = `https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=${encodeURIComponent(symbol)}&apikey=${ALPHA_VANTAGE_API_KEY}&limit=5`;
+    const url = `https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=${encodeURIComponent(trimmedSymbol)}&apikey=${ALPHA_VANTAGE_API_KEY}&limit=5`;
     
     const response = await fetch(url);
     if (!response.ok) {
@@ -54,7 +64,7 @@ serve(async (req) => {
       sentiment: item.overall_sentiment_label?.toLowerCase(),
     }));
 
-    console.log(`Found ${articles.length} articles for ${symbol}`);
+    console.log(`Found ${articles.length} articles for ${trimmedSymbol}`);
 
     return new Response(JSON.stringify({ articles }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

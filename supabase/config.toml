@@ -1,13 +1,13 @@
 project_id = "gsgowetqzqeviqtxgofl"
 
 [functions.fetch-stock-data]
-verify_jwt = false
+verify_jwt = true
 
 [functions.fetch-stock-news]
-verify_jwt = false
+verify_jwt = true
 
 [functions.scrape-stock-price]
-verify_jwt = false
+verify_jwt = true
 
 [functions.check-subscription]
 verify_jwt = true

@@ -59,9 +59,30 @@ const Login = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate email
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Email",
+        description: "Please enter a valid email address.",
+      });
+      return;
+    }
+
+    if (!password) {
+      toast({
+        variant: "destructive",
+        title: "Missing Password",
+        description: "Please enter your password.",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
-    const { error } = await signIn(email, password);
+    const { error } = await signIn(trimmedEmail, password);
 
     if (error) {
       toast({

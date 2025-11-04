@@ -61,6 +61,17 @@ const SignUp = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validate email
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail) || trimmedEmail.length > 255) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Email",
+        description: "Please enter a valid email address (max 255 characters).",
+      });
+      return;
+    }
+
     if (password !== confirmPassword) {
       toast({
         variant: "destructive",
@@ -70,18 +81,36 @@ const SignUp = () => {
       return;
     }
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       toast({
         variant: "destructive",
         title: "Password too short",
-        description: "Password must be at least 6 characters.",
+        description: "Password must be at least 8 characters long.",
+      });
+      return;
+    }
+
+    if (password.length > 72) {
+      toast({
+        variant: "destructive",
+        title: "Password too long",
+        description: "Password must be 72 characters or less.",
+      });
+      return;
+    }
+
+    if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+      toast({
+        variant: "destructive",
+        title: "Weak password",
+        description: "Password must contain uppercase, lowercase, and a number.",
       });
       return;
     }
 
     setIsLoading(true);
 
-    const { error } = await signUp(email, password);
+    const { error } = await signUp(trimmedEmail, password);
 
     if (error) {
       toast({

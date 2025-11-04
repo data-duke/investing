@@ -51,22 +51,71 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
       return;
     }
     
-    if (!country || !symbol || (!amount && !quantity) || !purchaseDate) return;
+    // Validate inputs
+    const parsedAmount = amount ? parseFloat(amount) : null;
+    const parsedQuantity = quantity ? parseFloat(quantity) : null;
+    
+    if (!parsedAmount && !parsedQuantity) {
+      toast({
+        variant: "destructive",
+        title: "Missing Information",
+        description: "Please provide either an amount or quantity.",
+      });
+      return;
+    }
+
+    if ((parsedAmount && isNaN(parsedAmount)) || (parsedQuantity && isNaN(parsedQuantity))) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Input",
+        description: "Please enter valid numbers for amount and quantity.",
+      });
+      return;
+    }
+
+    if ((parsedAmount && (parsedAmount <= 0 || parsedAmount > 10000000)) || 
+        (parsedQuantity && (parsedQuantity <= 0 || parsedQuantity > 1000000))) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Input",
+        description: "Please enter reasonable values (amount ≤ 10M, quantity ≤ 1M).",
+      });
+      return;
+    }
+
+    if (tag && tag.length > 50) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Tag",
+        description: "Tag must be 50 characters or less.",
+      });
+      return;
+    }
+
+    if (!symbol || symbol.length > 10 || !/^[A-Z0-9.:-]+$/i.test(symbol)) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Symbol",
+        description: "Please enter a valid stock symbol.",
+      });
+      return;
+    }
+
+    if (!country || !purchaseDate) {
+      toast({
+        variant: "destructive",
+        title: "Missing Information",
+        description: "Please fill in all required fields.",
+      });
+      return;
+    }
 
     setIsLoading(true);
     try {
       const stockData = await fetchStockData(symbol.toUpperCase());
       
-      let finalQuantity: number;
-      let finalAmount: number;
-
-      if (quantity) {
-        finalQuantity = parseFloat(quantity);
-        finalAmount = finalQuantity * stockData.currentPrice;
-      } else {
-        finalAmount = parseFloat(amount);
-        finalQuantity = finalAmount / stockData.currentPrice;
-      }
+      const finalQuantity = parsedQuantity || (parsedAmount! / stockData.currentPrice);
+      const finalAmount = parsedAmount || (parsedQuantity! * stockData.currentPrice);
 
       const originalPriceEur = finalAmount / finalQuantity;
       

@@ -35,10 +35,48 @@ export const EditInvestmentDialog = ({ portfolio, open, onOpenChange, onSuccess 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!portfolio) return;
-
-    setIsLoading(true);
+    
+    // Validate inputs
     const parsedQuantity = parseFloat(quantity);
     const parsedPrice = parseFloat(originalPrice);
+    
+    if (isNaN(parsedQuantity) || isNaN(parsedPrice)) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Input",
+        description: "Please enter valid numbers.",
+      });
+      return;
+    }
+
+    if (parsedQuantity <= 0 || parsedQuantity > 1000000) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Quantity",
+        description: "Quantity must be between 0 and 1,000,000.",
+      });
+      return;
+    }
+
+    if (parsedPrice <= 0 || parsedPrice > 1000000) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Price",
+        description: "Price must be between 0 and 1,000,000.",
+      });
+      return;
+    }
+
+    if (tag && tag.length > 50) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Tag",
+        description: "Tag must be 50 characters or less.",
+      });
+      return;
+    }
+
+    setIsLoading(true);
     
     // Generate auto tag if no custom tag provided
     const autoTag = new Date(purchaseDate).toISOString().split('T')[0];
