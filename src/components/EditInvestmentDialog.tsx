@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,15 +14,23 @@ interface EditInvestmentDialogProps {
 }
 
 export const EditInvestmentDialog = ({ portfolio, open, onOpenChange, onSuccess }: EditInvestmentDialogProps) => {
-  const [quantity, setQuantity] = useState(portfolio?.quantity.toString() || "");
-  const [originalPrice, setOriginalPrice] = useState(portfolio?.original_price_eur.toString() || "");
-  const [purchaseDate, setPurchaseDate] = useState(
-    portfolio?.purchase_date ? new Date(portfolio.purchase_date).toISOString().split('T')[0] : ""
-  );
-  const [tag, setTag] = useState(portfolio?.tag || "");
+  const [quantity, setQuantity] = useState("");
+  const [originalPrice, setOriginalPrice] = useState("");
+  const [purchaseDate, setPurchaseDate] = useState("");
+  const [tag, setTag] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { updateInvestment } = usePortfolio();
   const { toast } = useToast();
+
+  // Update state when portfolio changes
+  useEffect(() => {
+    if (portfolio && open) {
+      setQuantity(portfolio.quantity.toString());
+      setOriginalPrice(portfolio.original_price_eur.toString());
+      setPurchaseDate(new Date(portfolio.purchase_date).toISOString().split('T')[0]);
+      setTag(portfolio.tag || "");
+    }
+  }, [portfolio, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

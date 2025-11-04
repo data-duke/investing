@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PortfolioOverview } from "@/components/PortfolioOverview";
 import { PortfolioChart } from "@/components/PortfolioChart";
 import { AllocationChart } from "@/components/AllocationChart";
-import { HoldingsTable } from "@/components/HoldingsTable";
+import { SortableHoldingsTable } from "@/components/SortableHoldingsTable";
 import { AddInvestmentDialog } from "@/components/AddInvestmentDialog";
 import { TagFilterBar } from "@/components/TagFilterBar";
 import { LogOut, Plus, RefreshCw, TrendingUp, Crown } from "lucide-react";
@@ -46,6 +46,18 @@ const Dashboard = () => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Auto-refresh on load and every 10 minutes
+  useEffect(() => {
+    if (portfolios.length > 0) {
+      refreshPrices();
+      const interval = setInterval(() => {
+        refreshPrices();
+      }, 10 * 60 * 1000); // 10 minutes
+      
+      return () => clearInterval(interval);
+    }
+  }, [portfolios.length]);
 
   // Check for new investment to highlight and subscription upgrade
   useEffect(() => {
@@ -448,7 +460,7 @@ const Dashboard = () => {
               <AllocationChart aggregatedPositions={displayAggregatedPositions} />
             </div>
 
-            <HoldingsTable 
+            <SortableHoldingsTable 
               portfolios={filteredPortfolios} 
               aggregatedPositions={displayAggregatedPositions}
               onRefresh={fetchPortfolios}
