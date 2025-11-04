@@ -59,18 +59,26 @@ serve(async (req) => {
 
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
-      status: "active",
-      limit: 1,
+      status: "all",
+      limit: 5,
     });
-    const hasActiveSub = subscriptions.data.length > 0;
-    let productId = null;
-    let subscriptionEnd = null;
 
-    if (hasActiveSub) {
-      const subscription = subscriptions.data[0];
-      subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
-      logStep("Active subscription found", { subscriptionId: subscription.id, endDate: subscriptionEnd });
-      productId = subscription.items.data[0].price.product;
+    const activeStatuses = new Set<string>(["active", "trialing", "past_due"]);
+    const activeSub = subscriptions.data.find((s: Stripe.Subscription) => activeStatuses.has(s.status));
+    const hasActiveSub = !!activeSub;
+
+    let productId: string | null = null;
+    let subscriptionEnd: string | null = null;
+
+    if (hasActiveSub && activeSub) {
+      const periodEnd = activeSub.current_period_end;
+      if (typeof periodEnd === 'number' && Number.isFinite(periodEnd)) {
+        subscriptionEnd = new Date(periodEnd * 1000).toISOString();
+      }
+      logStep("Active subscription found", { subscriptionId: activeSub.id, endDate: subscriptionEnd });
+      const firstItem = activeSub.items?.data?.[0];
+      const price = firstItem?.price;
+      productId = typeof price?.product === 'string' ? price.product : null;
       logStep("Determined subscription product", { productId });
     } else {
       logStep("No active subscription found");

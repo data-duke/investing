@@ -223,15 +223,16 @@ export const SortableHoldingsTable = ({ portfolios, aggregatedPositions, onRefre
                           ) : null}
                           <span>{position.dividend_annual_eur ? formatCurrency(position.dividend_annual_eur) : '-'}</span>
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            className="h-6 w-6 p-0"
+                            className="h-7 px-2"
                             onClick={(e) => {
                               e.stopPropagation();
                               setManualDivDialog({ open: true, portfolio: position.lots[0] });
                             }}
                           >
                             <DollarSign className="h-3 w-3" />
+                            <span className="hidden sm:inline ml-1">Set</span>
                           </Button>
                         </div>
                       </TableCell>

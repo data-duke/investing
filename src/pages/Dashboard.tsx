@@ -362,6 +362,12 @@ const Dashboard = () => {
           <div className="flex items-center gap-3">
             <TrendingUp className="h-6 w-6 text-primary" />
             <h1 className="text-2xl font-bold">Investing Lovable</h1>
+            {subscribed && (
+              <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary ring-1 ring-primary/20 px-3 py-1 shadow-sm">
+                <Crown className="h-3.5 w-3.5" />
+                <span className="text-xs font-semibold tracking-wide">Premium</span>
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {!subscribed && (
