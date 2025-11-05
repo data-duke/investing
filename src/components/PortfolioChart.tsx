@@ -92,16 +92,20 @@ export const PortfolioChart = ({ portfolios }: PortfolioChartProps) => {
   };
 
   return (
-    <Card>
+    <Card className="border-primary/20 shadow-lg">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Portfolio Performance</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            Portfolio Performance
+            <span className="text-xs font-normal text-muted-foreground">€ EUR</span>
+          </CardTitle>
           <div className="flex gap-1">
             {(['1M', '1Y', '5Y', 'ALL'] as TimeRange[]).map((range) => (
               <Button
                 key={range}
-                variant={timeRange === range ? 'default' : 'outline'}
+                variant={timeRange === range ? 'default' : 'ghost'}
                 size="sm"
+                className={timeRange === range ? 'bg-primary/20 hover:bg-primary/30' : ''}
                 onClick={() => setTimeRange(range)}
               >
                 {range}
@@ -112,28 +116,64 @@ export const PortfolioChart = ({ portfolios }: PortfolioChartProps) => {
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-            Loading chart data...
+          <div className="h-[320px] flex items-center justify-center text-muted-foreground">
+            <div className="flex flex-col items-center gap-2">
+              <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <span>Loading chart data...</span>
+            </div>
           </div>
         ) : chartData.length === 0 ? (
-          <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+          <div className="h-[320px] flex items-center justify-center text-muted-foreground">
             No data available for selected time range
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip formatter={(value: number) => formatCurrency(value)} />
-              <Legend />
-              <Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={2} name="Portfolio Value" />
+          <ResponsiveContainer width="100%" height={320}>
+            <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+              <defs>
+                <linearGradient id="valueGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+              <XAxis 
+                dataKey="date" 
+                stroke="hsl(var(--muted-foreground))"
+                tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                tickLine={{ stroke: 'hsl(var(--border))' }}
+              />
+              <YAxis 
+                stroke="hsl(var(--muted-foreground))"
+                tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                tickLine={{ stroke: 'hsl(var(--border))' }}
+                tickFormatter={(value) => `€${(value / 1000).toFixed(0)}k`}
+              />
+              <Tooltip 
+                formatter={(value: number) => formatCurrency(value)} 
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '6px',
+                  color: 'hsl(var(--foreground))'
+                }}
+                labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="value" 
+                stroke="hsl(var(--primary))" 
+                strokeWidth={3}
+                fill="url(#valueGradient)"
+                name="Portfolio Value"
+                dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, stroke: 'hsl(var(--primary))', strokeWidth: 2 }}
+              />
             </LineChart>
           </ResponsiveContainer>
         )}
-        {chartData.length < 3 && (
-          <p className="text-xs text-muted-foreground mt-2 text-center">
-            Historical chart will populate as you track your portfolio over time
+        {chartData.length < 3 && chartData.length > 0 && (
+          <p className="text-xs text-muted-foreground mt-3 text-center px-4">
+            💡 Historical chart will become more detailed as you track your portfolio over time
           </p>
         )}
       </CardContent>

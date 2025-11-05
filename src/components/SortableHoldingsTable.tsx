@@ -231,7 +231,7 @@ export const SortableHoldingsTable = ({ portfolios, aggregatedPositions, onRefre
                               setManualDivDialog({ open: true, portfolio: position.lots[0] });
                             }}
                           >
-                            <DollarSign className="h-3 w-3" />
+                            <span className="text-xs">€</span>
                             <span className="hidden sm:inline ml-1">Set</span>
                           </Button>
                         </div>

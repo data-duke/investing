@@ -18,7 +18,8 @@ export const PortfolioOverview = ({ portfolios, isLoading = false }: PortfolioOv
     const totalGainPercent = totalInvested > 0 ? (totalGain / totalInvested) * 100 : 0;
     const totalDividends = portfolios.reduce((sum, p) => {
       const dividend = p.manual_dividend_eur ?? p.dividend_annual_eur ?? 0;
-      return sum + dividend;
+      const quantity = Number(p.quantity) || 1;
+      return sum + (dividend * quantity);
     }, 0);
 
     const topPerformer = portfolios.reduce((best, current) => {

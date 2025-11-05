@@ -49,7 +49,7 @@ const Dashboard = () => {
 
   // Auto-refresh on load and every 10 minutes
   useEffect(() => {
-    if (portfolios.length > 0) {
+    if (portfolios.length > 0 && !isRefreshing) {
       refreshPrices();
       const interval = setInterval(() => {
         refreshPrices();

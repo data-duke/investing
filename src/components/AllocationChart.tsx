@@ -33,57 +33,92 @@ export const AllocationChart = ({ aggregatedPositions }: AllocationChartProps) =
     chartData = [...top7, { name: "Others", value: othersValue }];
   }
 
+  const totalValue = chartData.reduce((sum, item) => sum + item.value, 0);
+
   return (
-    <Card>
+    <Card className="border-secondary/20 shadow-lg">
       <CardHeader>
-        <CardTitle>Asset Allocation</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          Asset Allocation
+          <span className="text-xs font-normal text-muted-foreground">
+            Total: €{totalValue.toFixed(2)}
+          </span>
+        </CardTitle>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
-          <PieChart>
-            <Pie
-              data={chartData}
-              dataKey="value"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              innerRadius={60}
-              outerRadius={90}
-              label={(props) => {
-                const { cx, cy, midAngle, innerRadius, outerRadius, name, percent } = props;
-                const RADIAN = Math.PI / 180;
-                const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-                const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                const y = cy + radius * Math.sin(-midAngle * RADIAN);
-                
-                return (
-                  <text
-                    x={x}
-                    y={y}
-                    fill="hsl(var(--foreground))"
-                    textAnchor={x > cx ? 'start' : 'end'}
-                    dominantBaseline="central"
-                    className="font-semibold text-xs"
-                    style={{ 
-                      textShadow: '1px 1px 3px hsl(var(--background)), -1px -1px 3px hsl(var(--background))',
-                      paintOrder: 'stroke fill'
-                    }}
-                  >
-                    {`${name} ${(percent * 100).toFixed(1)}%`}
-                  </text>
-                );
-              }}
-            >
-              {chartData.map((_, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-              ))}
-            </Pie>
-            <Tooltip formatter={(value: number) => `€${value.toFixed(2)}`} />
-          </PieChart>
-        </ResponsiveContainer>
+        {chartData.length === 0 ? (
+          <div className="h-[320px] flex items-center justify-center text-muted-foreground">
+            No positions available
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={320}>
+            <PieChart>
+              <defs>
+                {chartData.map((_, index) => (
+                  <linearGradient key={`gradient-${index}`} id={`colorGradient${index}`} x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor={COLORS[index % COLORS.length]} stopOpacity={0.9}/>
+                    <stop offset="100%" stopColor={COLORS[index % COLORS.length]} stopOpacity={0.6}/>
+                  </linearGradient>
+                ))}
+              </defs>
+              <Pie
+                data={chartData}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                innerRadius={70}
+                outerRadius={105}
+                paddingAngle={2}
+                label={(props) => {
+                  const { cx, cy, midAngle, innerRadius, outerRadius, name, percent } = props;
+                  const RADIAN = Math.PI / 180;
+                  const radius = outerRadius + 25;
+                  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                  
+                  return (
+                    <text
+                      x={x}
+                      y={y}
+                      fill="hsl(var(--foreground))"
+                      textAnchor={x > cx ? 'start' : 'end'}
+                      dominantBaseline="central"
+                      className="font-bold text-sm"
+                      style={{ 
+                        textShadow: '2px 2px 4px hsl(var(--background)), -1px -1px 4px hsl(var(--background))',
+                        paintOrder: 'stroke fill'
+                      }}
+                    >
+                      {`${name} ${(percent * 100).toFixed(1)}%`}
+                    </text>
+                  );
+                }}
+              >
+                {chartData.map((_, index) => (
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={`url(#colorGradient${index})`}
+                    stroke="hsl(var(--background))"
+                    strokeWidth={2}
+                  />
+                ))}
+              </Pie>
+              <Tooltip 
+                formatter={(value: number) => `€${value.toFixed(2)}`}
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '6px',
+                  color: 'hsl(var(--foreground))'
+                }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        )}
         {aggregatedPositions.length > 8 && (
-          <p className="text-xs text-muted-foreground text-center mt-2">
-            Showing top 7 positions + Others for clarity
+          <p className="text-xs text-muted-foreground text-center mt-3">
+            📊 Showing top 7 positions + Others for clarity
           </p>
         )}
       </CardContent>

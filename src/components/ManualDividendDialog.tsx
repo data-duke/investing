@@ -56,9 +56,11 @@ export const ManualDividendDialog = ({
     if (!error) {
       toast({
         title: "Dividend updated",
-        description: `Manual dividend for ${symbol} set to €${dividendValue.toFixed(2)}`,
+        description: `Annual dividend per share for ${symbol} set to €${dividendValue.toFixed(2)}`,
       });
       onOpenChange(false);
+      // Trigger page refresh to show updated data immediately
+      window.location.reload();
     }
   };
 
@@ -74,7 +76,7 @@ export const ManualDividendDialog = ({
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="dividend">Annual Dividend (€)</Label>
+              <Label htmlFor="dividend">Annual Dividend per Share (€)</Label>
               <Input
                 id="dividend"
                 type="number"
