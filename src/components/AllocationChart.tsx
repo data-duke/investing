@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface AggregatedPosition {
   symbol: string;

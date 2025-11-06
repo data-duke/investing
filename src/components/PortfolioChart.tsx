@@ -5,6 +5,7 @@ import { Portfolio } from "@/hooks/usePortfolio";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/formatters";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface PortfolioChartProps {
   portfolios: Portfolio[];
@@ -16,6 +17,7 @@ export const PortfolioChart = ({ portfolios }: PortfolioChartProps) => {
   const [timeRange, setTimeRange] = useState<TimeRange>('ALL');
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     loadChartData();
@@ -70,27 +72,25 @@ export const PortfolioChart = ({ portfolios }: PortfolioChartProps) => {
       return;
     }
 
-    // Group snapshots by date and sum values
-    const groupedByDate = snapshots.reduce((acc, snap) => {
-      const date = new Date(snap.snapshot_date).toISOString().split('T')[0];
-      if (!acc[date]) {
-        acc[date] = 0;
-      }
-      acc[date] += Number(snap.current_value_eur);
-      return acc;
-    }, {} as Record<string, number>);
+    // Build per-day latest value per portfolio, then sum totals to avoid double-counting
+    const byDay: Record<string, Record<string, number>> = {};
+    snapshots.forEach((snap: any) => {
+      const dateKey = new Date(snap.snapshot_date).toISOString().split('T')[0];
+      if (!byDay[dateKey]) byDay[dateKey] = {};
+      // Because snapshots are ordered ascending, the last assignment for a portfolio/date is the latest
+      byDay[dateKey][snap.portfolio_id] = Number(snap.current_value_eur);
+    });
 
-    const data = Object.entries(groupedByDate)
-      .map(([date, value]) => ({
+    const data = Object.entries(byDay)
+      .map(([date, perPort]) => ({
         date: new Date(date).toLocaleDateString(),
-        value: value,
+        value: Object.values(perPort).reduce((sum, v) => sum + (typeof v === 'number' ? v : Number(v)), 0),
       }))
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     setChartData(data);
     setLoading(false);
   };
-
   return (
     <Card className="border-primary/20 shadow-lg">
       <CardHeader>
@@ -127,8 +127,8 @@ export const PortfolioChart = ({ portfolios }: PortfolioChartProps) => {
             No data available for selected time range
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={280} className="sm:!h-[320px]">
-            <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+          <ResponsiveContainer width="100%" height={isMobile ? 240 : 280} className="sm:!h-[320px]">
+            <LineChart data={chartData} margin={{ top: 5, right: 10, left: isMobile ? 0 : -20, bottom: isMobile ? 10 : 5 }}>
               <defs>
                 <linearGradient id="valueGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
@@ -139,18 +139,19 @@ export const PortfolioChart = ({ portfolios }: PortfolioChartProps) => {
               <XAxis 
                 dataKey="date" 
                 stroke="hsl(var(--muted-foreground))"
-                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: isMobile ? 10 : 11 }}
                 tickLine={{ stroke: 'hsl(var(--border))' }}
-                angle={-45}
-                textAnchor="end"
-                height={60}
+                angle={isMobile ? 0 : -45}
+                textAnchor={isMobile ? 'middle' : 'end'}
+                height={isMobile ? 30 : 60}
+                minTickGap={isMobile ? 10 : 0}
               />
               <YAxis 
                 stroke="hsl(var(--muted-foreground))"
                 tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
                 tickLine={{ stroke: 'hsl(var(--border))' }}
-                tickFormatter={(value) => `€${(value / 1000).toFixed(0)}k`}
-                width={50}
+                tickFormatter={(value) => value >= 1000 ? `€${(value / 1000).toFixed(0)}k` : `€${value.toFixed(0)}`}
+                width={isMobile ? 40 : 50}
               />
               <Tooltip 
                 formatter={(value: number) => formatCurrency(value)} 
