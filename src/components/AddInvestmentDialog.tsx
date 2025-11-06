@@ -27,6 +27,7 @@ const countries = [
   { code: "US", name: "United States" },
   { code: "UK", name: "United Kingdom" },
   { code: "CH", name: "Switzerland" },
+  { code: "RS", name: "Serbia" },
 ];
 
 export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvestmentDialogProps) => {
@@ -139,16 +140,16 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
         description: `${stockData.name} has been added to your portfolio.`,
       });
 
-      onSuccess();
-      onOpenChange(false);
-      
-      // Reset form
+      // Reset form first
       setCountry("");
       setSymbol("");
       setAmount("");
       setQuantity("");
       setPurchaseDate(new Date());
       setTag("");
+
+      onOpenChange(false);
+      onSuccess();
     } catch (error) {
       toast({
         variant: "destructive",

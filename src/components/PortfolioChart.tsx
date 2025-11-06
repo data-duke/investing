@@ -116,19 +116,19 @@ export const PortfolioChart = ({ portfolios }: PortfolioChartProps) => {
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="h-[320px] flex items-center justify-center text-muted-foreground">
+          <div className="h-[280px] sm:h-[320px] flex items-center justify-center text-muted-foreground">
             <div className="flex flex-col items-center gap-2">
               <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              <span>Loading chart data...</span>
+              <span className="text-sm">Loading chart data...</span>
             </div>
           </div>
         ) : chartData.length === 0 ? (
-          <div className="h-[320px] flex items-center justify-center text-muted-foreground">
+          <div className="h-[280px] sm:h-[320px] flex items-center justify-center text-muted-foreground text-sm">
             No data available for selected time range
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={320}>
-            <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+          <ResponsiveContainer width="100%" height={280} className="sm:!h-[320px]">
+            <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
               <defs>
                 <linearGradient id="valueGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
@@ -139,14 +139,18 @@ export const PortfolioChart = ({ portfolios }: PortfolioChartProps) => {
               <XAxis 
                 dataKey="date" 
                 stroke="hsl(var(--muted-foreground))"
-                tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
                 tickLine={{ stroke: 'hsl(var(--border))' }}
+                angle={-45}
+                textAnchor="end"
+                height={60}
               />
               <YAxis 
                 stroke="hsl(var(--muted-foreground))"
-                tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
                 tickLine={{ stroke: 'hsl(var(--border))' }}
                 tickFormatter={(value) => `€${(value / 1000).toFixed(0)}k`}
+                width={50}
               />
               <Tooltip 
                 formatter={(value: number) => formatCurrency(value)} 
@@ -154,19 +158,20 @@ export const PortfolioChart = ({ portfolios }: PortfolioChartProps) => {
                   backgroundColor: 'hsl(var(--card))',
                   border: '1px solid hsl(var(--border))',
                   borderRadius: '6px',
-                  color: 'hsl(var(--foreground))'
+                  color: 'hsl(var(--foreground))',
+                  fontSize: '12px'
                 }}
-                labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
+                labelStyle={{ color: 'hsl(var(--muted-foreground))', fontSize: '11px' }}
               />
               <Line 
                 type="monotone" 
                 dataKey="value" 
                 stroke="hsl(var(--primary))" 
-                strokeWidth={3}
+                strokeWidth={2}
                 fill="url(#valueGradient)"
                 name="Portfolio Value"
-                dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
-                activeDot={{ r: 6, stroke: 'hsl(var(--primary))', strokeWidth: 2 }}
+                dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 3 }}
+                activeDot={{ r: 5, stroke: 'hsl(var(--primary))', strokeWidth: 2 }}
               />
             </LineChart>
           </ResponsiveContainer>

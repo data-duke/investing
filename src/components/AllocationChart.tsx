@@ -47,11 +47,11 @@ export const AllocationChart = ({ aggregatedPositions }: AllocationChartProps) =
       </CardHeader>
       <CardContent>
         {chartData.length === 0 ? (
-          <div className="h-[320px] flex items-center justify-center text-muted-foreground">
+          <div className="h-[280px] sm:h-[320px] flex items-center justify-center text-muted-foreground text-sm">
             No positions available
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={320}>
+          <ResponsiveContainer width="100%" height={280} className="sm:!h-[320px]">
             <PieChart>
               <defs>
                 {chartData.map((_, index) => (
@@ -67,13 +67,14 @@ export const AllocationChart = ({ aggregatedPositions }: AllocationChartProps) =
                 nameKey="name"
                 cx="50%"
                 cy="50%"
-                innerRadius={70}
-                outerRadius={105}
+                innerRadius={window.innerWidth < 640 ? 50 : 70}
+                outerRadius={window.innerWidth < 640 ? 80 : 105}
                 paddingAngle={2}
                 label={(props) => {
                   const { cx, cy, midAngle, innerRadius, outerRadius, name, percent } = props;
+                  const isMobile = window.innerWidth < 640;
                   const RADIAN = Math.PI / 180;
-                  const radius = outerRadius + 25;
+                  const radius = outerRadius + (isMobile ? 15 : 25);
                   const x = cx + radius * Math.cos(-midAngle * RADIAN);
                   const y = cy + radius * Math.sin(-midAngle * RADIAN);
                   
@@ -84,13 +85,13 @@ export const AllocationChart = ({ aggregatedPositions }: AllocationChartProps) =
                       fill="hsl(var(--foreground))"
                       textAnchor={x > cx ? 'start' : 'end'}
                       dominantBaseline="central"
-                      className="font-bold text-sm"
+                      className="font-bold text-xs sm:text-sm"
                       style={{ 
                         textShadow: '2px 2px 4px hsl(var(--background)), -1px -1px 4px hsl(var(--background))',
                         paintOrder: 'stroke fill'
                       }}
                     >
-                      {`${name} ${(percent * 100).toFixed(1)}%`}
+                      {isMobile ? `${(percent * 100).toFixed(0)}%` : `${name} ${(percent * 100).toFixed(1)}%`}
                     </text>
                   );
                 }}
@@ -110,7 +111,8 @@ export const AllocationChart = ({ aggregatedPositions }: AllocationChartProps) =
                   backgroundColor: 'hsl(var(--card))',
                   border: '1px solid hsl(var(--border))',
                   borderRadius: '6px',
-                  color: 'hsl(var(--foreground))'
+                  color: 'hsl(var(--foreground))',
+                  fontSize: '12px'
                 }}
               />
             </PieChart>

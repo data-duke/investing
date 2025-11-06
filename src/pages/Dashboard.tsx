@@ -47,9 +47,9 @@ const Dashboard = () => {
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Auto-refresh on load and every 10 minutes
+  // Auto-refresh on load and every 10 minutes (Premium only)
   useEffect(() => {
-    if (portfolios.length > 0 && !isRefreshing) {
+    if (portfolios.length > 0 && !isRefreshing && subscribed) {
       refreshPrices();
       const interval = setInterval(() => {
         refreshPrices();
@@ -57,7 +57,7 @@ const Dashboard = () => {
       
       return () => clearInterval(interval);
     }
-  }, [portfolios.length]);
+  }, [portfolios.length, subscribed]);
 
   // Check for new investment to highlight and subscription upgrade
   useEffect(() => {
@@ -272,12 +272,6 @@ const Dashboard = () => {
     aggregatePositions(updated);
     setLastUpdated(new Date());
     setIsRefreshing(false);
-    
-    toast({
-      title: "Prices updated",
-      description: `${successCount} stocks updated successfully${failCount > 0 ? `, ${failCount} failed` : ''}.`,
-      variant: failCount > 0 ? "destructive" : "default",
-    });
   };
 
   // Extract unique tags
@@ -433,11 +427,14 @@ const Dashboard = () => {
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-xl font-semibold">Portfolio Overview</h2>
-                {lastUpdated && (
-                  <p className="text-xs text-muted-foreground">
-                    Last updated: {lastUpdated.toLocaleTimeString()}
-                  </p>
-                )}
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  {lastUpdated && (
+                    <span>Last updated: {lastUpdated.toLocaleTimeString()}</span>
+                  )}
+                  {!subscribed && (
+                    <span className="text-muted-foreground/70">• Premium users get auto-refresh</span>
+                  )}
+                </div>
               </div>
               <Button
                 variant="outline"
