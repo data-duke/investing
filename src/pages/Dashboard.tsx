@@ -15,6 +15,7 @@ import { fetchStockData } from "@/services/stockApi";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { calculateDividendTax } from "@/lib/taxCalculations";
 
 interface AggregatedPosition {
   symbol: string;
@@ -191,14 +192,6 @@ const Dashboard = () => {
     setIsRefreshing(true);
     const updated: Portfolio[] = [];
 
-    const countries: Record<string, { dividendTax: number }> = {
-      AT: { dividendTax: 0.275 },
-      DE: { dividendTax: 0.26375 },
-      US: { dividendTax: 0.15 },
-      UK: { dividendTax: 0.125 },
-      CH: { dividendTax: 0.35 },
-      RS: { dividendTax: 0.15 },
-    };
 
     let successCount = 0;
     let failCount = 0;
@@ -232,13 +225,19 @@ const Dashboard = () => {
         const gainLoss = currentValue - Number(portfolio.original_investment_eur);
         const gainLossPercent = (gainLoss / Number(portfolio.original_investment_eur)) * 100;
 
-        // Use manual dividend if set, otherwise fetch from API
+        // Use manual dividend if set, otherwise calculate with comprehensive tax
         let netDividend = portfolio.manual_dividend_eur ?? 0;
         
-        if (!portfolio.manual_dividend_eur) {
-          const country = countries[portfolio.country as keyof typeof countries];
-          const grossDividend = stockData.dividend * Number(portfolio.quantity);
-          netDividend = country ? grossDividend * (1 - country.dividendTax) : grossDividend;
+        if (!portfolio.manual_dividend_eur && stockData.dividend) {
+          // Use comprehensive tax calculation including withholding tax
+          // Assume investor country is Austria (could be made dynamic via user profile)
+          const taxBreakdown = calculateDividendTax(
+            stockData.dividend,
+            Number(portfolio.quantity),
+            portfolio.country,
+            'AT' // Default investor country - could be stored in user profile
+          );
+          netDividend = taxBreakdown.netDividend;
         }
 
         await supabase.from('portfolio_snapshots').insert({
@@ -463,17 +462,21 @@ const Dashboard = () => {
               <AllocationChart aggregatedPositions={displayAggregatedPositions} />
             </div>
 
+            <Button 
+              onClick={() => setIsAddDialogOpen(true)} 
+              size="lg" 
+              className="w-full md:w-auto"
+            >
+              <Plus className="mr-2 h-5 w-5" />
+              Add Investment
+            </Button>
+
             <SortableHoldingsTable 
               portfolios={filteredPortfolios} 
               aggregatedPositions={displayAggregatedPositions}
               onRefresh={fetchPortfolios}
               highlightedId={highlightedId}
             />
-
-            <Button onClick={() => setIsAddDialogOpen(true)} className="w-full">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Investment
-            </Button>
           </>
         )}
       </main>

@@ -30,6 +30,8 @@ export interface AnalysisData {
   country?: string;
 }
 
+// Note: For the quick analysis tool, we use simplified tax rates
+// The full portfolio tracker uses comprehensive cross-border tax calculations
 const countries = {
   AT: { name: "Austria", dividendTax: 0.275, capitalGainsTax: 0.275 },
   DE: { name: "Germany", dividendTax: 0.26375, capitalGainsTax: 0.26375 },

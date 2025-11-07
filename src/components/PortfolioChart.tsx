@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Portfolio } from "@/hooks/usePortfolio";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Area, ComposedChart } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/formatters";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -25,13 +25,14 @@ export const PortfolioChart = ({ portfolios }: PortfolioChartProps) => {
 
   const loadChartData = async () => {
     if (portfolios.length === 0) {
+      setChartData([]);
       setLoading(false);
       return;
     }
 
     setLoading(true);
 
-    // Calculate date range
+    // Calculate date range based on selection
     const now = new Date();
     let startDate = new Date();
     
@@ -46,67 +47,151 @@ export const PortfolioChart = ({ portfolios }: PortfolioChartProps) => {
         startDate.setFullYear(now.getFullYear() - 5);
         break;
       case 'ALL':
-        startDate = new Date(0); // Beginning of time
+        // Get earliest purchase date
+        const earliestDate = portfolios.reduce((earliest, p) => {
+          const pDate = new Date(p.purchase_date);
+          return pDate < earliest ? pDate : earliest;
+        }, new Date());
+        startDate = earliestDate;
         break;
     }
 
-    // Fetch snapshots for all portfolios in the selected range
-    const portfolioIds = portfolios.map(p => p.id);
+    // Build data points: start with initial investment points, then add snapshots
+    const dataPoints: Record<string, { invested: number; value: number; date: Date }> = {};
+
+    // Add initial purchase points
+    portfolios.forEach(p => {
+      const purchaseDate = new Date(p.purchase_date);
+      if (purchaseDate >= startDate) {
+        const dateKey = purchaseDate.toISOString().split('T')[0];
+        if (!dataPoints[dateKey]) {
+          dataPoints[dateKey] = { invested: 0, value: 0, date: purchaseDate };
+        }
+        dataPoints[dateKey].invested += Number(p.original_investment_eur);
+        dataPoints[dateKey].value += Number(p.original_investment_eur);
+      }
+    });
+
+    // Fetch snapshots for the date range
     const { data: snapshots } = await supabase
       .from('portfolio_snapshots')
       .select('*')
-      .in('portfolio_id', portfolioIds)
+      .in('portfolio_id', portfolios.map(p => p.id))
       .gte('snapshot_date', startDate.toISOString())
       .order('snapshot_date', { ascending: true });
 
     if (!snapshots || snapshots.length === 0) {
-      // No historical data, show current vs invested
-      const totalInvested = portfolios.reduce((sum, p) => sum + Number(p.original_investment_eur), 0);
-      const totalCurrent = portfolios.reduce((sum, p) => sum + (p.current_value_eur || 0), 0);
-      
-      setChartData([
-        { date: 'Invested', value: totalInvested },
-        { date: 'Current', value: totalCurrent },
-      ]);
+      // No snapshot data yet, just show initial investments
+      const data = Object.values(dataPoints)
+        .sort((a, b) => a.date.getTime() - b.date.getTime())
+        .map(point => ({
+          date: point.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: isMobile ? undefined : 'numeric' }),
+          invested: point.invested,
+          value: point.value,
+        }));
+      setChartData(data);
       setLoading(false);
       return;
     }
 
-    // Build per-day latest value per portfolio, then sum totals to avoid double-counting
-    const byDay: Record<string, Record<string, number>> = {};
+    // Build per-day per-portfolio latest values to track current value
+    const snapshotsByDay: Record<string, Record<string, { value: number; date: Date }>> = {};
     snapshots.forEach((snap: any) => {
       const dateKey = new Date(snap.snapshot_date).toISOString().split('T')[0];
-      if (!byDay[dateKey]) byDay[dateKey] = {};
-      // Because snapshots are ordered ascending, the last assignment for a portfolio/date is the latest
-      byDay[dateKey][snap.portfolio_id] = Number(snap.current_value_eur);
+      if (!snapshotsByDay[dateKey]) snapshotsByDay[dateKey] = {};
+      snapshotsByDay[dateKey][snap.portfolio_id] = {
+        value: Number(snap.current_value_eur),
+        date: new Date(snap.snapshot_date),
+      };
     });
 
-    const data = Object.entries(byDay)
-      .map(([date, perPort]) => ({
-        date: new Date(date).toLocaleDateString(),
-        value: Object.values(perPort).reduce((sum, v) => sum + (typeof v === 'number' ? v : Number(v)), 0),
-      }))
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    // Merge snapshots with investment tracking
+    Object.entries(snapshotsByDay).forEach(([dateKey, perPort]) => {
+      if (!dataPoints[dateKey]) {
+        dataPoints[dateKey] = { invested: 0, value: 0, date: new Date(dateKey) };
+      }
+      dataPoints[dateKey].value = Object.values(perPort).reduce((sum, p) => sum + p.value, 0);
+    });
+
+    // Calculate cumulative invested amount over time
+    let cumulativeInvested = 0;
+    const sortedDataPoints = Object.values(dataPoints)
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+    // Track which portfolios existed at each date
+    const existingInvestments = new Set<string>();
+    
+    const data = sortedDataPoints.map(point => {
+      // Add any new investments made on this date
+      portfolios.forEach(p => {
+        const purchaseDate = new Date(p.purchase_date).toISOString().split('T')[0];
+        const pointDate = point.date.toISOString().split('T')[0];
+        if (purchaseDate === pointDate && !existingInvestments.has(p.id)) {
+          cumulativeInvested += Number(p.original_investment_eur);
+          existingInvestments.add(p.id);
+        }
+      });
+
+      return {
+        date: point.date.toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: isMobile ? undefined : 'numeric',
+          year: isMobile ? undefined : '2-digit'
+        }),
+        invested: cumulativeInvested,
+        value: point.value || cumulativeInvested,
+      };
+    });
 
     setChartData(data);
     setLoading(false);
   };
+
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const invested = payload[0]?.value || 0;
+      const value = payload[1]?.value || 0;
+      const gain = value - invested;
+      const gainPercent = invested > 0 ? ((gain / invested) * 100) : 0;
+
+      return (
+        <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
+          <p className="text-sm font-semibold mb-2">{payload[0].payload.date}</p>
+          <div className="space-y-1 text-xs">
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">Invested:</span>
+              <span className="font-medium">{formatCurrency(invested)}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">Value:</span>
+              <span className="font-medium">{formatCurrency(value)}</span>
+            </div>
+            <div className="flex justify-between gap-4 pt-1 border-t">
+              <span className="text-muted-foreground">Gain/Loss:</span>
+              <span className={`font-semibold ${gain >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {formatCurrency(gain)} ({gainPercent.toFixed(1)}%)
+              </span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <Card className="border-primary/20 shadow-lg">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            Portfolio Performance
-            <span className="text-xs font-normal text-muted-foreground">€ EUR</span>
-          </CardTitle>
+          <CardTitle>Portfolio Performance</CardTitle>
           <div className="flex gap-1">
             {(['1M', '1Y', '5Y', 'ALL'] as TimeRange[]).map((range) => (
               <Button
                 key={range}
-                variant={timeRange === range ? 'default' : 'ghost'}
+                variant={timeRange === range ? "default" : "outline"}
                 size="sm"
-                className={timeRange === range ? 'bg-primary/20 hover:bg-primary/30' : ''}
                 onClick={() => setTimeRange(range)}
+                className="text-xs px-2 py-1 h-7"
               >
                 {range}
               </Button>
@@ -116,71 +201,87 @@ export const PortfolioChart = ({ portfolios }: PortfolioChartProps) => {
       </CardHeader>
       <CardContent>
         {loading ? (
-          <div className="h-[280px] sm:h-[320px] flex items-center justify-center text-muted-foreground">
-            <div className="flex flex-col items-center gap-2">
-              <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm">Loading chart data...</span>
-            </div>
+          <div className="flex items-center justify-center h-[280px]">
+            <div className="text-muted-foreground">Loading chart data...</div>
           </div>
         ) : chartData.length === 0 ? (
-          <div className="h-[280px] sm:h-[320px] flex items-center justify-center text-muted-foreground text-sm">
-            No data available for selected time range
+          <div className="flex items-center justify-center h-[280px]">
+            <div className="text-muted-foreground text-center">
+              No data available for selected time range
+            </div>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={isMobile ? 240 : 280} className="sm:!h-[320px]">
-            <LineChart data={chartData} margin={{ top: 5, right: 10, left: isMobile ? 0 : -20, bottom: isMobile ? 10 : 5 }}>
+            <ComposedChart 
+              data={chartData} 
+              margin={{ top: 10, right: 10, left: isMobile ? 0 : -20, bottom: isMobile ? 30 : 5 }}
+            >
               <defs>
                 <linearGradient id="valueGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.05}/>
+                </linearGradient>
+                <linearGradient id="positiveGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0.05}/>
+                </linearGradient>
+                <linearGradient id="negativeGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0.05}/>
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
               <XAxis 
                 dataKey="date" 
                 stroke="hsl(var(--muted-foreground))"
-                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: isMobile ? 10 : 11 }}
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: isMobile ? 9 : 11 }}
                 tickLine={{ stroke: 'hsl(var(--border))' }}
-                angle={isMobile ? 0 : -45}
-                textAnchor={isMobile ? 'middle' : 'end'}
-                height={isMobile ? 30 : 60}
-                minTickGap={isMobile ? 10 : 0}
+                angle={isMobile ? -45 : 0}
+                textAnchor={isMobile ? 'end' : 'middle'}
+                height={isMobile ? 60 : 30}
+                interval={isMobile ? Math.floor(chartData.length / 4) : 'preserveStartEnd'}
               />
               <YAxis 
                 stroke="hsl(var(--muted-foreground))"
-                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: isMobile ? 9 : 11 }}
                 tickLine={{ stroke: 'hsl(var(--border))' }}
                 tickFormatter={(value) => value >= 1000 ? `€${(value / 1000).toFixed(0)}k` : `€${value.toFixed(0)}`}
-                width={isMobile ? 40 : 50}
+                width={isMobile ? 45 : 50}
               />
-              <Tooltip 
-                formatter={(value: number) => formatCurrency(value)} 
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '6px',
-                  color: 'hsl(var(--foreground))',
-                  fontSize: '12px'
-                }}
-                labelStyle={{ color: 'hsl(var(--muted-foreground))', fontSize: '11px' }}
+              <Tooltip content={<CustomTooltip />} />
+              <Legend 
+                wrapperStyle={{ fontSize: isMobile ? '11px' : '12px', paddingTop: '10px' }}
+                iconType="line"
               />
+              {/* Area fill between invested and value */}
+              <Area
+                type="monotone"
+                dataKey="value"
+                fill="url(#valueGradient)"
+                stroke="none"
+                fillOpacity={1}
+              />
+              {/* Invested line (baseline) */}
+              <Line 
+                type="monotone" 
+                dataKey="invested" 
+                stroke="hsl(var(--muted-foreground))"
+                strokeWidth={2}
+                dot={false}
+                name="Capital Invested"
+                strokeDasharray="5 5"
+              />
+              {/* Portfolio value line */}
               <Line 
                 type="monotone" 
                 dataKey="value" 
-                stroke="hsl(var(--primary))" 
-                strokeWidth={2}
-                fill="url(#valueGradient)"
+                stroke="hsl(var(--primary))"
+                strokeWidth={3}
+                dot={false}
                 name="Portfolio Value"
-                dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 3 }}
-                activeDot={{ r: 5, stroke: 'hsl(var(--primary))', strokeWidth: 2 }}
               />
-            </LineChart>
+            </ComposedChart>
           </ResponsiveContainer>
-        )}
-        {chartData.length < 3 && chartData.length > 0 && (
-          <p className="text-xs text-muted-foreground mt-3 text-center px-4">
-            💡 Historical chart will become more detailed as you track your portfolio over time
-          </p>
         )}
       </CardContent>
     </Card>

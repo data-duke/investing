@@ -18,9 +18,9 @@ export const PortfolioOverview = ({ portfolios, isLoading = false }: PortfolioOv
     const totalGainPercent = totalInvested > 0 ? (totalGain / totalInvested) * 100 : 0;
     const totalDividends = portfolios.reduce((sum, p) => {
       const dividend = p.manual_dividend_eur ?? p.dividend_annual_eur ?? 0;
-      const quantity = Number(p.quantity) || 1;
-      return sum + (dividend * quantity);
+      return sum + dividend;
     }, 0);
+    const monthlyDividends = totalDividends / 12;
 
     const topPerformer = portfolios.reduce((best, current) => {
       const currentGain = current.gain_loss_percent || 0;
@@ -46,7 +46,7 @@ export const PortfolioOverview = ({ portfolios, isLoading = false }: PortfolioOv
         title: "Annual Dividends",
         value: formatCurrency(totalDividends),
         icon: PiggyBank,
-        description: "Expected annual income",
+        description: `${formatCurrency(monthlyDividends)}/month avg`,
       },
       {
         title: "Top Performer",

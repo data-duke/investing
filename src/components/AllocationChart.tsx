@@ -1,129 +1,168 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { formatCurrency, formatPercentage } from "@/lib/formatters";
 
 interface AggregatedPosition {
   symbol: string;
   name: string;
-  current_value_eur?: number;
+  totalQuantity: number;
   totalOriginalInvestment: number;
+  current_value_eur?: number;
 }
 
 interface AllocationChartProps {
   aggregatedPositions: AggregatedPosition[];
 }
 
-const COLORS = [
-  "hsl(var(--chart-1))",
-  "hsl(var(--chart-2))",
-  "hsl(var(--chart-3))",
-  "hsl(var(--chart-4))",
-  "hsl(var(--chart-5))",
-];
-
 export const AllocationChart = ({ aggregatedPositions }: AllocationChartProps) => {
-  // Smart aggregation: if more than 8 positions, show top 7 + "Others"
-  let chartData = aggregatedPositions.map((p) => ({
-    name: p.symbol,
-    value: p.current_value_eur || p.totalOriginalInvestment,
-  })).sort((a, b) => b.value - a.value);
+  const isMobile = useIsMobile();
 
-  if (chartData.length > 8) {
-    const top7 = chartData.slice(0, 7);
-    const othersValue = chartData.slice(7).reduce((sum, item) => sum + item.value, 0);
-    chartData = [...top7, { name: "Others", value: othersValue }];
+  if (aggregatedPositions.length === 0) {
+    return (
+      <Card className="border-primary/20 shadow-lg">
+        <CardHeader>
+          <CardTitle>Asset Allocation</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-[280px]">
+          <p className="text-muted-foreground">No positions available</p>
+        </CardContent>
+      </Card>
+    );
   }
 
-  const totalValue = chartData.reduce((sum, item) => sum + item.value, 0);
+  // Sort by value and take top 7, group rest as "Others"
+  const sorted = [...aggregatedPositions]
+    .filter(p => p.current_value_eur && p.current_value_eur > 0)
+    .sort((a, b) => (b.current_value_eur || 0) - (a.current_value_eur || 0));
+
+  const topPositions = sorted.slice(0, 7);
+  const othersPositions = sorted.slice(7);
+  
+  const data = topPositions.map(pos => ({
+    name: pos.symbol,
+    fullName: pos.name,
+    value: pos.current_value_eur || 0,
+  }));
+
+  if (othersPositions.length > 0) {
+    const othersValue = othersPositions.reduce((sum, p) => sum + (p.current_value_eur || 0), 0);
+    data.push({
+      name: "Others",
+      fullName: `${othersPositions.length} other positions`,
+      value: othersValue,
+    });
+  }
+
+  const totalValue = data.reduce((sum, item) => sum + item.value, 0);
+
+  const COLORS = [
+    'hsl(var(--primary))',
+    'hsl(var(--chart-2))',
+    'hsl(var(--chart-3))',
+    'hsl(var(--chart-4))',
+    'hsl(var(--chart-5))',
+    'hsl(var(--accent))',
+    'hsl(var(--muted-foreground))',
+    'hsl(var(--secondary))',
+  ];
+
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      const percentage = (data.value / totalValue) * 100;
+      
+      return (
+        <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
+          <p className="font-semibold text-sm mb-1">{data.name}</p>
+          <p className="text-xs text-muted-foreground mb-2">{data.fullName}</p>
+          <div className="space-y-1 text-xs">
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">Value:</span>
+              <span className="font-medium">{formatCurrency(data.value)}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">Allocation:</span>
+              <span className="font-medium">{formatPercentage(percentage, 1)}</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const renderLabel = (entry: any) => {
+    if (isMobile) {
+      // On mobile, only show percentage for slices > 8%
+      const percentage = (entry.value / totalValue) * 100;
+      return percentage > 8 ? `${percentage.toFixed(0)}%` : '';
+    }
+    // On desktop, show symbol + percentage
+    const percentage = (entry.value / totalValue) * 100;
+    return `${entry.name} ${percentage.toFixed(1)}%`;
+  };
 
   return (
-    <Card className="border-secondary/20 shadow-lg">
+    <Card className="border-primary/20 shadow-lg">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          Asset Allocation
-          <span className="text-xs font-normal text-muted-foreground">
-            Total: €{totalValue.toFixed(2)}
-          </span>
-        </CardTitle>
+        <CardTitle>Asset Allocation</CardTitle>
       </CardHeader>
       <CardContent>
-        {chartData.length === 0 ? (
-          <div className="h-[280px] sm:h-[320px] flex items-center justify-center text-muted-foreground text-sm">
-            No positions available
-          </div>
-        ) : (
-          <ResponsiveContainer width="100%" height={280} className="sm:!h-[320px]">
-            <PieChart>
-              <defs>
-                {chartData.map((_, index) => (
-                  <linearGradient key={`gradient-${index}`} id={`colorGradient${index}`} x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0%" stopColor={COLORS[index % COLORS.length]} stopOpacity={0.9}/>
-                    <stop offset="100%" stopColor={COLORS[index % COLORS.length]} stopOpacity={0.6}/>
-                  </linearGradient>
-                ))}
-              </defs>
-              <Pie
-                data={chartData}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                innerRadius={window.innerWidth < 640 ? 50 : 70}
-                outerRadius={window.innerWidth < 640 ? 80 : 105}
-                paddingAngle={2}
-                label={(props) => {
-                  const { cx, cy, midAngle, innerRadius, outerRadius, name, percent } = props;
-                  const isMobile = window.innerWidth < 640;
-                  const RADIAN = Math.PI / 180;
-                  const radius = outerRadius + (isMobile ? 15 : 25);
-                  const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                  const y = cy + radius * Math.sin(-midAngle * RADIAN);
-                  
-                  return (
-                    <text
-                      x={x}
-                      y={y}
-                      fill="hsl(var(--foreground))"
-                      textAnchor={x > cx ? 'start' : 'end'}
-                      dominantBaseline="central"
-                      className="font-bold text-xs sm:text-sm"
-                      style={{ 
-                        textShadow: '2px 2px 4px hsl(var(--background)), -1px -1px 4px hsl(var(--background))',
-                        paintOrder: 'stroke fill'
-                      }}
-                    >
-                      {isMobile ? `${(percent * 100).toFixed(0)}%` : `${name} ${(percent * 100).toFixed(1)}%`}
-                    </text>
-                  );
-                }}
-              >
-                {chartData.map((_, index) => (
-                  <Cell 
-                    key={`cell-${index}`} 
-                    fill={`url(#colorGradient${index})`}
-                    stroke="hsl(var(--background))"
-                    strokeWidth={2}
-                  />
-                ))}
-              </Pie>
-              <Tooltip 
-                formatter={(value: number) => `€${value.toFixed(2)}`}
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '6px',
-                  color: 'hsl(var(--foreground))',
-                  fontSize: '12px'
-                }}
+        <ResponsiveContainer width="100%" height={isMobile ? 240 : 280} className="sm:!h-[320px]">
+          <PieChart>
+            <defs>
+              {COLORS.map((color, index) => (
+                <linearGradient key={index} id={`gradient${index}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={color} stopOpacity={0.9} />
+                  <stop offset="100%" stopColor={color} stopOpacity={0.7} />
+                </linearGradient>
+              ))}
+            </defs>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              labelLine={!isMobile}
+              label={renderLabel}
+              outerRadius={isMobile ? 70 : 90}
+              innerRadius={isMobile ? 40 : 50}
+              fill="hsl(var(--primary))"
+              dataKey="value"
+              paddingAngle={2}
+            >
+              {data.map((entry, index) => (
+                <Cell 
+                  key={`cell-${index}`} 
+                  fill={`url(#gradient${index % COLORS.length})`}
+                  stroke="hsl(var(--background))"
+                  strokeWidth={2}
+                />
+              ))}
+            </Pie>
+            <Tooltip content={<CustomTooltip />} />
+            {isMobile && (
+              <Legend 
+                layout="horizontal"
+                verticalAlign="bottom"
+                align="center"
+                wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }}
+                iconType="circle"
+                iconSize={8}
               />
-            </PieChart>
-          </ResponsiveContainer>
-        )}
-        {aggregatedPositions.length > 8 && (
-          <p className="text-xs text-muted-foreground text-center mt-3">
-            📊 Showing top 7 positions + Others for clarity
+            )}
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="mt-4 text-center space-y-1">
+          <p className="text-sm text-muted-foreground">
+            Total Portfolio Value: <span className="font-semibold text-foreground">{formatCurrency(totalValue)}</span>
           </p>
-        )}
+          {othersPositions.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              Showing top 7 positions, {othersPositions.length} grouped as "Others"
+            </p>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
