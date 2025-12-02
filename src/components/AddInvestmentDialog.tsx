@@ -18,7 +18,7 @@ import { UpgradeDialog } from "./UpgradeDialog";
 interface AddInvestmentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  onSuccess: () => Promise<void> | void;
 }
 
 const countries = [
@@ -140,16 +140,20 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
         description: `${stockData.name} has been added to your portfolio.`,
       });
 
-      // Reset form first
+      // Close dialog and trigger refresh
+      onOpenChange(false);
+      
+      // Wait for DB to commit, then refresh
+      await new Promise(resolve => setTimeout(resolve, 300));
+      await onSuccess();
+      
+      // Reset form after successful refresh
       setCountry("");
       setSymbol("");
       setAmount("");
       setQuantity("");
       setPurchaseDate(new Date());
       setTag("");
-
-      onOpenChange(false);
-      onSuccess();
     } catch (error) {
       toast({
         variant: "destructive",

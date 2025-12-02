@@ -97,6 +97,8 @@ const Dashboard = () => {
   useEffect(() => {
     const loadInitialData = async () => {
       if (portfolios.length === 0) {
+        setEnrichedPortfolios([]);
+        setAggregatedPositions([]);
         setIsLoadingEnriched(false);
         return;
       }
@@ -125,7 +127,15 @@ const Dashboard = () => {
               dividend_annual_eur: dividend,
             };
           }
-          return portfolio;
+          // No snapshot yet - show original investment values until first refresh
+          return {
+            ...portfolio,
+            current_price_eur: Number(portfolio.original_price_eur),
+            current_value_eur: Number(portfolio.original_investment_eur),
+            gain_loss_eur: 0,
+            gain_loss_percent: 0,
+            dividend_annual_eur: portfolio.manual_dividend_eur ?? 0,
+          };
         })
       );
 
