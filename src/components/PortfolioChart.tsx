@@ -56,28 +56,16 @@ export const PortfolioChart = ({ portfolios }: PortfolioChartProps) => {
         break;
     }
 
-    // Build data points: start with initial investment points, then add snapshots
-    const dataPoints: Record<string, { invested: number; value: number; date: Date }> = {};
-
-    // Calculate cumulative invested BEFORE the start date (for proper baseline)
+    // Track per-portfolio values: start with original investment for portfolios purchased before start
+    const portfolioLastKnownValue = new Map<string, number>();
     let cumulativeInvestedBeforeStart = 0;
+    
     portfolios.forEach(p => {
       const purchaseDate = new Date(p.purchase_date);
       if (purchaseDate < startDate) {
+        // Portfolio existed before chart start - use original investment as baseline
+        portfolioLastKnownValue.set(p.id, Number(p.original_investment_eur));
         cumulativeInvestedBeforeStart += Number(p.original_investment_eur);
-      }
-    });
-
-    // Add initial purchase points (only for purchases within the date range)
-    portfolios.forEach(p => {
-      const purchaseDate = new Date(p.purchase_date);
-      if (purchaseDate >= startDate) {
-        const dateKey = purchaseDate.toISOString().split('T')[0];
-        if (!dataPoints[dateKey]) {
-          dataPoints[dateKey] = { invested: 0, value: 0, date: purchaseDate };
-        }
-        dataPoints[dateKey].invested += Number(p.original_investment_eur);
-        dataPoints[dateKey].value += Number(p.original_investment_eur);
       }
     });
 
@@ -89,82 +77,83 @@ export const PortfolioChart = ({ portfolios }: PortfolioChartProps) => {
       .gte('snapshot_date', startDate.toISOString())
       .order('snapshot_date', { ascending: true });
 
-    if (!snapshots || snapshots.length === 0) {
-      // No snapshot data yet, just show initial investments
-      const data = Object.values(dataPoints)
-        .sort((a, b) => a.date.getTime() - b.date.getTime())
-        .map(point => ({
-          date: point.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: isMobile ? undefined : 'numeric' }),
-          invested: point.invested,
-          value: point.value,
-        }));
-      setChartData(data);
+    // Collect all unique dates: purchase dates (within range) + snapshot dates
+    const allDates = new Set<string>();
+    
+    portfolios.forEach(p => {
+      const purchaseDate = new Date(p.purchase_date);
+      if (purchaseDate >= startDate) {
+        allDates.add(purchaseDate.toISOString().split('T')[0]);
+      }
+    });
+
+    snapshots?.forEach((snap: any) => {
+      allDates.add(new Date(snap.snapshot_date).toISOString().split('T')[0]);
+    });
+
+    if (allDates.size === 0) {
+      // No data points in range
+      setChartData([]);
       setLoading(false);
       return;
     }
 
-    // Build per-day per-portfolio latest values to track current value
-    const snapshotsByDay: Record<string, Record<string, { value: number; date: Date }>> = {};
-    snapshots.forEach((snap: any) => {
+    // Group snapshots by date
+    const snapshotsByDate = new Map<string, Map<string, number>>();
+    snapshots?.forEach((snap: any) => {
       const dateKey = new Date(snap.snapshot_date).toISOString().split('T')[0];
-      if (!snapshotsByDay[dateKey]) snapshotsByDay[dateKey] = {};
-      snapshotsByDay[dateKey][snap.portfolio_id] = {
-        value: Number(snap.current_value_eur),
-        date: new Date(snap.snapshot_date),
-      };
-    });
-
-    // Merge snapshots with investment tracking
-    Object.entries(snapshotsByDay).forEach(([dateKey, perPort]) => {
-      if (!dataPoints[dateKey]) {
-        dataPoints[dateKey] = { invested: 0, value: 0, date: new Date(dateKey) };
+      if (!snapshotsByDate.has(dateKey)) {
+        snapshotsByDate.set(dateKey, new Map());
       }
-      dataPoints[dateKey].value = Object.values(perPort).reduce((sum, p) => sum + p.value, 0);
+      snapshotsByDate.get(dateKey)!.set(snap.portfolio_id, Number(snap.current_value_eur));
     });
 
-    // Calculate cumulative invested amount over time
-    // Start with investments made BEFORE the chart start date
-    let cumulativeInvested = cumulativeInvestedBeforeStart;
-    const sortedDataPoints = Object.values(dataPoints)
-      .sort((a, b) => a.date.getTime() - b.date.getTime());
-
-    // Track which portfolios existed at each date (include those before start)
-    const existingInvestments = new Set<string>();
-    portfolios.forEach(p => {
-      const purchaseDate = new Date(p.purchase_date);
-      if (purchaseDate < startDate) {
-        existingInvestments.add(p.id);
-      }
-    });
-
-    // Track last known value for forward-filling
-    let lastKnownValue = cumulativeInvested;
+    // Sort dates chronologically
+    const sortedDates = Array.from(allDates).sort();
     
-    const data = sortedDataPoints.map(point => {
-      // Add any new investments made on this date
+    // Track cumulative invested
+    let cumulativeInvested = cumulativeInvestedBeforeStart;
+    const existingPortfolios = new Set<string>(
+      portfolios.filter(p => new Date(p.purchase_date) < startDate).map(p => p.id)
+    );
+
+    const data = sortedDates.map(dateKey => {
+      const currentDate = new Date(dateKey);
+      
+      // Add new investments made on this date
       portfolios.forEach(p => {
-        const purchaseDate = new Date(p.purchase_date).toISOString().split('T')[0];
-        const pointDate = point.date.toISOString().split('T')[0];
-        if (purchaseDate === pointDate && !existingInvestments.has(p.id)) {
+        const purchaseDateKey = new Date(p.purchase_date).toISOString().split('T')[0];
+        if (purchaseDateKey === dateKey && !existingPortfolios.has(p.id)) {
           cumulativeInvested += Number(p.original_investment_eur);
-          existingInvestments.add(p.id);
+          existingPortfolios.add(p.id);
+          // Initialize portfolio value with original investment
+          portfolioLastKnownValue.set(p.id, Number(p.original_investment_eur));
         }
       });
 
-      // Use snapshot value if available, otherwise use last known value or cumulative invested
-      const currentValue = point.value > 0 ? point.value : lastKnownValue;
-      if (point.value > 0) {
-        lastKnownValue = point.value;
+      // Update portfolio values from snapshots if available
+      const daySnapshots = snapshotsByDate.get(dateKey);
+      if (daySnapshots) {
+        daySnapshots.forEach((value, portfolioId) => {
+          portfolioLastKnownValue.set(portfolioId, value);
+        });
       }
 
+      // Sum ALL portfolio's latest known values for this date
+      let totalValue = 0;
+      existingPortfolios.forEach(portfolioId => {
+        const value = portfolioLastKnownValue.get(portfolioId) || 0;
+        totalValue += value;
+      });
+
       return {
-        date: point.date.toLocaleDateString('en-US', { 
+        date: currentDate.toLocaleDateString('en-US', { 
           month: 'short', 
           day: isMobile ? undefined : 'numeric',
           year: isMobile ? undefined : '2-digit'
         }),
         invested: cumulativeInvested,
-        value: currentValue,
+        value: totalValue,
       };
     });
 
