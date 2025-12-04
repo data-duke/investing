@@ -197,16 +197,25 @@ const Dashboard = () => {
   };
 
   const refreshPrices = async () => {
-    if (portfolios.length === 0) return;
-
     setIsRefreshing(true);
+
+    // CRITICAL: Fetch fresh data directly from DB to avoid using stale hook state
+    const { data: freshPortfolios, error } = await supabase
+      .from('portfolios')
+      .select('*')
+      .eq('user_id', user?.id);
+
+    if (error || !freshPortfolios || freshPortfolios.length === 0) {
+      console.error('Failed to fetch fresh portfolios:', error);
+      setIsRefreshing(false);
+      return;
+    }
+
     const updated: Portfolio[] = [];
-
-
     let successCount = 0;
     let failCount = 0;
 
-    for (const portfolio of portfolios) {
+    for (const portfolio of freshPortfolios) {
       try {
         let stockData;
         let dataSource = 'api';

@@ -232,14 +232,30 @@ async function fetchFromStooq(symbol: string) {
     return price;
   };
 
-  try {
-    const price = await tryOnce(symbol.toLowerCase());
-    return { currentPrice: price, name: symbol, dividend: 0, source: 'Stooq' };
-  } catch (_) {
-    const alt = `${symbol.toLowerCase()}.us`;
-    const price = await tryOnce(alt);
-    return { currentPrice: price, name: symbol, dividend: 0, source: 'Stooq' };
+  // Build list of symbol variants to try (handles symbols like BRK-B, BRK.B)
+  const symbolVariants = [
+    symbol.toLowerCase(),
+    `${symbol.toLowerCase()}.us`,
+    symbol.replace('-', '.').toLowerCase(), // BRK-B -> brk.b
+    `${symbol.replace('-', '.').toLowerCase()}.us`, // brk.b.us
+    symbol.replace('.', '-').toLowerCase(), // BRK.B -> brk-b
+    `${symbol.replace('.', '-').toLowerCase()}.us`, // brk-b.us
+  ];
+  
+  // Remove duplicates
+  const uniqueVariants = [...new Set(symbolVariants)];
+
+  for (const variant of uniqueVariants) {
+    try {
+      const price = await tryOnce(variant);
+      console.log(`✓ Stooq success with variant: ${variant}`);
+      return { currentPrice: price, name: symbol, dividend: 0, source: 'Stooq' };
+    } catch (_) {
+      continue;
+    }
   }
+  
+  throw new Error(`Stooq: No valid price found for ${symbol} (tried: ${uniqueVariants.join(', ')})`);
 }
 
 serve(async (req) => {
