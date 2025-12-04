@@ -59,7 +59,16 @@ export const PortfolioChart = ({ portfolios }: PortfolioChartProps) => {
     // Build data points: start with initial investment points, then add snapshots
     const dataPoints: Record<string, { invested: number; value: number; date: Date }> = {};
 
-    // Add initial purchase points
+    // Calculate cumulative invested BEFORE the start date (for proper baseline)
+    let cumulativeInvestedBeforeStart = 0;
+    portfolios.forEach(p => {
+      const purchaseDate = new Date(p.purchase_date);
+      if (purchaseDate < startDate) {
+        cumulativeInvestedBeforeStart += Number(p.original_investment_eur);
+      }
+    });
+
+    // Add initial purchase points (only for purchases within the date range)
     portfolios.forEach(p => {
       const purchaseDate = new Date(p.purchase_date);
       if (purchaseDate >= startDate) {
@@ -114,12 +123,22 @@ export const PortfolioChart = ({ portfolios }: PortfolioChartProps) => {
     });
 
     // Calculate cumulative invested amount over time
-    let cumulativeInvested = 0;
+    // Start with investments made BEFORE the chart start date
+    let cumulativeInvested = cumulativeInvestedBeforeStart;
     const sortedDataPoints = Object.values(dataPoints)
       .sort((a, b) => a.date.getTime() - b.date.getTime());
 
-    // Track which portfolios existed at each date
+    // Track which portfolios existed at each date (include those before start)
     const existingInvestments = new Set<string>();
+    portfolios.forEach(p => {
+      const purchaseDate = new Date(p.purchase_date);
+      if (purchaseDate < startDate) {
+        existingInvestments.add(p.id);
+      }
+    });
+
+    // Track last known value for forward-filling
+    let lastKnownValue = cumulativeInvested;
     
     const data = sortedDataPoints.map(point => {
       // Add any new investments made on this date
@@ -132,6 +151,12 @@ export const PortfolioChart = ({ portfolios }: PortfolioChartProps) => {
         }
       });
 
+      // Use snapshot value if available, otherwise use last known value or cumulative invested
+      const currentValue = point.value > 0 ? point.value : lastKnownValue;
+      if (point.value > 0) {
+        lastKnownValue = point.value;
+      }
+
       return {
         date: point.date.toLocaleDateString('en-US', { 
           month: 'short', 
@@ -139,7 +164,7 @@ export const PortfolioChart = ({ portfolios }: PortfolioChartProps) => {
           year: isMobile ? undefined : '2-digit'
         }),
         invested: cumulativeInvested,
-        value: point.value || cumulativeInvested,
+        value: currentValue,
       };
     });
 

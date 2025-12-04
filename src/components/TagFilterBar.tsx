@@ -37,13 +37,13 @@ export const TagFilterBar = ({
         ))}
         {selectedTags.length > 0 && (
           <Button
-            variant="ghost"
+            variant="destructive"
             size="sm"
             onClick={onClearAll}
-            className="h-6 px-2 text-xs"
+            className="h-7 px-3 text-xs font-medium"
           >
             <X className="h-3 w-3 mr-1" />
-            Clear filters
+            Reset ({selectedTags.length})
           </Button>
         )}
       </div>
