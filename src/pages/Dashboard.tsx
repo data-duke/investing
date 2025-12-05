@@ -37,7 +37,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { portfolios, loading, fetchPortfolios } = usePortfolio();
-  const { subscribed, refresh: refreshSubscription } = useSubscription();
+  const { subscribed, isOverride, refresh: refreshSubscription } = useSubscription();
   const [enrichedPortfolios, setEnrichedPortfolios] = useState<Portfolio[]>([]);
   const [aggregatedPositions, setAggregatedPositions] = useState<AggregatedPosition[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -402,6 +402,27 @@ const Dashboard = () => {
               >
                 <Crown className="h-4 w-4 mr-2" />
                 Upgrade
+              </Button>
+            )}
+            {subscribed && !isOverride && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  const { data, error } = await supabase.functions.invoke('customer-portal');
+                  if (error) {
+                    toast({
+                      title: "Error", 
+                      description: "Could not open subscription portal.",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  if (data?.url) window.open(data.url, '_blank');
+                }}
+                className="hidden sm:flex"
+              >
+                Manage Subscription
               </Button>
             )}
             <span className="text-sm text-muted-foreground">{user?.email}</span>
