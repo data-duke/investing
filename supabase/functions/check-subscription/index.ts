@@ -7,9 +7,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const logStep = (step: string, details?: any) => {
-  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
-  console.log(`[CHECK-SUBSCRIPTION] ${step}${detailsStr}`);
+const logStep = (step: string) => {
+  // Security: Avoid logging sensitive details like emails, user IDs, customer IDs
+  console.log(`[check-subscription] ${step}`);
 };
 
 serve(async (req) => {
@@ -27,8 +27,8 @@ serve(async (req) => {
     logStep("Function started");
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
-    logStep("Stripe key verified");
+    if (!stripeKey) throw new Error("Missing required configuration");
+    logStep("Configuration verified");
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
@@ -38,14 +38,13 @@ serve(async (req) => {
         status: 200,
       });
     }
-    logStep("Authorization header found");
 
     const token = authHeader.replace("Bearer ", "");
-    logStep("Authenticating user with token");
+    logStep("Authenticating user");
     
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
     if (userError) {
-      logStep("Auth error - returning unsubscribed gracefully", { error: userError.message });
+      logStep("Auth error - returning unsubscribed");
       return new Response(JSON.stringify({ subscribed: false, auth_error: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -59,7 +58,7 @@ serve(async (req) => {
         status: 200,
       });
     }
-    logStep("User authenticated", { userId: user.id, email: user.email });
+    logStep("User authenticated");
 
     // Check for database override first
     const { data: override } = await supabaseClient
@@ -79,13 +78,13 @@ serve(async (req) => {
         status: 200,
       });
     }
-    logStep("No database override, checking Stripe");
+    logStep("Checking subscription status");
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     
     if (customers.data.length === 0) {
-      logStep("No customer found, user is not subscribed");
+      logStep("User is not subscribed");
       return new Response(JSON.stringify({ subscribed: false }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -93,7 +92,7 @@ serve(async (req) => {
     }
 
     const customerId = customers.data[0].id;
-    logStep("Found Stripe customer", { customerId });
+    logStep("Found customer record");
 
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
@@ -113,11 +112,10 @@ serve(async (req) => {
       if (typeof periodEnd === 'number' && Number.isFinite(periodEnd)) {
         subscriptionEnd = new Date(periodEnd * 1000).toISOString();
       }
-      logStep("Active subscription found", { subscriptionId: activeSub.id, endDate: subscriptionEnd });
+      logStep("Active subscription found");
       const firstItem = activeSub.items?.data?.[0];
       const price = firstItem?.price;
       productId = typeof price?.product === 'string' ? price.product : null;
-      logStep("Determined subscription product", { productId });
     } else {
       logStep("No active subscription found");
     }
@@ -131,10 +129,9 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR in check-subscription", { message: errorMessage });
-    // Return graceful fallback instead of 500
-    return new Response(JSON.stringify({ subscribed: false, error: errorMessage }), {
+    logStep("Subscription check failed");
+    // Return graceful fallback instead of exposing error details
+    return new Response(JSON.stringify({ subscribed: false }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
