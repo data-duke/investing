@@ -46,9 +46,9 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Scraping error:', error);
+    console.error('Stock data scraping failed');
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Failed to scrape stock data' }),
+      JSON.stringify({ error: 'Failed to fetch stock data. Please try again.' }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -139,8 +139,8 @@ async function scrapeYahooFinance(symbol: string): Promise<ScrapedStockData> {
       source: 'yahoo_scrape'
     };
   } catch (error) {
-    console.error(`Yahoo Finance scraping failed for ${symbol}:`, error);
-    throw error;
+    console.error('Yahoo Finance scraping failed');
+    throw new Error('Failed to fetch stock data');
   }
 }
 

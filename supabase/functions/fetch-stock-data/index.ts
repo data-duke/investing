@@ -25,10 +25,10 @@ async function fetchJSON(url: string, logError = true) {
   });
   if (!res.ok) {
     if (logError) {
-      const body = await res.text().catch(() => 'Unable to read body');
-      console.error(`HTTP ${res.status} for ${url.split('?')[0]}: ${body.substring(0, 200)}`);
+      // Avoid logging response body which may contain sensitive API messages
+      console.error(`HTTP ${res.status} for external API request`);
     }
-    throw new Error(`${url.split('?')[0]} -> ${res.status}`);
+    throw new Error(`External API request failed with status ${res.status}`);
   }
   return res.json();
 }
@@ -49,13 +49,13 @@ async function fetchExchangeRate(): Promise<number> {
 
 async function fetchAlphaJSON(url: string) {
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`Alpha Vantage HTTP ${res.status}`);
+  if (!res.ok) throw new Error('External API request failed');
   const data = await res.json();
   
-  // Check for API errors or rate limits
-  if (data['Note']) throw new Error(`Alpha Vantage rate limit: ${data['Note']}`);
-  if (data['Information']) throw new Error(`Alpha Vantage info: ${data['Information']}`);
-  if (data['Error Message']) throw new Error(`Alpha Vantage error: ${data['Error Message']}`);
+  // Check for API errors or rate limits (don't expose specific messages)
+  if (data['Note'] || data['Information'] || data['Error Message']) {
+    throw new Error('External API rate limit or error');
+  }
   
   return data;
 }
@@ -282,7 +282,7 @@ serve(async (req) => {
 
     const cleanSymbol = trimmedSymbol.toUpperCase();
 
-    console.log(`\n=== Fetching ${cleanSymbol} (FMP key: ${FMP_API_KEY ? 'present' : 'absent'}) ===`);
+    console.log(`Fetching stock data for ${cleanSymbol}`);
 
     let currentPriceUSD = 0;
     let name = cleanSymbol;
@@ -362,9 +362,9 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Error in fetch-stock-data function:', error);
+    console.error('Stock data fetch failed');
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Failed to fetch stock data' }),
+      JSON.stringify({ error: 'Failed to fetch stock data. Please try again.' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

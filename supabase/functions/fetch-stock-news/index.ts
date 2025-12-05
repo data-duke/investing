@@ -71,10 +71,10 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('Error in fetch-stock-news:', error);
+    console.error('News fetch failed');
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: 'Failed to fetch news. Please try again.',
         articles: []
       }), {
       status: 500,
