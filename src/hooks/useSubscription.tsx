@@ -7,6 +7,7 @@ interface SubscriptionStatus {
   product_id?: string;
   subscription_end?: string;
   loading: boolean;
+  isOverride: boolean; // true if subscription is via database override, not Stripe
 }
 
 export const useSubscription = () => {
@@ -14,13 +15,14 @@ export const useSubscription = () => {
   const [status, setStatus] = useState<SubscriptionStatus>({
     subscribed: false,
     loading: true,
+    isOverride: false,
   });
   const retryCount = useRef(0);
   const maxRetries = 3;
 
   const checkSubscription = useCallback(async () => {
     if (!user) {
-      setStatus({ subscribed: false, loading: false });
+      setStatus({ subscribed: false, loading: false, isOverride: false });
       retryCount.current = 0;
       return;
     }
@@ -39,7 +41,7 @@ export const useSubscription = () => {
           return;
         }
         // After max retries, assume not subscribed
-        setStatus({ subscribed: false, loading: false });
+        setStatus({ subscribed: false, loading: false, isOverride: false });
         return;
       }
 
@@ -49,6 +51,7 @@ export const useSubscription = () => {
         product_id: data.product_id,
         subscription_end: data.subscription_end,
         loading: false,
+        isOverride: data.product_id === 'override',
       });
     } catch (error) {
       console.error('Error checking subscription:', error);
@@ -59,7 +62,7 @@ export const useSubscription = () => {
         setTimeout(() => checkSubscription(), delay);
         return;
       }
-      setStatus({ subscribed: false, loading: false });
+      setStatus({ subscribed: false, loading: false, isOverride: false });
     }
   }, [user]);
 
