@@ -387,26 +387,21 @@ const Dashboard = () => {
                 variant="outline"
                 size="sm"
                 onClick={async () => {
-                  const { data } = await supabase.functions.invoke('customer-portal');
+                  const { data, error } = await supabase.functions.invoke('create-checkout');
+                  if (error) {
+                    toast({
+                      title: "Error",
+                      description: "Could not start checkout. Please try again.",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
                   if (data?.url) window.open(data.url, '_blank');
                 }}
                 className="hidden sm:flex"
               >
                 <Crown className="h-4 w-4 mr-2" />
                 Upgrade
-              </Button>
-            )}
-            {subscribed && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  const { data } = await supabase.functions.invoke('customer-portal');
-                  if (data?.url) window.open(data.url, '_blank');
-                }}
-                className="hidden sm:flex"
-              >
-                Manage Subscription
               </Button>
             )}
             <span className="text-sm text-muted-foreground">{user?.email}</span>

@@ -45,11 +45,15 @@ export const useAuth = () => {
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (!error) {
-      navigate('/login');
+    // Always attempt sign out - catch errors to prevent blocking
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.log('Sign out API call failed, clearing local state anyway');
     }
-    return { error };
+    // Always navigate to login regardless of API response
+    navigate('/login');
+    return { error: null };
   };
 
   return { user, session, loading, signUp, signIn, signOut };
