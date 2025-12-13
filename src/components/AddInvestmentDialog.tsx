@@ -123,7 +123,7 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
       // Generate auto tag if no custom tag provided
       const autoTag = purchaseDate.toISOString().split('T')[0];
       
-      await addInvestment({
+      const result = await addInvestment({
         symbol: symbol.toUpperCase(),
         name: stockData.name,
         country,
@@ -134,6 +134,11 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
         tag: tag.trim() || undefined,
         auto_tag_date: tag.trim() ? undefined : autoTag,
       });
+
+      // Check if addInvestment returned an error
+      if (result?.error) {
+        throw result.error;
+      }
 
       toast({
         title: "Investment added",

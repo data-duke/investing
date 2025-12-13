@@ -245,53 +245,53 @@ export const SortableHoldingsTable = ({ portfolios, aggregatedPositions, onRefre
                     </TableRow>
                     {isExpanded && (
                       <TableRow>
-                        <TableCell colSpan={10} className="bg-muted/30 p-6">
-                          <div className="space-y-6">
-                            {/* Summary Cards */}
-                            <div className="grid md:grid-cols-2 gap-6">
+                        <TableCell colSpan={10} className="bg-muted/30 p-4 sm:p-6">
+                          <div className="space-y-4 sm:space-y-6">
+                            {/* Summary Cards - Mobile Optimized */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                               <Card>
-                                <CardHeader>
+                                <CardHeader className="pb-2 sm:pb-4">
                                   <CardTitle className="text-sm">Position Summary</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-2 text-sm">
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Total Shares:</span>
+                                  <div className="flex flex-col xs:flex-row xs:justify-between gap-0.5">
+                                    <span className="text-muted-foreground text-xs sm:text-sm">Total Shares:</span>
                                     <span className="font-semibold">{formatNumber(position.totalQuantity)}</span>
                                   </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Avg Purchase Price:</span>
+                                  <div className="flex flex-col xs:flex-row xs:justify-between gap-0.5">
+                                    <span className="text-muted-foreground text-xs sm:text-sm">Avg Purchase Price:</span>
                                     <span>{formatCurrency(position.avgOriginalPrice)}</span>
                                   </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Total Invested:</span>
+                                  <div className="flex flex-col xs:flex-row xs:justify-between gap-0.5">
+                                    <span className="text-muted-foreground text-xs sm:text-sm">Total Invested:</span>
                                     <span>{formatCurrency(position.totalOriginalInvestment)}</span>
                                   </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Number of Lots:</span>
+                                  <div className="flex flex-col xs:flex-row xs:justify-between gap-0.5">
+                                    <span className="text-muted-foreground text-xs sm:text-sm">Number of Lots:</span>
                                     <span>{position.lots.length}</span>
                                   </div>
                                 </CardContent>
                               </Card>
 
                               <Card>
-                                <CardHeader>
+                                <CardHeader className="pb-2 sm:pb-4">
                                   <CardTitle className="text-sm">Dividends & Returns</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-2 text-sm">
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Annual Dividend (Net):</span>
+                                  <div className="flex flex-col xs:flex-row xs:justify-between gap-0.5">
+                                    <span className="text-muted-foreground text-xs sm:text-sm">Annual Dividend:</span>
                                     <span className="font-semibold">
                                       {position.dividend_annual_eur ? formatCurrency(position.dividend_annual_eur) : 'N/A'}
                                     </span>
                                   </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Total Return:</span>
+                                  <div className="flex flex-col xs:flex-row xs:justify-between gap-0.5">
+                                    <span className="text-muted-foreground text-xs sm:text-sm">Total Return:</span>
                                     <span className={position.gain_loss_eur && position.gain_loss_eur >= 0 ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}>
                                       {position.gain_loss_eur ? formatCurrency(position.gain_loss_eur) : 'N/A'}
                                     </span>
                                   </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Return %:</span>
+                                  <div className="flex flex-col xs:flex-row xs:justify-between gap-0.5">
+                                    <span className="text-muted-foreground text-xs sm:text-sm">Return %:</span>
                                     <span className={position.gain_loss_percent && position.gain_loss_percent >= 0 ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}>
                                       {position.gain_loss_percent ? formatPercentage(position.gain_loss_percent) : 'N/A'}
                                     </span>
