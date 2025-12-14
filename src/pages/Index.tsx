@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { InvestmentForm } from "@/components/InvestmentForm";
 import { AnalysisTable } from "@/components/AnalysisTable";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import { TrendingUp } from "lucide-react";
 import { fetchStockData } from "@/services/stockApi";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export interface AnalysisData {
   currentPrice: number;
@@ -42,6 +44,7 @@ const countries = {
 };
 
 const Index = () => {
+  const { t } = useTranslation();
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const [positionName, setPositionName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -70,8 +73,8 @@ const Index = () => {
         // Both provided - use quantity and recalculate amount
         finalAmount = inputQuantity * stockData.currentPrice;
         toast({
-          title: "Note",
-          description: "Both amount and quantity provided. Using quantity to calculate investment amount.",
+          title: t('common.note'),
+          description: t('toast.bothAmountAndQuantity'),
         });
       }
       
@@ -90,12 +93,12 @@ const Index = () => {
       });
       
       toast({
-        title: "Data fetched successfully",
-        description: `Retrieved data for ${stockData.name}`,
+        title: t('form.dataFetched'),
+        description: t('form.retrievedDataFor', { name: stockData.name }),
       });
     } catch (error) {
       toast({
-        title: "Error",
+        title: t('common.error'),
         description: error instanceof Error ? error.message : "Failed to fetch stock data",
         variant: "destructive",
       });
@@ -168,29 +171,30 @@ const Index = () => {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center justify-center gap-3 flex-1">
               <TrendingUp className="h-10 w-10 text-primary" />
-              <h1 className="text-4xl font-bold text-foreground">Investing Lovable</h1>
+              <h1 className="text-4xl font-bold text-foreground">{t('home.title')}</h1>
             </div>
-            {user && (
-              <Button 
-                variant="outline" 
-                onClick={() => navigate('/dashboard')}
-                className="ml-4"
-              >
-                Go to Portfolio
-              </Button>
-            )}
-            {!user && (
-              <Button 
-                variant="ghost" 
-                onClick={() => navigate('/login')}
-                className="ml-4"
-              >
-                Login
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              <LanguageSwitcher />
+              {user && (
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate('/dashboard')}
+                >
+                  {t('nav.goToPortfolio')}
+                </Button>
+              )}
+              {!user && (
+                <Button 
+                  variant="ghost" 
+                  onClick={() => navigate('/login')}
+                >
+                  {t('nav.login')}
+                </Button>
+              )}
+            </div>
           </div>
           <p className="text-muted-foreground text-lg text-center">
-            Make informed investment decisions with comprehensive cost-benefit analysis
+            {t('home.tagline')}
           </p>
         </div>
 

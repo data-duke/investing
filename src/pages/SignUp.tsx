@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,8 +8,10 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { usePortfolio } from "@/hooks/usePortfolio";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 const SignUp = () => {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -44,8 +47,8 @@ const SignUp = () => {
             sessionStorage.removeItem('pendingInvestment');
             
             toast({
-              title: "Investment saved!",
-              description: "Your investment has been added to your portfolio.",
+              title: t('toast.investmentSaved'),
+              description: t('toast.investmentAddedToPortfolio'),
             });
             
             // Navigate with the new investment ID for highlighting
@@ -56,7 +59,7 @@ const SignUp = () => {
         navigate("/");
       }
     }
-  }, [user, navigate, addInvestment, toast]);
+  }, [user, navigate, addInvestment, toast, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,8 +69,8 @@ const SignUp = () => {
     if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail) || trimmedEmail.length > 255) {
       toast({
         variant: "destructive",
-        title: "Invalid Email",
-        description: "Please enter a valid email address (max 255 characters).",
+        title: t('auth.invalidEmail'),
+        description: t('auth.invalidEmailDesc'),
       });
       return;
     }
@@ -75,8 +78,8 @@ const SignUp = () => {
     if (password !== confirmPassword) {
       toast({
         variant: "destructive",
-        title: "Passwords don't match",
-        description: "Please make sure your passwords match.",
+        title: t('auth.passwordsDontMatch'),
+        description: t('auth.passwordsDontMatchDesc'),
       });
       return;
     }
@@ -84,8 +87,8 @@ const SignUp = () => {
     if (password.length < 8) {
       toast({
         variant: "destructive",
-        title: "Password too short",
-        description: "Password must be at least 8 characters long.",
+        title: t('auth.passwordTooShort'),
+        description: t('auth.passwordTooShortDesc'),
       });
       return;
     }
@@ -93,8 +96,8 @@ const SignUp = () => {
     if (password.length > 72) {
       toast({
         variant: "destructive",
-        title: "Password too long",
-        description: "Password must be 72 characters or less.",
+        title: t('auth.passwordTooLong'),
+        description: t('auth.passwordTooLongDesc'),
       });
       return;
     }
@@ -102,8 +105,8 @@ const SignUp = () => {
     if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
       toast({
         variant: "destructive",
-        title: "Weak password",
-        description: "Password must contain uppercase, lowercase, and a number.",
+        title: t('auth.weakPassword'),
+        description: t('auth.weakPasswordDesc'),
       });
       return;
     }
@@ -115,13 +118,13 @@ const SignUp = () => {
     if (error) {
       toast({
         variant: "destructive",
-        title: "Sign up failed",
+        title: t('auth.signUpFailed'),
         description: error.message,
       });
     } else {
       toast({
-        title: "Account created!",
-        description: "Welcome to your portfolio tracker.",
+        title: t('auth.accountCreated'),
+        description: t('auth.welcomeToTracker'),
       });
       navigate("/");
     }
@@ -131,57 +134,60 @@ const SignUp = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="absolute top-4 right-4">
+        <LanguageSwitcher />
+      </div>
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Create Account</CardTitle>
-          <CardDescription>Start tracking your investments</CardDescription>
+          <CardTitle>{t('auth.createAccount')}</CardTitle>
+          <CardDescription>{t('auth.signUpDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t('auth.email')}</Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
+                placeholder={t('auth.emailPlaceholder')}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t('auth.password')}</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder={t('auth.passwordPlaceholder')}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Label htmlFor="confirmPassword">{t('auth.confirmPassword')}</Label>
               <Input
                 id="confirmPassword"
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder={t('auth.passwordPlaceholder')}
                 required
               />
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Creating account..." : "Sign Up"}
+              {isLoading ? t('auth.creatingAccount') : t('auth.signUp')}
             </Button>
             <div className="text-center text-sm text-muted-foreground">
-              Already have an account?{" "}
+              {t('auth.hasAccount')}{" "}
               <Button
                 variant="link"
                 className="p-0 h-auto"
                 onClick={() => navigate("/login")}
               >
-                Sign in
+                {t('auth.signIn')}
               </Button>
             </div>
           </form>

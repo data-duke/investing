@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,8 +8,10 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { usePortfolio } from "@/hooks/usePortfolio";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 const Login = () => {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -43,8 +46,8 @@ const Login = () => {
             sessionStorage.removeItem('pendingInvestment');
             
             toast({
-              title: "Investment saved!",
-              description: "Your investment has been added to your portfolio.",
+              title: t('toast.investmentSaved'),
+              description: t('toast.investmentAddedToPortfolio'),
             });
             
             // Navigate with the new investment ID for highlighting
@@ -55,7 +58,7 @@ const Login = () => {
         navigate("/");
       }
     }
-  }, [user, navigate, addInvestment, toast]);
+  }, [user, navigate, addInvestment, toast, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,8 +68,8 @@ const Login = () => {
     if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       toast({
         variant: "destructive",
-        title: "Invalid Email",
-        description: "Please enter a valid email address.",
+        title: t('auth.invalidEmail'),
+        description: t('auth.invalidEmailDesc'),
       });
       return;
     }
@@ -74,8 +77,8 @@ const Login = () => {
     if (!password) {
       toast({
         variant: "destructive",
-        title: "Missing Password",
-        description: "Please enter your password.",
+        title: t('auth.missingPassword'),
+        description: t('auth.missingPasswordDesc'),
       });
       return;
     }
@@ -87,13 +90,13 @@ const Login = () => {
     if (error) {
       toast({
         variant: "destructive",
-        title: "Login failed",
+        title: t('auth.loginFailed'),
         description: error.message,
       });
     } else {
       toast({
-        title: "Welcome back!",
-        description: "Successfully logged in.",
+        title: t('auth.welcomeBack'),
+        description: t('auth.successfulLogin'),
       });
       navigate("/");
     }
@@ -103,46 +106,49 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="absolute top-4 right-4">
+        <LanguageSwitcher />
+      </div>
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Login</CardTitle>
-          <CardDescription>Sign in to your portfolio tracker</CardDescription>
+          <CardTitle>{t('auth.login')}</CardTitle>
+          <CardDescription>{t('auth.signInDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t('auth.email')}</Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
+                placeholder={t('auth.emailPlaceholder')}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t('auth.password')}</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder={t('auth.passwordPlaceholder')}
                 required
               />
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Signing in..." : "Sign In"}
+              {isLoading ? t('auth.signingIn') : t('auth.signIn')}
             </Button>
             <div className="text-center text-sm text-muted-foreground">
-              Don't have an account?{" "}
+              {t('auth.noAccount')}{" "}
               <Button
                 variant="link"
                 className="p-0 h-auto"
                 onClick={() => navigate("/signup")}
               >
-                Sign up
+                {t('nav.signup')}
               </Button>
             </div>
           </form>
