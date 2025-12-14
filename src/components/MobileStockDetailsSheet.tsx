@@ -2,7 +2,7 @@ import { Portfolio } from "@/hooks/usePortfolio";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2, X } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { StockNewsSection } from "./StockNewsSection";
 import { formatCurrency, formatNumber, formatPercentage } from "@/lib/formatters";
 import {
@@ -10,6 +10,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
+  SheetDescription,
 } from "@/components/ui/sheet";
 
 interface AggregatedPosition {
@@ -33,7 +34,7 @@ interface MobileStockDetailsSheetProps {
   onOpenChange: (open: boolean) => void;
   onEdit: (portfolio: Portfolio) => void;
   onDelete: (id: string) => void;
-  onSetDividend: (portfolio: Portfolio) => void;
+  onSetDividend: (position: AggregatedPosition) => void;
 }
 
 export const MobileStockDetailsSheet = ({
@@ -50,15 +51,8 @@ export const MobileStockDetailsSheet = ({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="h-[85vh] overflow-y-auto rounded-t-xl">
         <SheetHeader className="pb-4 border-b">
-          <div className="flex items-center justify-between">
-            <SheetTitle className="text-left">
-              <div className="font-bold text-lg">{position.symbol}</div>
-              <div className="text-sm text-muted-foreground font-normal">{position.name}</div>
-            </SheetTitle>
-            <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)}>
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
+          <SheetTitle className="text-lg">{position.symbol}</SheetTitle>
+          <SheetDescription>{position.name}</SheetDescription>
         </SheetHeader>
 
         <div className="space-y-4 py-4">
@@ -129,7 +123,7 @@ export const MobileStockDetailsSheet = ({
                 variant="outline"
                 size="sm"
                 className="w-full mt-2"
-                onClick={() => onSetDividend(position.lots[0])}
+                onClick={() => onSetDividend(position)}
               >
                 Set Manual Dividend
               </Button>

@@ -16,17 +16,19 @@ import { usePortfolio } from "@/hooks/usePortfolio";
 interface ManualDividendDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  portfolioId: string;
+  portfolioIds: string[];
   symbol: string;
   currentDividend?: number;
+  onSuccess?: () => void;
 }
 
 export const ManualDividendDialog = ({
   open,
   onOpenChange,
-  portfolioId,
+  portfolioIds,
   symbol,
   currentDividend,
+  onSuccess,
 }: ManualDividendDialogProps) => {
   const [dividend, setDividend] = useState(currentDividend?.toString() || "");
   const [isLoading, setIsLoading] = useState(false);
@@ -47,20 +49,28 @@ export const ManualDividendDialog = ({
     }
 
     setIsLoading(true);
-    const { error } = await updateInvestment(portfolioId, {
-      manual_dividend_eur: dividendValue,
-    });
+    
+    // Update all lots with the same symbol
+    let hasError = false;
+    for (const id of portfolioIds) {
+      const { error } = await updateInvestment(id, {
+        manual_dividend_eur: dividendValue,
+      });
+      if (error) {
+        hasError = true;
+        break;
+      }
+    }
 
     setIsLoading(false);
 
-    if (!error) {
+    if (!hasError) {
       toast({
         title: "Dividend updated",
         description: `Annual dividend per share for ${symbol} set to €${dividendValue.toFixed(2)}`,
       });
       onOpenChange(false);
-      // Trigger page refresh to show updated data immediately
-      window.location.reload();
+      onSuccess?.();
     }
   };
 
