@@ -54,7 +54,7 @@ export const SortableHoldingsTable = ({ portfolios, aggregatedPositions, onRefre
   const [mobileSheetPosition, setMobileSheetPosition] = useState<AggregatedPosition | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editPortfolio, setEditPortfolio] = useState<Portfolio | null>(null);
-  const [manualDivDialog, setManualDivDialog] = useState<{ open: boolean; portfolio: Portfolio | null }>({ open: false, portfolio: null });
+  const [manualDivDialog, setManualDivDialog] = useState<{ open: boolean; position: AggregatedPosition | null }>({ open: false, position: null });
   const [sortField, setSortField] = useState<SortField>('symbol');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const { deleteInvestment } = usePortfolio();
@@ -153,23 +153,65 @@ export const SortableHoldingsTable = ({ portfolios, aggregatedPositions, onRefre
         <CardHeader>
           <CardTitle>Holdings</CardTitle>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead><SortButton field="symbol">Stock</SortButton></TableHead>
-                <TableHead className="text-right">Tag</TableHead>
-                <TableHead className="text-right"><SortButton field="quantity">Qty</SortButton></TableHead>
-                <TableHead className="text-right"><SortButton field="avgPrice">Avg Price</SortButton></TableHead>
-                <TableHead className="text-right"><SortButton field="currentPrice">Current Price</SortButton></TableHead>
-                <TableHead className="text-right"><SortButton field="value">Value</SortButton></TableHead>
-                <TableHead className="text-right"><SortButton field="gain">Gain/Loss</SortButton></TableHead>
-                <TableHead className="text-right"><SortButton field="dividend">Dividend</SortButton></TableHead>
-                <TableHead className="text-right"><SortButton field="weight">Weight</SortButton></TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+        <CardContent>
+          {/* Mobile: Card-based list */}
+          {isMobile ? (
+            <div className="space-y-3">
+              {sortedPositions.map((position) => {
+                const weight = totalValue > 0 
+                  ? ((position.current_value_eur || 0) / totalValue * 100)
+                  : 0;
+                return (
+                  <div
+                    key={position.symbol}
+                    id={`investment-${position.lots[0]?.id}`}
+                    className={`p-4 bg-muted/30 rounded-lg cursor-pointer active:bg-muted/50 transition-colors ${
+                      highlightedId === position.lots[0]?.id ? 'animate-pulse bg-primary/20' : ''
+                    }`}
+                    onClick={() => setMobileSheetPosition(position)}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <div className="font-semibold">{position.symbol}</div>
+                        <div className="text-xs text-muted-foreground truncate max-w-[150px]">{position.name}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-medium">{formatCurrency(position.current_value_eur || 0)}</div>
+                        <div className={`text-xs ${position.gain_loss_percent && position.gain_loss_percent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {position.gain_loss_percent ? formatPercentage(position.gain_loss_percent) : '-'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center text-xs text-muted-foreground">
+                      <span>{formatNumber(position.totalQuantity)} shares</span>
+                      <span>{formatNumber(weight, 1)}% of portfolio</span>
+                    </div>
+                    {position.lots.length > 1 && (
+                      <Badge variant="outline" className="mt-2 text-xs">{position.lots.length} lots</Badge>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* Desktop: Table view */
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead><SortButton field="symbol">Stock</SortButton></TableHead>
+                    <TableHead className="text-right">Tag</TableHead>
+                    <TableHead className="text-right"><SortButton field="quantity">Qty</SortButton></TableHead>
+                    <TableHead className="text-right"><SortButton field="avgPrice">Avg Price</SortButton></TableHead>
+                    <TableHead className="text-right"><SortButton field="currentPrice">Current Price</SortButton></TableHead>
+                    <TableHead className="text-right"><SortButton field="value">Value</SortButton></TableHead>
+                    <TableHead className="text-right"><SortButton field="gain">Gain/Loss</SortButton></TableHead>
+                    <TableHead className="text-right"><SortButton field="dividend">Dividend</SortButton></TableHead>
+                    <TableHead className="text-right"><SortButton field="weight">Weight</SortButton></TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
               {sortedPositions.map((position) => {
                 const isExpanded = expandedRow === position.symbol;
                 const weight = totalValue > 0 
@@ -238,7 +280,7 @@ export const SortableHoldingsTable = ({ portfolios, aggregatedPositions, onRefre
                             className="h-7 px-2"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setManualDivDialog({ open: true, portfolio: position.lots[0] });
+                              setManualDivDialog({ open: true, position });
                             }}
                           >
                             <span className="text-xs">€</span>
@@ -395,8 +437,10 @@ export const SortableHoldingsTable = ({ portfolios, aggregatedPositions, onRefre
                   </Fragment>
                 );
               })}
-            </TableBody>
-          </Table>
+              </TableBody>
+            </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -424,10 +468,11 @@ export const SortableHoldingsTable = ({ portfolios, aggregatedPositions, onRefre
 
       <ManualDividendDialog
         open={manualDivDialog.open}
-        onOpenChange={(open) => setManualDivDialog({ open, portfolio: null })}
-        portfolioId={manualDivDialog.portfolio?.id || ''}
-        symbol={manualDivDialog.portfolio?.symbol || ''}
-        currentDividend={manualDivDialog.portfolio?.manual_dividend_eur}
+        onOpenChange={(open) => setManualDivDialog({ open, position: null })}
+        portfolioIds={manualDivDialog.position?.lots.map(l => l.id) || []}
+        symbol={manualDivDialog.position?.symbol || ''}
+        currentDividend={manualDivDialog.position?.lots[0]?.manual_dividend_eur}
+        onSuccess={onRefresh}
       />
 
       {/* Mobile Stock Details Sheet */}
@@ -443,9 +488,9 @@ export const SortableHoldingsTable = ({ portfolios, aggregatedPositions, onRefre
           setMobileSheetPosition(null);
           setDeleteId(id);
         }}
-        onSetDividend={(portfolio) => {
+        onSetDividend={(position) => {
           setMobileSheetPosition(null);
-          setManualDivDialog({ open: true, portfolio });
+          setManualDivDialog({ open: true, position });
         }}
       />
     </>

@@ -46,7 +46,7 @@ export const HoldingsTable = ({ portfolios, aggregatedPositions, onRefresh, high
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editPortfolio, setEditPortfolio] = useState<Portfolio | null>(null);
-  const [manualDivDialog, setManualDivDialog] = useState<{ open: boolean; portfolio: Portfolio | null }>({ open: false, portfolio: null });
+  const [manualDivDialog, setManualDivDialog] = useState<{ open: boolean; position: AggregatedPosition | null }>({ open: false, position: null });
   const { deleteInvestment } = usePortfolio();
 
   const handleDelete = async () => {
@@ -144,7 +144,7 @@ export const HoldingsTable = ({ portfolios, aggregatedPositions, onRefresh, high
                             className="h-6 w-6 p-0"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setManualDivDialog({ open: true, portfolio: position.lots[0] });
+                              setManualDivDialog({ open: true, position });
                             }}
                           >
                             <DollarSign className="h-3 w-3" />
@@ -328,10 +328,11 @@ export const HoldingsTable = ({ portfolios, aggregatedPositions, onRefresh, high
 
       <ManualDividendDialog
         open={manualDivDialog.open}
-        onOpenChange={(open) => setManualDivDialog({ open, portfolio: null })}
-        portfolioId={manualDivDialog.portfolio?.id || ''}
-        symbol={manualDivDialog.portfolio?.symbol || ''}
-        currentDividend={manualDivDialog.portfolio?.manual_dividend_eur}
+        onOpenChange={(open) => setManualDivDialog({ open, position: null })}
+        portfolioIds={manualDivDialog.position?.lots.map(l => l.id) || []}
+        symbol={manualDivDialog.position?.symbol || ''}
+        currentDividend={manualDivDialog.position?.lots[0]?.manual_dividend_eur}
+        onSuccess={onRefresh}
       />
     </>
   );
