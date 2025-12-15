@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,7 @@ const countries = [
 ];
 
 export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvestmentDialogProps) => {
+  const { t } = useTranslation();
   const [country, setCountry] = useState("");
   const [symbol, setSymbol] = useState("");
   const [amount, setAmount] = useState("");
@@ -59,8 +61,8 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
     if (!parsedAmount && !parsedQuantity) {
       toast({
         variant: "destructive",
-        title: "Missing Information",
-        description: "Please provide either an amount or quantity.",
+        title: t('addInvestment.missingInfo'),
+        description: t('addInvestment.provideAmountOrQty'),
       });
       return;
     }
@@ -68,8 +70,8 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
     if ((parsedAmount && isNaN(parsedAmount)) || (parsedQuantity && isNaN(parsedQuantity))) {
       toast({
         variant: "destructive",
-        title: "Invalid Input",
-        description: "Please enter valid numbers for amount and quantity.",
+        title: t('addInvestment.invalidInput'),
+        description: t('addInvestment.enterValidNumbers'),
       });
       return;
     }
@@ -78,8 +80,8 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
         (parsedQuantity && (parsedQuantity <= 0 || parsedQuantity > 1000000))) {
       toast({
         variant: "destructive",
-        title: "Invalid Input",
-        description: "Please enter reasonable values (amount ≤ 10M, quantity ≤ 1M).",
+        title: t('addInvestment.invalidInput'),
+        description: t('addInvestment.reasonableValues'),
       });
       return;
     }
@@ -87,8 +89,8 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
     if (tag && tag.length > 50) {
       toast({
         variant: "destructive",
-        title: "Invalid Tag",
-        description: "Tag must be 50 characters or less.",
+        title: t('addInvestment.invalidTag'),
+        description: t('addInvestment.tagTooLong'),
       });
       return;
     }
@@ -96,8 +98,8 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
     if (!symbol || symbol.length > 10 || !/^[A-Z0-9.:-]+$/i.test(symbol)) {
       toast({
         variant: "destructive",
-        title: "Invalid Symbol",
-        description: "Please enter a valid stock symbol.",
+        title: t('addInvestment.invalidSymbol'),
+        description: t('addInvestment.enterValidSymbol'),
       });
       return;
     }
@@ -105,8 +107,8 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
     if (!country || !purchaseDate) {
       toast({
         variant: "destructive",
-        title: "Missing Information",
-        description: "Please fill in all required fields.",
+        title: t('addInvestment.missingInfo'),
+        description: t('addInvestment.fillAllFields'),
       });
       return;
     }
@@ -141,8 +143,8 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
       }
 
       toast({
-        title: "Investment added",
-        description: `${stockData.name} has been added to your portfolio.`,
+        title: t('addInvestment.investmentAdded'),
+        description: t('addInvestment.addedToPortfolio', { name: stockData.name }),
       });
 
       // Close dialog and trigger refresh
@@ -162,8 +164,8 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error adding investment",
-        description: error instanceof Error ? error.message : "Failed to add investment",
+        title: t('addInvestment.errorAdding'),
+        description: error instanceof Error ? error.message : t('addInvestment.errorAdding'),
       });
     } finally {
       setIsLoading(false);
@@ -174,20 +176,20 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Add Investment</DialogTitle>
-          <DialogDescription>Add a new stock to your portfolio</DialogDescription>
+          <DialogTitle>{t('addInvestment.title')}</DialogTitle>
+          <DialogDescription>{t('addInvestment.description')}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="country">Country of Residence</Label>
+            <Label htmlFor="country">{t('form.countryOfResidence')}</Label>
             <Select value={country} onValueChange={setCountry} required>
               <SelectTrigger id="country">
-                <SelectValue placeholder="Select country" />
+                <SelectValue placeholder={t('form.selectCountry')} />
               </SelectTrigger>
               <SelectContent>
                 {countries.map((c) => (
                   <SelectItem key={c.code} value={c.code}>
-                    {c.name}
+                    {t(`countries.${c.code}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -195,19 +197,19 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="symbol">Stock Symbol</Label>
+            <Label htmlFor="symbol">{t('form.stockSymbol')}</Label>
             <Input
               id="symbol"
               value={symbol}
               onChange={(e) => setSymbol(e.target.value)}
-              placeholder="e.g., AAPL"
+              placeholder={t('form.stockSymbolPlaceholder')}
               className="uppercase"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="amount">Investment Amount (EUR)</Label>
+            <Label htmlFor="amount">{t('form.investmentAmount')}</Label>
             <Input
               id="amount"
               type="number"
@@ -217,17 +219,17 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
                 setAmount(e.target.value);
                 if (e.target.value) setQuantity("");
               }}
-              placeholder="e.g., 1000"
+              placeholder={t('form.investmentAmountPlaceholder')}
             />
             <p className="text-xs text-muted-foreground">
-              💡 Tip: Enter both amount and quantity to preserve your exact average purchase price
+              💡 {t('form.amountTip')}
             </p>
           </div>
 
-          <div className="text-center text-sm text-muted-foreground">OR</div>
+          <div className="text-center text-sm text-muted-foreground">{t('common.or')}</div>
 
           <div className="space-y-2">
-            <Label htmlFor="quantity">Quantity (Shares)</Label>
+            <Label htmlFor="quantity">{t('form.quantity')}</Label>
             <Input
               id="quantity"
               type="number"
@@ -237,12 +239,12 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
                 setQuantity(e.target.value);
                 if (e.target.value) setAmount("");
               }}
-              placeholder="e.g., 10"
+              placeholder={t('form.quantityPlaceholder')}
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Purchase Date</Label>
+            <Label>{t('form.purchaseDate')}</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -253,7 +255,7 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
                   )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {purchaseDate ? format(purchaseDate, "PPP") : "Pick a date"}
+                  {purchaseDate ? format(purchaseDate, "PPP") : t('form.pickDate')}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
@@ -269,20 +271,20 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="tag">Tag (optional)</Label>
+            <Label htmlFor="tag">{t('form.tag')}</Label>
             <Input
               id="tag"
               value={tag}
               onChange={(e) => setTag(e.target.value)}
-              placeholder="e.g., 'tech-stocks', 'retirement', or leave empty for date tag"
+              placeholder={t('form.tagPlaceholder')}
             />
             <p className="text-xs text-muted-foreground">
-              Group your investments with custom tags for easy filtering
+              {t('form.tagHelp')}
             </p>
           </div>
 
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Adding..." : "Add Investment"}
+            {isLoading ? t('addInvestment.adding') : t('addInvestment.add')}
           </Button>
         </form>
       </DialogContent>

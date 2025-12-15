@@ -1,16 +1,20 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { usePortfolio, Portfolio } from "@/hooks/usePortfolio";
 import { useSubscription } from "@/hooks/useSubscription";
+import { usePrivacy } from "@/contexts/PrivacyContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { PortfolioOverview } from "@/components/PortfolioOverview";
 import { PortfolioChart } from "@/components/PortfolioChart";
 import { AllocationChart } from "@/components/AllocationChart";
 import { SortableHoldingsTable } from "@/components/SortableHoldingsTable";
 import { AddInvestmentDialog } from "@/components/AddInvestmentDialog";
 import { TagFilterBar } from "@/components/TagFilterBar";
-import { LogOut, Plus, RefreshCw, TrendingUp, Crown } from "lucide-react";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { LogOut, Plus, RefreshCw, TrendingUp, Crown, Eye, EyeOff } from "lucide-react";
 import { fetchStockData } from "@/services/stockApi";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -33,11 +37,13 @@ interface AggregatedPosition {
 }
 
 const Dashboard = () => {
+  const { t } = useTranslation();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { portfolios, loading, fetchPortfolios } = usePortfolio();
   const { subscribed, isOverride, refresh: refreshSubscription } = useSubscription();
+  const { privacyMode, togglePrivacyMode } = usePrivacy();
   const [enrichedPortfolios, setEnrichedPortfolios] = useState<Portfolio[]>([]);
   const [aggregatedPositions, setAggregatedPositions] = useState<AggregatedPosition[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -68,8 +74,8 @@ const Dashboard = () => {
     if (upgraded === 'true') {
       refreshSubscription();
       toast({
-        title: "Welcome to Premium!",
-        description: "You can now add unlimited stock positions.",
+        title: t('dashboard.welcomeToPremium'),
+        description: t('dashboard.unlimitedPositions'),
       });
     }
     
@@ -91,7 +97,7 @@ const Dashboard = () => {
         }
       }, 300);
     }
-  }, [searchParams, setSearchParams, refreshSubscription]);
+  }, [searchParams, setSearchParams, refreshSubscription, t]);
 
   // Load initial data from latest snapshots
   useEffect(() => {
@@ -362,7 +368,7 @@ const Dashboard = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-muted-foreground">Loading portfolio...</div>
+        <div className="text-muted-foreground">{t('dashboard.loadingPortfolio')}</div>
       </div>
     );
   }
@@ -373,15 +379,29 @@ const Dashboard = () => {
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <TrendingUp className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-bold">Investing Lovable</h1>
+            <h1 className="text-2xl font-bold">{t('home.title')}</h1>
             {subscribed && (
               <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary ring-1 ring-primary/20 px-3 py-1 shadow-sm">
                 <Crown className="h-3.5 w-3.5" />
-                <span className="text-xs font-semibold tracking-wide">Premium</span>
+                <span className="text-xs font-semibold tracking-wide">{t('dashboard.premium')}</span>
               </span>
             )}
           </div>
           <div className="flex items-center gap-2">
+            {/* Privacy Mode Toggle */}
+            <div className="hidden sm:flex items-center gap-2 mr-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={togglePrivacyMode}
+                className="gap-2"
+                title={privacyMode ? t('dashboard.privacyModeOn') : t('dashboard.privacyModeOff')}
+              >
+                {privacyMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                <span className="hidden md:inline text-xs">{t('dashboard.privacyMode')}</span>
+              </Button>
+            </div>
+            <LanguageSwitcher />
             {!subscribed && (
               <Button
                 variant="outline"
@@ -390,8 +410,8 @@ const Dashboard = () => {
                   const { data, error } = await supabase.functions.invoke('create-checkout');
                   if (error) {
                     toast({
-                      title: "Error",
-                      description: "Could not start checkout. Please try again.",
+                      title: t('common.error'),
+                      description: t('toast.couldNotStartCheckout'),
                       variant: "destructive",
                     });
                     return;
@@ -401,7 +421,7 @@ const Dashboard = () => {
                 className="hidden sm:flex"
               >
                 <Crown className="h-4 w-4 mr-2" />
-                Upgrade
+                {t('nav.upgrade')}
               </Button>
             )}
             {subscribed && !isOverride && (
@@ -412,8 +432,8 @@ const Dashboard = () => {
                   const { data, error } = await supabase.functions.invoke('customer-portal');
                   if (error) {
                     toast({
-                      title: "Error", 
-                      description: "Could not open subscription portal.",
+                      title: t('common.error'), 
+                      description: t('toast.couldNotOpenPortal'),
                       variant: "destructive",
                     });
                     return;
@@ -422,10 +442,10 @@ const Dashboard = () => {
                 }}
                 className="hidden sm:flex"
               >
-                Manage Subscription
+                {t('nav.manageSubscription')}
               </Button>
             )}
-            <span className="text-sm text-muted-foreground">{user?.email}</span>
+            <span className="text-sm text-muted-foreground hidden sm:inline">{user?.email}</span>
             <Button variant="ghost" size="icon" onClick={() => signOut()}>
               <LogOut className="h-4 w-4" />
             </Button>
@@ -437,15 +457,15 @@ const Dashboard = () => {
         {portfolios.length === 0 ? (
           <Card>
             <CardHeader>
-              <CardTitle>Welcome to Your Portfolio Tracker</CardTitle>
+              <CardTitle>{t('dashboard.welcomeTitle')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-muted-foreground">
-                Start building your investment portfolio by adding your first stock.
+                {t('dashboard.welcomeDescription')}
               </p>
               <Button onClick={() => setIsAddDialogOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
-                Add First Investment
+                {t('dashboard.addFirstInvestment')}
               </Button>
             </CardContent>
           </Card>
@@ -454,34 +474,46 @@ const Dashboard = () => {
             {isRefreshing && (
               <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 flex items-center gap-3">
                 <RefreshCw className="h-4 w-4 animate-spin text-primary" />
-                <span className="text-sm font-medium">Refreshing prices...</span>
+                <span className="text-sm font-medium">{t('dashboard.refreshingPrices')}</span>
               </div>
             )}
             
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-xl font-semibold">Portfolio Overview</h2>
+                <h2 className="text-xl font-semibold">{t('dashboard.portfolioOverview')}</h2>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   {lastUpdated && (
-                    <span>Last updated: {lastUpdated.toLocaleTimeString()}</span>
+                    <span>{t('dashboard.lastUpdated', { time: lastUpdated.toLocaleTimeString() })}</span>
                   )}
                   {!subscribed && (
-                    <span className="text-muted-foreground/70">• Premium users get auto-refresh</span>
+                    <span className="text-muted-foreground/70">• {t('dashboard.premiumAutoRefresh')}</span>
                   )}
                 </div>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={refreshPrices}
-                disabled={isRefreshing}
-              >
-                <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                Refresh Prices
-              </Button>
+              <div className="flex items-center gap-2">
+                {/* Mobile Privacy Toggle */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={togglePrivacyMode}
+                  className="sm:hidden"
+                  title={privacyMode ? t('dashboard.privacyModeOn') : t('dashboard.privacyModeOff')}
+                >
+                  {privacyMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={refreshPrices}
+                  disabled={isRefreshing}
+                >
+                  <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  {t('dashboard.refreshPrices')}
+                </Button>
+              </div>
             </div>
 
-            <PortfolioOverview portfolios={filteredPortfolios} isLoading={isLoadingEnriched} />
+            <PortfolioOverview portfolios={filteredPortfolios} isLoading={isLoadingEnriched} privacyMode={privacyMode} />
 
             <TagFilterBar
               allTags={allTags}
@@ -493,7 +525,7 @@ const Dashboard = () => {
             />
 
             <div className="grid md:grid-cols-2 gap-6">
-              <PortfolioChart portfolios={filteredPortfolios} />
+              <PortfolioChart portfolios={filteredPortfolios} privacyMode={privacyMode} />
               <AllocationChart aggregatedPositions={displayAggregatedPositions} />
             </div>
 
@@ -503,7 +535,7 @@ const Dashboard = () => {
               className="w-full md:w-auto"
             >
               <Plus className="mr-2 h-5 w-5" />
-              Add Investment
+              {t('dashboard.addInvestment')}
             </Button>
 
             <SortableHoldingsTable 
@@ -511,6 +543,7 @@ const Dashboard = () => {
               aggregatedPositions={displayAggregatedPositions}
               onRefresh={fetchPortfolios}
               highlightedId={highlightedId}
+              privacyMode={privacyMode}
             />
           </>
         )}

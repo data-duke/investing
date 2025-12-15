@@ -3,14 +3,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Portfolio } from "@/hooks/usePortfolio";
 import { TrendingUp, DollarSign, PiggyBank, Award } from "lucide-react";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { formatCurrency, formatPercentage } from "@/lib/formatters";
 
 interface PortfolioOverviewProps {
   portfolios: Portfolio[];
   isLoading?: boolean;
+  privacyMode?: boolean;
 }
 
-export const PortfolioOverview = ({ portfolios, isLoading = false }: PortfolioOverviewProps) => {
+export const PortfolioOverview = ({ portfolios, isLoading = false, privacyMode = false }: PortfolioOverviewProps) => {
+  const { t } = useTranslation();
+
   const stats = useMemo(() => {
     const totalValue = portfolios.reduce((sum, p) => sum + (p.current_value_eur || 0), 0);
     const totalInvested = portfolios.reduce((sum, p) => sum + Number(p.original_investment_eur), 0);
@@ -21,6 +25,7 @@ export const PortfolioOverview = ({ portfolios, isLoading = false }: PortfolioOv
       return sum + dividend;
     }, 0);
     const monthlyDividends = totalDividends / 12;
+    const dividendYield = totalValue > 0 ? (totalDividends / totalValue) * 100 : 0;
 
     const topPerformer = portfolios.reduce((best, current) => {
       const currentGain = current.gain_loss_percent || 0;
@@ -30,33 +35,35 @@ export const PortfolioOverview = ({ portfolios, isLoading = false }: PortfolioOv
 
     return [
       {
-        title: "Total Portfolio Value",
-        value: formatCurrency(totalValue),
+        title: t('portfolio.totalValue'),
+        value: privacyMode ? "•••••" : formatCurrency(totalValue),
         icon: DollarSign,
-        description: `Invested: ${formatCurrency(totalInvested)}`,
+        description: privacyMode 
+          ? `${formatPercentage(totalGainPercent)} ${t('portfolio.totalGainLoss').toLowerCase()}`
+          : t('portfolio.invested', { amount: formatCurrency(totalInvested) }),
       },
       {
-        title: "Total Gain/Loss",
-        value: formatCurrency(totalGain),
+        title: t('portfolio.totalGainLoss'),
+        value: privacyMode ? formatPercentage(totalGainPercent) : formatCurrency(totalGain),
         icon: TrendingUp,
-        description: formatPercentage(totalGainPercent),
+        description: privacyMode ? "" : formatPercentage(totalGainPercent),
         className: totalGain >= 0 ? "text-green-600" : "text-red-600",
       },
       {
-        title: "Annual Dividends",
-        value: formatCurrency(totalDividends),
+        title: t('portfolio.annualDividends'),
+        value: privacyMode ? `${formatPercentage(dividendYield)} yield` : formatCurrency(totalDividends),
         icon: PiggyBank,
-        description: `${formatCurrency(monthlyDividends)}/month avg`,
+        description: privacyMode ? "" : t('portfolio.monthlyAvg', { amount: formatCurrency(monthlyDividends) }),
       },
       {
-        title: "Top Performer",
-        value: topPerformer?.symbol || "N/A",
+        title: t('portfolio.topPerformer'),
+        value: topPerformer?.symbol || t('portfolio.noData'),
         icon: Award,
-        description: topPerformer ? formatPercentage(topPerformer.gain_loss_percent || 0) : "N/A",
+        description: topPerformer ? formatPercentage(topPerformer.gain_loss_percent || 0) : t('portfolio.noData'),
         className: "text-primary",
       },
     ];
-  }, [portfolios]);
+  }, [portfolios, privacyMode, t]);
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -79,7 +86,9 @@ export const PortfolioOverview = ({ portfolios, isLoading = false }: PortfolioOv
                   <div className={`text-2xl font-bold ${stat.className || ''}`}>
                     {stat.value}
                   </div>
-                  <p className="text-xs text-muted-foreground">{stat.description}</p>
+                  {stat.description && (
+                    <p className="text-xs text-muted-foreground">{stat.description}</p>
+                  )}
                 </>
               )}
             </CardContent>

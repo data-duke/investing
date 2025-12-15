@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,7 @@ interface UpgradeDialogProps {
 }
 
 export const UpgradeDialog = ({ open, onOpenChange }: UpgradeDialogProps) => {
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -35,8 +37,8 @@ export const UpgradeDialog = ({ open, onOpenChange }: UpgradeDialogProps) => {
       console.error('Error creating checkout:', error);
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Failed to start checkout process. Please try again.",
+        title: t('common.error'),
+        description: t('upgrade.errorCheckout'),
       });
     } finally {
       setIsLoading(false);
@@ -49,20 +51,20 @@ export const UpgradeDialog = ({ open, onOpenChange }: UpgradeDialogProps) => {
         <DialogHeader>
           <div className="flex items-center gap-2 mb-2">
             <Crown className="h-6 w-6 text-primary" />
-            <DialogTitle>Upgrade to Premium</DialogTitle>
+            <DialogTitle>{t('upgrade.title')}</DialogTitle>
           </div>
           <DialogDescription className="space-y-4 pt-2">
             <p>
-              You've reached the free tier limit of 3 stock positions.
+              {t('upgrade.limitReached')}
             </p>
             <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 space-y-2">
-              <p className="font-semibold text-foreground">Premium Portfolio Access</p>
-              <p className="text-2xl font-bold text-primary">€4.99/month</p>
+              <p className="font-semibold text-foreground">{t('upgrade.premiumAccess')}</p>
+              <p className="text-2xl font-bold text-primary">{t('upgrade.price')}</p>
               <ul className="space-y-1 text-sm text-muted-foreground">
-                <li>✓ Track unlimited stock positions</li>
-                <li>✓ Advanced portfolio analytics</li>
-                <li>✓ Priority data refresh</li>
-                <li>✓ Cancel anytime</li>
+                <li>✓ {t('upgrade.benefitUnlimited')}</li>
+                <li>✓ {t('upgrade.benefitAnalytics')}</li>
+                <li>✓ {t('upgrade.benefitRefresh')}</li>
+                <li>✓ {t('upgrade.benefitCancel')}</li>
               </ul>
             </div>
           </DialogDescription>
@@ -76,12 +78,12 @@ export const UpgradeDialog = ({ open, onOpenChange }: UpgradeDialogProps) => {
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Processing...
+                {t('upgrade.processing')}
               </>
             ) : (
               <>
                 <Crown className="mr-2 h-4 w-4" />
-                Upgrade Now
+                {t('upgrade.upgradeNow')}
               </>
             )}
           </Button>
@@ -90,7 +92,7 @@ export const UpgradeDialog = ({ open, onOpenChange }: UpgradeDialogProps) => {
             onClick={() => onOpenChange(false)}
             className="w-full"
           >
-            Maybe Later
+            {t('upgrade.maybeLater')}
           </Button>
         </DialogFooter>
       </DialogContent>
