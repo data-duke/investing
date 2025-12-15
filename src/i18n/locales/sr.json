@@ -16,7 +16,12 @@
     "submit": "Pošalji",
     "error": "Greška",
     "success": "Uspeh",
-    "note": "Napomena"
+    "note": "Napomena",
+    "shares": "akcija",
+    "lots": "lotova",
+    "ofPortfolio": "portfolia",
+    "multiple": "Više",
+    "single": "Jedan"
   },
   "nav": {
     "login": "Prijava",
@@ -78,7 +83,11 @@
     "loadingPortfolio": "Učitavanje portfolia...",
     "premium": "Premium",
     "welcomeToPremium": "Dobrodošli u Premium!",
-    "unlimitedPositions": "Sada možete dodati neograničen broj pozicija akcija."
+    "unlimitedPositions": "Sada možete dodati neograničen broj pozicija akcija.",
+    "holdings": "Pozicije",
+    "privacyMode": "Režim privatnosti",
+    "privacyModeOn": "Režim privatnosti je uključen - prikazuju se relativne vrednosti",
+    "privacyModeOff": "Režim privatnosti je isključen - prikazuju se apsolutne vrednosti"
   },
   "portfolio": {
     "totalValue": "Ukupna vrednost portfolia",
@@ -87,7 +96,12 @@
     "annualDividends": "Godišnje dividende",
     "monthlyAvg": "{{amount}}/mesec prosek",
     "topPerformer": "Najbolji performer",
-    "noData": "N/A"
+    "noData": "N/A",
+    "positionSummary": "Pregled pozicije",
+    "dividendsReturns": "Dividende i prinosi",
+    "avgPurchasePrice": "Pros. cena kupovine",
+    "totalReturn": "Ukupan prinos",
+    "returnPercent": "Prinos %"
   },
   "holdings": {
     "stock": "Akcija",
@@ -107,7 +121,11 @@
     "annualDividend": "Godišnja dividenda",
     "individualLots": "Pojedinačni lotovi",
     "purchasedOn": "Kupljeno {{date}}",
-    "noNews": "Nema dostupnih vesti"
+    "noNews": "Nema dostupnih vesti",
+    "news": "Vesti",
+    "set": "Postavi",
+    "confirmDelete": "Potvrdi brisanje",
+    "deleteConfirmMessage": "Da li ste sigurni da želite da obrišete ovu investiciju? Ova akcija se ne može poništiti."
   },
   "chart": {
     "portfolioPerformance": "Performanse portfolia",
@@ -115,7 +133,8 @@
     "noDataAvailable": "Nema podataka za izabrani vremenski opseg",
     "capitalInvested": "Investirani kapital",
     "portfolioValue": "Vrednost portfolia",
-    "totalReturn": "Ukupan povrat"
+    "totalReturn": "Ukupan povrat",
+    "allocation": "Alokacija"
   },
   "form": {
     "countryOfResidence": "Zemlja prebivališta",
@@ -129,7 +148,13 @@
     "analyzeInvestment": "Analiziraj investiciju",
     "fetchingData": "Preuzimanje podataka...",
     "dataFetched": "Podaci uspešno preuzeti",
-    "retrievedDataFor": "Preuzeti podaci za {{name}}"
+    "retrievedDataFor": "Preuzeti podaci za {{name}}",
+    "purchaseDate": "Datum kupovine",
+    "pickDate": "Izaberi datum",
+    "tag": "Oznaka (opciono)",
+    "tagPlaceholder": "npr. 'tech-akcije', 'penzija', ili ostavite prazno za datum oznaku",
+    "tagHelp": "Grupišite svoje investicije sa oznakama za lakše filtriranje",
+    "amountTip": "Savet: Unesite iznos i količinu da sačuvate tačnu prosečnu cenu kupovine"
   },
   "addInvestment": {
     "title": "Dodaj investiciju",
@@ -149,7 +174,20 @@
     "tagPlaceholder": "npr. tech-akcije",
     "tagHelp": "Grupišite investicije sa oznakama",
     "adding": "Dodavanje...",
-    "add": "Dodaj investiciju"
+    "add": "Dodaj investiciju",
+    "missingInfo": "Nedostaju informacije",
+    "provideAmountOrQty": "Molimo unesite iznos ili količinu.",
+    "invalidInput": "Nevažeći unos",
+    "enterValidNumbers": "Molimo unesite važeće brojeve za iznos i količinu.",
+    "reasonableValues": "Molimo unesite razumne vrednosti (iznos ≤ 10M, količina ≤ 1M).",
+    "invalidTag": "Nevažeća oznaka",
+    "tagTooLong": "Oznaka mora imati najviše 50 karaktera.",
+    "invalidSymbol": "Nevažeći simbol",
+    "enterValidSymbol": "Molimo unesite važeći simbol akcije.",
+    "fillAllFields": "Molimo popunite sva obavezna polja.",
+    "investmentAdded": "Investicija dodata",
+    "addedToPortfolio": "{{name}} je dodat u vaš portfolio.",
+    "errorAdding": "Greška pri dodavanju investicije"
   },
   "upgrade": {
     "title": "Nadogradite na Premium",
@@ -162,7 +200,8 @@
     "benefitCancel": "Otkažite bilo kada",
     "upgradeNow": "Nadogradi sada",
     "processing": "Obrada...",
-    "maybeLater": "Možda kasnije"
+    "maybeLater": "Možda kasnije",
+    "errorCheckout": "Nije moguće pokrenuti plaćanje. Molimo pokušajte ponovo."
   },
   "countries": {
     "AT": "Austrija",

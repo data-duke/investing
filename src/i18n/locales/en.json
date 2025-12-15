@@ -16,7 +16,12 @@
     "submit": "Submit",
     "error": "Error",
     "success": "Success",
-    "note": "Note"
+    "note": "Note",
+    "shares": "shares",
+    "lots": "lots",
+    "ofPortfolio": "of portfolio",
+    "multiple": "Multiple",
+    "single": "Single"
   },
   "nav": {
     "login": "Login",
@@ -78,7 +83,11 @@
     "loadingPortfolio": "Loading portfolio...",
     "premium": "Premium",
     "welcomeToPremium": "Welcome to Premium!",
-    "unlimitedPositions": "You can now add unlimited stock positions."
+    "unlimitedPositions": "You can now add unlimited stock positions.",
+    "holdings": "Holdings",
+    "privacyMode": "Privacy Mode",
+    "privacyModeOn": "Privacy mode is on - showing relative values",
+    "privacyModeOff": "Privacy mode is off - showing absolute values"
   },
   "portfolio": {
     "totalValue": "Total Portfolio Value",
@@ -87,7 +96,12 @@
     "annualDividends": "Annual Dividends",
     "monthlyAvg": "{{amount}}/month avg",
     "topPerformer": "Top Performer",
-    "noData": "N/A"
+    "noData": "N/A",
+    "positionSummary": "Position Summary",
+    "dividendsReturns": "Dividends & Returns",
+    "avgPurchasePrice": "Avg Purchase Price",
+    "totalReturn": "Total Return",
+    "returnPercent": "Return %"
   },
   "holdings": {
     "stock": "Stock",
@@ -107,7 +121,11 @@
     "annualDividend": "Annual Dividend",
     "individualLots": "Individual Lots",
     "purchasedOn": "Purchased on {{date}}",
-    "noNews": "No recent news available"
+    "noNews": "No recent news available",
+    "news": "News",
+    "set": "Set",
+    "confirmDelete": "Confirm Delete",
+    "deleteConfirmMessage": "Are you sure you want to delete this investment? This action cannot be undone."
   },
   "chart": {
     "portfolioPerformance": "Portfolio Performance",
@@ -115,7 +133,8 @@
     "noDataAvailable": "No data available for selected time range",
     "capitalInvested": "Capital Invested",
     "portfolioValue": "Portfolio Value",
-    "totalReturn": "Total Return"
+    "totalReturn": "Total Return",
+    "allocation": "Allocation"
   },
   "form": {
     "countryOfResidence": "Country of Residence",
@@ -129,7 +148,13 @@
     "analyzeInvestment": "Analyze Investment",
     "fetchingData": "Fetching Data...",
     "dataFetched": "Data fetched successfully",
-    "retrievedDataFor": "Retrieved data for {{name}}"
+    "retrievedDataFor": "Retrieved data for {{name}}",
+    "purchaseDate": "Purchase Date",
+    "pickDate": "Pick a date",
+    "tag": "Tag (optional)",
+    "tagPlaceholder": "e.g., 'tech-stocks', 'retirement', or leave empty for date tag",
+    "tagHelp": "Group your investments with custom tags for easy filtering",
+    "amountTip": "Tip: Enter both amount and quantity to preserve your exact average purchase price"
   },
   "addInvestment": {
     "title": "Add Investment",
@@ -149,7 +174,20 @@
     "tagPlaceholder": "e.g., tech-stocks",
     "tagHelp": "Group investments with tags",
     "adding": "Adding...",
-    "add": "Add Investment"
+    "add": "Add Investment",
+    "missingInfo": "Missing Information",
+    "provideAmountOrQty": "Please provide either an amount or quantity.",
+    "invalidInput": "Invalid Input",
+    "enterValidNumbers": "Please enter valid numbers for amount and quantity.",
+    "reasonableValues": "Please enter reasonable values (amount ≤ 10M, quantity ≤ 1M).",
+    "invalidTag": "Invalid Tag",
+    "tagTooLong": "Tag must be 50 characters or less.",
+    "invalidSymbol": "Invalid Symbol",
+    "enterValidSymbol": "Please enter a valid stock symbol.",
+    "fillAllFields": "Please fill in all required fields.",
+    "investmentAdded": "Investment added",
+    "addedToPortfolio": "{{name}} has been added to your portfolio.",
+    "errorAdding": "Error adding investment"
   },
   "upgrade": {
     "title": "Upgrade to Premium",
@@ -162,7 +200,8 @@
     "benefitCancel": "Cancel anytime",
     "upgradeNow": "Upgrade Now",
     "processing": "Processing...",
-    "maybeLater": "Maybe Later"
+    "maybeLater": "Maybe Later",
+    "errorCheckout": "Failed to start checkout process. Please try again."
   },
   "countries": {
     "AT": "Austria",

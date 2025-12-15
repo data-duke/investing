@@ -16,7 +16,12 @@
     "submit": "Absenden",
     "error": "Fehler",
     "success": "Erfolg",
-    "note": "Hinweis"
+    "note": "Hinweis",
+    "shares": "Anteile",
+    "lots": "Lots",
+    "ofPortfolio": "des Portfolios",
+    "multiple": "Mehrere",
+    "single": "Einzeln"
   },
   "nav": {
     "login": "Anmelden",
@@ -78,7 +83,11 @@
     "loadingPortfolio": "Portfolio wird geladen...",
     "premium": "Premium",
     "welcomeToPremium": "Willkommen bei Premium!",
-    "unlimitedPositions": "Sie können jetzt unbegrenzt Aktienpositionen hinzufügen."
+    "unlimitedPositions": "Sie können jetzt unbegrenzt Aktienpositionen hinzufügen.",
+    "holdings": "Positionen",
+    "privacyMode": "Privatsphäre-Modus",
+    "privacyModeOn": "Privatsphäre-Modus ist an - zeigt relative Werte",
+    "privacyModeOff": "Privatsphäre-Modus ist aus - zeigt absolute Werte"
   },
   "portfolio": {
     "totalValue": "Gesamtportfoliowert",
@@ -87,7 +96,12 @@
     "annualDividends": "Jährliche Dividenden",
     "monthlyAvg": "{{amount}}/Monat Durchschnitt",
     "topPerformer": "Top Performer",
-    "noData": "K.A."
+    "noData": "K.A.",
+    "positionSummary": "Positionsübersicht",
+    "dividendsReturns": "Dividenden & Rendite",
+    "avgPurchasePrice": "Ø Kaufpreis",
+    "totalReturn": "Gesamtrendite",
+    "returnPercent": "Rendite %"
   },
   "holdings": {
     "stock": "Aktie",
@@ -107,7 +121,11 @@
     "annualDividend": "Jährliche Dividende",
     "individualLots": "Einzelne Lots",
     "purchasedOn": "Gekauft am {{date}}",
-    "noNews": "Keine aktuellen Nachrichten verfügbar"
+    "noNews": "Keine aktuellen Nachrichten verfügbar",
+    "news": "Nachrichten",
+    "set": "Setzen",
+    "confirmDelete": "Löschen bestätigen",
+    "deleteConfirmMessage": "Sind Sie sicher, dass Sie diese Investition löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden."
   },
   "chart": {
     "portfolioPerformance": "Portfolio-Performance",
@@ -115,7 +133,8 @@
     "noDataAvailable": "Keine Daten für den ausgewählten Zeitraum verfügbar",
     "capitalInvested": "Investiertes Kapital",
     "portfolioValue": "Portfoliowert",
-    "totalReturn": "Gesamtrendite"
+    "totalReturn": "Gesamtrendite",
+    "allocation": "Allokation"
   },
   "form": {
     "countryOfResidence": "Wohnsitzland",
@@ -129,7 +148,13 @@
     "analyzeInvestment": "Investment analysieren",
     "fetchingData": "Daten werden abgerufen...",
     "dataFetched": "Daten erfolgreich abgerufen",
-    "retrievedDataFor": "Daten für {{name}} abgerufen"
+    "retrievedDataFor": "Daten für {{name}} abgerufen",
+    "purchaseDate": "Kaufdatum",
+    "pickDate": "Datum wählen",
+    "tag": "Tag (optional)",
+    "tagPlaceholder": "z.B. 'tech-aktien', 'rente', oder leer lassen für Datum-Tag",
+    "tagHelp": "Gruppieren Sie Ihre Investments mit Tags zur einfachen Filterung",
+    "amountTip": "Tipp: Geben Sie Betrag und Anzahl ein, um Ihren genauen Durchschnittskaufpreis zu erhalten"
   },
   "addInvestment": {
     "title": "Investment hinzufügen",
@@ -149,7 +174,20 @@
     "tagPlaceholder": "z.B. tech-aktien",
     "tagHelp": "Gruppieren Sie Investments mit Tags",
     "adding": "Wird hinzugefügt...",
-    "add": "Investment hinzufügen"
+    "add": "Investment hinzufügen",
+    "missingInfo": "Fehlende Informationen",
+    "provideAmountOrQty": "Bitte geben Sie einen Betrag oder eine Anzahl an.",
+    "invalidInput": "Ungültige Eingabe",
+    "enterValidNumbers": "Bitte geben Sie gültige Zahlen für Betrag und Anzahl ein.",
+    "reasonableValues": "Bitte geben Sie vernünftige Werte ein (Betrag ≤ 10M, Anzahl ≤ 1M).",
+    "invalidTag": "Ungültiger Tag",
+    "tagTooLong": "Tag darf maximal 50 Zeichen lang sein.",
+    "invalidSymbol": "Ungültiges Symbol",
+    "enterValidSymbol": "Bitte geben Sie ein gültiges Aktiensymbol ein.",
+    "fillAllFields": "Bitte füllen Sie alle erforderlichen Felder aus.",
+    "investmentAdded": "Investment hinzugefügt",
+    "addedToPortfolio": "{{name}} wurde zu Ihrem Portfolio hinzugefügt.",
+    "errorAdding": "Fehler beim Hinzufügen des Investments"
   },
   "upgrade": {
     "title": "Auf Premium upgraden",
@@ -162,7 +200,8 @@
     "benefitCancel": "Jederzeit kündbar",
     "upgradeNow": "Jetzt upgraden",
     "processing": "Verarbeitung...",
-    "maybeLater": "Vielleicht später"
+    "maybeLater": "Vielleicht später",
+    "errorCheckout": "Checkout konnte nicht gestartet werden. Bitte versuchen Sie es erneut."
   },
   "countries": {
     "AT": "Österreich",
