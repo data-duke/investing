@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Pencil, Trash2 } from "lucide-react";
 import { StockNewsSection } from "./StockNewsSection";
 import { formatCurrency, formatNumber, formatPercentage } from "@/lib/formatters";
+import { usePrivacy } from "@/contexts/PrivacyContext";
 import {
   Sheet,
   SheetContent,
@@ -45,6 +46,8 @@ export const MobileStockDetailsSheet = ({
   onDelete,
   onSetDividend,
 }: MobileStockDetailsSheetProps) => {
+  const { privacyMode } = usePrivacy();
+  
   if (!position) return null;
 
   return (
@@ -60,12 +63,12 @@ export const MobileStockDetailsSheet = ({
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-muted/50 rounded-lg p-3">
               <div className="text-xs text-muted-foreground">Current Value</div>
-              <div className="font-semibold">{formatCurrency(position.current_value_eur || 0)}</div>
+              <div className="font-semibold">{privacyMode ? '•••' : formatCurrency(position.current_value_eur || 0)}</div>
             </div>
             <div className="bg-muted/50 rounded-lg p-3">
               <div className="text-xs text-muted-foreground">Gain/Loss</div>
               <div className={`font-semibold ${position.gain_loss_eur && position.gain_loss_eur >= 0 ? "text-green-600" : "text-red-600"}`}>
-                {formatCurrency(position.gain_loss_eur || 0)}
+                {privacyMode ? '•••' : formatCurrency(position.gain_loss_eur || 0)}
                 <span className="text-xs ml-1">
                   ({position.gain_loss_percent ? formatPercentage(position.gain_loss_percent) : '-'})
                 </span>
@@ -85,15 +88,15 @@ export const MobileStockDetailsSheet = ({
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Avg Purchase Price</span>
-                <span>{formatCurrency(position.avgOriginalPrice)}</span>
+                <span>{privacyMode ? '•••' : formatCurrency(position.avgOriginalPrice)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Current Price</span>
-                <span>{position.current_price_eur ? formatCurrency(position.current_price_eur) : '-'}</span>
+                <span>{privacyMode ? '•••' : (position.current_price_eur ? formatCurrency(position.current_price_eur) : '-')}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Total Invested</span>
-                <span>{formatCurrency(position.totalOriginalInvestment)}</span>
+                <span>{privacyMode ? '•••' : formatCurrency(position.totalOriginalInvestment)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Number of Lots</span>
@@ -116,7 +119,7 @@ export const MobileStockDetailsSheet = ({
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Annual Dividend</span>
                 <span className="font-medium">
-                  {position.dividend_annual_eur ? formatCurrency(position.dividend_annual_eur) : 'N/A'}
+                  {privacyMode ? '•••' : (position.dividend_annual_eur ? formatCurrency(position.dividend_annual_eur) : 'N/A')}
                 </span>
               </div>
               <Button
@@ -145,11 +148,11 @@ export const MobileStockDetailsSheet = ({
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Quantity</span>
-                      <span>{formatNumber(Number(lot.quantity))} @ {formatCurrency(Number(lot.original_price_eur))}</span>
+                      <span>{formatNumber(Number(lot.quantity))} @ {privacyMode ? '•••' : formatCurrency(Number(lot.original_price_eur))}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Invested</span>
-                      <span>{formatCurrency(Number(lot.original_investment_eur))}</span>
+                      <span>{privacyMode ? '•••' : formatCurrency(Number(lot.original_investment_eur))}</span>
                     </div>
                     {lot.tag && (
                       <div className="flex justify-between text-sm">

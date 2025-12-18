@@ -179,16 +179,16 @@ export const PortfolioChart = ({ portfolios, privacyMode = false }: PortfolioCha
           <div className="space-y-1 text-xs">
             <div className="flex justify-between gap-4">
               <span className="text-muted-foreground">Invested:</span>
-              <span className="font-medium">{formatCurrency(invested)}</span>
+              <span className="font-medium">{privacyMode ? '•••' : formatCurrency(invested)}</span>
             </div>
             <div className="flex justify-between gap-4">
               <span className="text-muted-foreground">Value:</span>
-              <span className="font-medium">{formatCurrency(value)}</span>
+              <span className="font-medium">{privacyMode ? '•••' : formatCurrency(value)}</span>
             </div>
             <div className="flex justify-between gap-4 pt-1 border-t">
               <span className="text-muted-foreground">Gain/Loss:</span>
               <span className={`font-semibold ${gain >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {formatCurrency(gain)} ({gainPercent.toFixed(1)}%)
+                {privacyMode ? '•••' : `${formatCurrency(gain)} (${gainPercent.toFixed(1)}%)`}
               </span>
             </div>
           </div>
@@ -264,7 +264,7 @@ export const PortfolioChart = ({ portfolios, privacyMode = false }: PortfolioCha
                 stroke="hsl(var(--muted-foreground))"
                 tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: isMobile ? 9 : 11 }}
                 tickLine={{ stroke: 'hsl(var(--border))' }}
-                tickFormatter={(value) => value >= 1000 ? `€${(value / 1000).toFixed(0)}k` : `€${value.toFixed(0)}`}
+                tickFormatter={(value) => privacyMode ? '•••' : (value >= 1000 ? `€${(value / 1000).toFixed(0)}k` : `€${value.toFixed(0)}`)}
                 width={isMobile ? 45 : 50}
               />
               <Tooltip content={<CustomTooltip />} />
