@@ -9,11 +9,12 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 interface PortfolioChartProps {
   portfolios: Portfolio[];
+  privacyMode?: boolean;
 }
 
 type TimeRange = '1M' | '1Y' | '5Y' | 'ALL';
 
-export const PortfolioChart = ({ portfolios }: PortfolioChartProps) => {
+export const PortfolioChart = ({ portfolios, privacyMode = false }: PortfolioChartProps) => {
   const [timeRange, setTimeRange] = useState<TimeRange>('ALL');
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
