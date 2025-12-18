@@ -44,12 +44,13 @@ interface HoldingsTableProps {
   aggregatedPositions: AggregatedPosition[];
   onRefresh: () => void;
   highlightedId?: string | null;
+  privacyMode?: boolean;
 }
 
 type SortField = 'symbol' | 'quantity' | 'avgPrice' | 'currentPrice' | 'value' | 'gain' | 'dividend' | 'weight';
 type SortDirection = 'asc' | 'desc';
 
-export const SortableHoldingsTable = ({ portfolios, aggregatedPositions, onRefresh, highlightedId }: HoldingsTableProps) => {
+export const SortableHoldingsTable = ({ portfolios, aggregatedPositions, onRefresh, highlightedId, privacyMode = false }: HoldingsTableProps) => {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [mobileSheetPosition, setMobileSheetPosition] = useState<AggregatedPosition | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -176,7 +177,7 @@ export const SortableHoldingsTable = ({ portfolios, aggregatedPositions, onRefre
                         <div className="text-xs text-muted-foreground truncate max-w-[150px]">{position.name}</div>
                       </div>
                       <div className="text-right">
-                        <div className="font-medium">{formatCurrency(position.current_value_eur || 0)}</div>
+                        <div className="font-medium">{privacyMode ? '•••' : formatCurrency(position.current_value_eur || 0)}</div>
                         <div className={`text-xs ${position.gain_loss_percent && position.gain_loss_percent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                           {position.gain_loss_percent ? formatPercentage(position.gain_loss_percent) : '-'}
                         </div>
@@ -253,16 +254,16 @@ export const SortableHoldingsTable = ({ portfolios, aggregatedPositions, onRefre
                         ) : null}
                       </TableCell>
                       <TableCell className="text-right">{formatNumber(position.totalQuantity)}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(position.avgOriginalPrice)}</TableCell>
+                      <TableCell className="text-right">{privacyMode ? '•••' : formatCurrency(position.avgOriginalPrice)}</TableCell>
                       <TableCell className="text-right">
-                        {position.current_price_eur ? formatCurrency(position.current_price_eur) : '-'}
+                        {privacyMode ? '•••' : (position.current_price_eur ? formatCurrency(position.current_price_eur) : '-')}
                       </TableCell>
                       <TableCell className="text-right">
-                        {formatCurrency(position.current_value_eur || 0)}
+                        {privacyMode ? '•••' : formatCurrency(position.current_value_eur || 0)}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className={position.gain_loss_eur && position.gain_loss_eur >= 0 ? "text-green-600" : "text-red-600"}>
-                          <div>{formatCurrency(position.gain_loss_eur || 0)}</div>
+                          <div>{privacyMode ? '•••' : formatCurrency(position.gain_loss_eur || 0)}</div>
                           <div className="text-xs">
                             {position.gain_loss_percent ? formatPercentage(position.gain_loss_percent) : '-'}
                           </div>
@@ -273,7 +274,7 @@ export const SortableHoldingsTable = ({ portfolios, aggregatedPositions, onRefre
                           {position.lots[0]?.manual_dividend_eur ? (
                             <Badge variant="secondary" className="text-xs">M</Badge>
                           ) : null}
-                          <span>{position.dividend_annual_eur ? formatCurrency(position.dividend_annual_eur) : '-'}</span>
+                          <span>{privacyMode ? '•••' : (position.dividend_annual_eur ? formatCurrency(position.dividend_annual_eur) : '-')}</span>
                           <Button
                             variant="outline"
                             size="sm"
