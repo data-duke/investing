@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { usePrivacy } from "@/contexts/PrivacyContext";
 import { formatCurrency, formatPercentage } from "@/lib/formatters";
 
 interface AggregatedPosition {
@@ -17,6 +18,7 @@ interface AllocationChartProps {
 
 export const AllocationChart = ({ aggregatedPositions }: AllocationChartProps) => {
   const isMobile = useIsMobile();
+  const { privacyMode } = usePrivacy();
 
   if (aggregatedPositions.length === 0) {
     return (
@@ -79,7 +81,7 @@ export const AllocationChart = ({ aggregatedPositions }: AllocationChartProps) =
           <div className="space-y-1 text-xs">
             <div className="flex justify-between gap-4">
               <span className="text-muted-foreground">Value:</span>
-              <span className="font-medium">{formatCurrency(data.value)}</span>
+              <span className="font-medium">{privacyMode ? "•••" : formatCurrency(data.value)}</span>
             </div>
             <div className="flex justify-between gap-4">
               <span className="text-muted-foreground">Allocation:</span>
@@ -155,7 +157,7 @@ export const AllocationChart = ({ aggregatedPositions }: AllocationChartProps) =
         </ResponsiveContainer>
         <div className="mt-4 text-center space-y-1">
           <p className="text-sm text-muted-foreground">
-            Total Portfolio Value: <span className="font-semibold text-foreground">{formatCurrency(totalValue)}</span>
+            Total Portfolio Value: <span className="font-semibold text-foreground">{privacyMode ? "•••" : formatCurrency(totalValue)}</span>
           </p>
           {othersPositions.length > 0 && (
             <p className="text-xs text-muted-foreground">

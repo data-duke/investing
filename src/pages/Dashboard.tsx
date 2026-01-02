@@ -168,12 +168,18 @@ const Dashboard = () => {
         if (p.current_value_eur) {
           existing.current_value_eur = (existing.current_value_eur || 0) + p.current_value_eur;
         }
-        const dividend = p.manual_dividend_eur ?? p.dividend_annual_eur ?? 0;
+        // manual_dividend_eur is per-share, so multiply by quantity
+        const dividend = p.manual_dividend_eur 
+          ? p.manual_dividend_eur * Number(p.quantity)
+          : p.dividend_annual_eur ?? 0;
         if (dividend) {
           existing.dividend_annual_eur = (existing.dividend_annual_eur || 0) + dividend;
         }
       } else {
-        const dividend = p.manual_dividend_eur ?? p.dividend_annual_eur ?? 0;
+        // manual_dividend_eur is per-share, so multiply by quantity
+        const dividend = p.manual_dividend_eur 
+          ? p.manual_dividend_eur * Number(p.quantity)
+          : p.dividend_annual_eur ?? 0;
         grouped.set(p.symbol, {
           symbol: p.symbol,
           name: p.name,
@@ -328,12 +334,18 @@ const Dashboard = () => {
             if (p.current_value_eur) {
               existing.current_value_eur = (existing.current_value_eur || 0) + p.current_value_eur;
             }
-            const dividend = p.manual_dividend_eur ?? p.dividend_annual_eur ?? 0;
+            // manual_dividend_eur is per-share, so multiply by quantity
+            const dividend = p.manual_dividend_eur 
+              ? p.manual_dividend_eur * Number(p.quantity)
+              : p.dividend_annual_eur ?? 0;
             if (dividend) {
               existing.dividend_annual_eur = (existing.dividend_annual_eur || 0) + dividend;
             }
           } else {
-            const dividend = p.manual_dividend_eur ?? p.dividend_annual_eur ?? 0;
+            // manual_dividend_eur is per-share, so multiply by quantity
+            const dividend = p.manual_dividend_eur 
+              ? p.manual_dividend_eur * Number(p.quantity)
+              : p.dividend_annual_eur ?? 0;
             grouped.set(p.symbol, {
               symbol: p.symbol,
               name: p.name,

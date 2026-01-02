@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { usePortfolio } from "@/hooks/usePortfolio";
 import { useToast } from "@/hooks/use-toast";
+import { usePrivacy } from "@/contexts/PrivacyContext";
 import { useState } from "react";
 import { Save, TrendingUp } from "lucide-react";
 
@@ -39,6 +40,7 @@ export const AnalysisTable = ({ data, positionName, isLoggedIn, onNavigateToSign
   const [isSaving, setIsSaving] = useState(false);
   const { addInvestment } = usePortfolio();
   const { toast } = useToast();
+  const { privacyMode } = usePrivacy();
 
   const handleSaveToPortfolio = async () => {
     if (!data || !data.symbol || !data.country) return;
@@ -102,7 +104,8 @@ export const AnalysisTable = ({ data, positionName, isLoggedIn, onNavigateToSign
     );
   }
 
-  const formatCurrency = (value: number) => {
+  const formatCurrencyValue = (value: number) => {
+    if (privacyMode) return "•••";
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'EUR',
@@ -142,11 +145,11 @@ export const AnalysisTable = ({ data, positionName, isLoggedIn, onNavigateToSign
           <div className="space-y-3 font-mono">
             <div className="flex justify-between items-center py-2 border-b border-border">
               <span className="text-muted-foreground">Initial Investment:</span>
-              <span className="text-foreground font-semibold">{formatCurrency(data.originallyInvested)}</span>
+              <span className="text-foreground font-semibold">{formatCurrencyValue(data.originallyInvested)}</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-border">
               <span className="text-muted-foreground">Current Price per Share:</span>
-              <span className="text-foreground">{formatCurrency(data.currentPrice)}</span>
+              <span className="text-foreground">{formatCurrencyValue(data.currentPrice)}</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-border">
               <span className="text-muted-foreground">Quantity Owned:</span>
@@ -154,12 +157,12 @@ export const AnalysisTable = ({ data, positionName, isLoggedIn, onNavigateToSign
             </div>
             <div className="flex justify-between items-center py-2 border-b border-border">
               <span className="text-muted-foreground">Current Market Value:</span>
-              <span className="text-foreground font-semibold">{formatCurrency(data.currentValue)}</span>
+              <span className="text-foreground font-semibold">{formatCurrencyValue(data.currentValue)}</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-border">
               <span className="text-muted-foreground">Gain/Loss:</span>
               <span className={`font-semibold ${getValueColor(data.currentGain)}`}>
-                {formatCurrency(data.currentGain)} ({formatPercent(data.currentGainPercent)})
+                {privacyMode ? formatPercent(data.currentGainPercent) : `${formatCurrencyValue(data.currentGain)} (${formatPercent(data.currentGainPercent)})`}
               </span>
             </div>
           </div>
@@ -172,7 +175,7 @@ export const AnalysisTable = ({ data, positionName, isLoggedIn, onNavigateToSign
             <div className="space-y-3 font-mono">
               <div className="flex justify-between items-center py-2 border-b border-border">
                 <span className="text-muted-foreground">Gross Annual Dividend:</span>
-                <span className="text-foreground">{formatCurrency(data.grossDividendAnnual)}</span>
+                <span className="text-foreground">{formatCurrencyValue(data.grossDividendAnnual)}</span>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-border">
                 <span className="text-muted-foreground">Tax Rate:</span>
@@ -180,7 +183,7 @@ export const AnalysisTable = ({ data, positionName, isLoggedIn, onNavigateToSign
               </div>
               <div className="flex justify-between items-center py-2 border-b border-border">
                 <span className="text-muted-foreground">Net Annual Dividend (After Tax):</span>
-                <span className="text-foreground font-semibold">{formatCurrency(data.netDividendAnnual)}</span>
+                <span className="text-foreground font-semibold">{formatCurrencyValue(data.netDividendAnnual)}</span>
               </div>
             </div>
           ) : (
@@ -203,15 +206,15 @@ export const AnalysisTable = ({ data, positionName, isLoggedIn, onNavigateToSign
           <div className="space-y-3 font-mono mb-4">
             <div className="flex justify-between items-center py-2 border-b border-border">
               <span className="text-muted-foreground">1 Year:</span>
-              <span className="text-foreground">{formatCurrency(data.projectedValue1Year)}</span>
+              <span className="text-foreground">{formatCurrencyValue(data.projectedValue1Year)}</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-border">
               <span className="text-muted-foreground">3 Years:</span>
-              <span className="text-foreground">{formatCurrency(data.projectedValue3Years)}</span>
+              <span className="text-foreground">{formatCurrencyValue(data.projectedValue3Years)}</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-border">
               <span className="text-muted-foreground">5 Years:</span>
-              <span className="text-foreground">{formatCurrency(data.projectedValue5Years)}</span>
+              <span className="text-foreground">{formatCurrencyValue(data.projectedValue5Years)}</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-border">
               <span className="text-muted-foreground">Estimated CAGR:</span>

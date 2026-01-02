@@ -21,7 +21,10 @@ export const PortfolioOverview = ({ portfolios, isLoading = false, privacyMode =
     const totalGain = totalValue - totalInvested;
     const totalGainPercent = totalInvested > 0 ? (totalGain / totalInvested) * 100 : 0;
     const totalDividends = portfolios.reduce((sum, p) => {
-      const dividend = p.manual_dividend_eur ?? p.dividend_annual_eur ?? 0;
+      // manual_dividend_eur is per-share, so multiply by quantity
+      const dividend = p.manual_dividend_eur 
+        ? p.manual_dividend_eur * Number(p.quantity)
+        : p.dividend_annual_eur ?? 0;
       return sum + dividend;
     }, 0);
     const monthlyDividends = totalDividends / 12;
