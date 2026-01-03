@@ -21,7 +21,18 @@
     "lots": "Lots",
     "ofPortfolio": "des Portfolios",
     "multiple": "Mehrere",
-    "single": "Einzeln"
+    "single": "Einzeln",
+    "saving": "Wird gespeichert..."
+  },
+  "settings": {
+    "taxSettings": "Steuer-Einstellungen",
+    "taxSettingsDescription": "Konfigurieren Sie Ihr Steuer-Wohnsitzland für genaue Berechnungen nach Steuern.",
+    "taxResidenceCountry": "Steuer-Wohnsitzland",
+    "selectCountry": "Land auswählen",
+    "taxResidenceHint": "Dies bestimmt die Quellensteuer-Sätze und lokale Steuerberechnungen für Ihre Dividenden und Kapitalerträge.",
+    "saved": "Einstellungen gespeichert",
+    "taxResidenceUpdated": "Ihr Steuer-Wohnsitz wurde aktualisiert. Werte werden nach Steuern angezeigt.",
+    "saveFailed": "Einstellungen konnten nicht gespeichert werden. Bitte versuchen Sie es erneut."
   },
   "nav": {
     "login": "Anmelden",
@@ -92,8 +103,8 @@
   "portfolio": {
     "totalValue": "Gesamtportfoliowert",
     "invested": "Investiert: {{amount}}",
-    "totalGainLoss": "Gesamtgewinn/-verlust",
-    "annualDividends": "Jährliche Dividenden",
+    "totalGainLoss": "Nettogewinn/-verlust",
+    "annualDividends": "Netto-Jahresdividenden",
     "monthlyAvg": "{{amount}}/Monat Durchschnitt",
     "topPerformer": "Top Performer",
     "noData": "K.A.",
@@ -101,7 +112,8 @@
     "dividendsReturns": "Dividenden & Rendite",
     "avgPurchasePrice": "Ø Kaufpreis",
     "totalReturn": "Gesamtrendite",
-    "returnPercent": "Rendite %"
+    "returnPercent": "Rendite %",
+    "afterTax": "nach Steuern"
   },
   "holdings": {
     "stock": "Aktie",

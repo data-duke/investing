@@ -6,7 +6,6 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { usePrivacy } from "@/contexts/PrivacyContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
 import { PortfolioOverview } from "@/components/PortfolioOverview";
 import { PortfolioChart } from "@/components/PortfolioChart";
 import { AllocationChart } from "@/components/AllocationChart";
@@ -14,12 +13,13 @@ import { SortableHoldingsTable } from "@/components/SortableHoldingsTable";
 import { AddInvestmentDialog } from "@/components/AddInvestmentDialog";
 import { TagFilterBar } from "@/components/TagFilterBar";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { TaxSettingsDialog } from "@/components/TaxSettingsDialog";
 import { LogOut, Plus, RefreshCw, TrendingUp, Crown, Eye, EyeOff } from "lucide-react";
 import { fetchStockData } from "@/services/stockApi";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { calculateDividendTax } from "@/lib/taxCalculations";
+import { calculateDividendTax, calculateCapitalGainsTax } from "@/lib/taxCalculations";
 
 interface AggregatedPosition {
   symbol: string;
@@ -52,7 +52,24 @@ const Dashboard = () => {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [userCountry, setUserCountry] = useState<string>('AT');
   const { toast } = useToast();
+
+  // Fetch user's tax residence country
+  useEffect(() => {
+    const fetchUserCountry = async () => {
+      if (!user?.id) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('residence_country')
+        .eq('id', user.id)
+        .single();
+      if (data?.residence_country) {
+        setUserCountry(data.residence_country);
+      }
+    };
+    fetchUserCountry();
+  }, [user?.id]);
 
   // Auto-refresh on load and every 10 minutes (Premium only)
   useEffect(() => {
@@ -257,16 +274,24 @@ const Dashboard = () => {
         const gainLossPercent = (gainLoss / Number(portfolio.original_investment_eur)) * 100;
 
         // Use manual dividend if set, otherwise calculate with comprehensive tax
-        let netDividend = portfolio.manual_dividend_eur ?? 0;
+        let netDividend = 0;
         
-        if (!portfolio.manual_dividend_eur && stockData.dividend) {
-          // Use comprehensive tax calculation including withholding tax
-          // Assume investor country is Austria (could be made dynamic via user profile)
+        if (portfolio.manual_dividend_eur) {
+          // Manual dividend is per-share gross, apply tax
+          const taxBreakdown = calculateDividendTax(
+            portfolio.manual_dividend_eur,
+            Number(portfolio.quantity),
+            portfolio.country,
+            userCountry
+          );
+          netDividend = taxBreakdown.netDividend;
+        } else if (stockData.dividend) {
+          // API dividend - apply comprehensive tax calculation
           const taxBreakdown = calculateDividendTax(
             stockData.dividend,
             Number(portfolio.quantity),
             portfolio.country,
-            'AT' // Default investor country - could be stored in user profile
+            userCountry
           );
           netDividend = taxBreakdown.netDividend;
         }
@@ -413,6 +438,13 @@ const Dashboard = () => {
                 <span className="hidden md:inline text-xs">{t('dashboard.privacyMode')}</span>
               </Button>
             </div>
+            {user?.id && (
+              <TaxSettingsDialog
+                userId={user.id}
+                currentCountry={userCountry}
+                onCountryChange={setUserCountry}
+              />
+            )}
             <LanguageSwitcher />
             {!subscribed && (
               <Button
@@ -525,7 +557,7 @@ const Dashboard = () => {
               </div>
             </div>
 
-            <PortfolioOverview portfolios={filteredPortfolios} isLoading={isLoadingEnriched} privacyMode={privacyMode} />
+            <PortfolioOverview portfolios={filteredPortfolios} isLoading={isLoadingEnriched} privacyMode={privacyMode} userCountry={userCountry} />
 
             <TagFilterBar
               allTags={allTags}

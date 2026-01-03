@@ -21,7 +21,18 @@
     "lots": "lotova",
     "ofPortfolio": "portfolia",
     "multiple": "Više",
-    "single": "Jedan"
+    "single": "Jedan",
+    "saving": "Čuvanje..."
+  },
+  "settings": {
+    "taxSettings": "Poreske postavke",
+    "taxSettingsDescription": "Konfigurišite zemlju poreskog rezidentstva za tačne izračune posle poreza.",
+    "taxResidenceCountry": "Zemlja poreskog rezidentstva",
+    "selectCountry": "Izaberite zemlju",
+    "taxResidenceHint": "Ovo određuje stope poreza po odbitku i lokalne poreske obračune za vaše dividende i kapitalne dobitke.",
+    "saved": "Postavke sačuvane",
+    "taxResidenceUpdated": "Vaše poresko rezidentstvo je ažurirano. Vrednosti će prikazivati iznose posle poreza.",
+    "saveFailed": "Čuvanje postavki nije uspelo. Molimo pokušajte ponovo."
   },
   "nav": {
     "login": "Prijava",
@@ -92,8 +103,8 @@
   "portfolio": {
     "totalValue": "Ukupna vrednost portfolia",
     "invested": "Investirano: {{amount}}",
-    "totalGainLoss": "Ukupni dobitak/gubitak",
-    "annualDividends": "Godišnje dividende",
+    "totalGainLoss": "Neto dobitak/gubitak",
+    "annualDividends": "Neto godišnje dividende",
     "monthlyAvg": "{{amount}}/mesec prosek",
     "topPerformer": "Najbolji performer",
     "noData": "N/A",
@@ -101,7 +112,8 @@
     "dividendsReturns": "Dividende i prinosi",
     "avgPurchasePrice": "Pros. cena kupovine",
     "totalReturn": "Ukupan prinos",
-    "returnPercent": "Prinos %"
+    "returnPercent": "Prinos %",
+    "afterTax": "posle poreza"
   },
   "holdings": {
     "stock": "Akcija",
