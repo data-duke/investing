@@ -5,28 +5,49 @@ import { TrendingUp, DollarSign, PiggyBank, Award } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { formatCurrency, formatPercentage } from "@/lib/formatters";
+import { calculateDividendTax, calculateCapitalGainsTax } from "@/lib/taxCalculations";
 
 interface PortfolioOverviewProps {
   portfolios: Portfolio[];
   isLoading?: boolean;
   privacyMode?: boolean;
+  userCountry?: string;
 }
 
-export const PortfolioOverview = ({ portfolios, isLoading = false, privacyMode = false }: PortfolioOverviewProps) => {
+export const PortfolioOverview = ({ 
+  portfolios, 
+  isLoading = false, 
+  privacyMode = false,
+  userCountry = 'AT'
+}: PortfolioOverviewProps) => {
   const { t } = useTranslation();
 
   const stats = useMemo(() => {
     const totalValue = portfolios.reduce((sum, p) => sum + (p.current_value_eur || 0), 0);
     const totalInvested = portfolios.reduce((sum, p) => sum + Number(p.original_investment_eur), 0);
-    const totalGain = totalValue - totalInvested;
-    const totalGainPercent = totalInvested > 0 ? (totalGain / totalInvested) * 100 : 0;
+    const grossGain = totalValue - totalInvested;
+    
+    // Apply capital gains tax to get net gain
+    const capitalGainsTax = calculateCapitalGainsTax(grossGain, userCountry);
+    const netGain = capitalGainsTax.netGain;
+    const totalGainPercent = totalInvested > 0 ? (netGain / totalInvested) * 100 : 0;
+    
+    // Calculate net dividends with proper tax treatment
     const totalDividends = portfolios.reduce((sum, p) => {
-      // manual_dividend_eur is per-share, so multiply by quantity
-      const dividend = p.manual_dividend_eur 
-        ? p.manual_dividend_eur * Number(p.quantity)
-        : p.dividend_annual_eur ?? 0;
-      return sum + dividend;
+      // manual_dividend_eur is per-share gross, so apply tax
+      if (p.manual_dividend_eur) {
+        const taxBreakdown = calculateDividendTax(
+          p.manual_dividend_eur,
+          Number(p.quantity),
+          p.country,
+          userCountry
+        );
+        return sum + taxBreakdown.netDividend;
+      }
+      // dividend_annual_eur from API should already be net (calculated during refresh)
+      return sum + (p.dividend_annual_eur ?? 0);
     }, 0);
+    
     const monthlyDividends = totalDividends / 12;
     const dividendYield = totalValue > 0 ? (totalDividends / totalValue) * 100 : 0;
 
@@ -47,10 +68,10 @@ export const PortfolioOverview = ({ portfolios, isLoading = false, privacyMode =
       },
       {
         title: t('portfolio.totalGainLoss'),
-        value: privacyMode ? formatPercentage(totalGainPercent) : formatCurrency(totalGain),
+        value: privacyMode ? formatPercentage(totalGainPercent) : formatCurrency(netGain),
         icon: TrendingUp,
-        description: privacyMode ? "" : formatPercentage(totalGainPercent),
-        className: totalGain >= 0 ? "text-green-600" : "text-red-600",
+        description: privacyMode ? "" : `${formatPercentage(totalGainPercent)} ${t('portfolio.afterTax')}`,
+        className: netGain >= 0 ? "text-green-600" : "text-red-600",
       },
       {
         title: t('portfolio.annualDividends'),
@@ -66,7 +87,7 @@ export const PortfolioOverview = ({ portfolios, isLoading = false, privacyMode =
         className: "text-primary",
       },
     ];
-  }, [portfolios, privacyMode, t]);
+  }, [portfolios, privacyMode, userCountry, t]);
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

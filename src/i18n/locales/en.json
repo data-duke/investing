@@ -21,7 +21,18 @@
     "lots": "lots",
     "ofPortfolio": "of portfolio",
     "multiple": "Multiple",
-    "single": "Single"
+    "single": "Single",
+    "saving": "Saving..."
+  },
+  "settings": {
+    "taxSettings": "Tax Settings",
+    "taxSettingsDescription": "Configure your tax residence country for accurate after-tax calculations.",
+    "taxResidenceCountry": "Tax Residence Country",
+    "selectCountry": "Select country",
+    "taxResidenceHint": "This determines withholding tax rates and local tax calculations for your dividends and capital gains.",
+    "saved": "Settings Saved",
+    "taxResidenceUpdated": "Your tax residence has been updated. Values will reflect after-tax amounts.",
+    "saveFailed": "Failed to save settings. Please try again."
   },
   "nav": {
     "login": "Login",
@@ -92,8 +103,8 @@
   "portfolio": {
     "totalValue": "Total Portfolio Value",
     "invested": "Invested: {{amount}}",
-    "totalGainLoss": "Total Gain/Loss",
-    "annualDividends": "Annual Dividends",
+    "totalGainLoss": "Net Gain/Loss",
+    "annualDividends": "Net Annual Dividends",
     "monthlyAvg": "{{amount}}/month avg",
     "topPerformer": "Top Performer",
     "noData": "N/A",
@@ -101,7 +112,8 @@
     "dividendsReturns": "Dividends & Returns",
     "avgPurchasePrice": "Avg Purchase Price",
     "totalReturn": "Total Return",
-    "returnPercent": "Return %"
+    "returnPercent": "Return %",
+    "afterTax": "after tax"
   },
   "holdings": {
     "stock": "Stock",
