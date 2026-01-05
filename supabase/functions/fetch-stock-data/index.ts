@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,14 +9,91 @@ const corsHeaders = {
 
 const FMP_API_KEY = Deno.env.get('FMP_API_KEY')?.trim();
 const ALPHA_VANTAGE_API_KEY = Deno.env.get('ALPHA_VANTAGE_API_KEY')?.trim();
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
 const FMP_BASES = [
   'https://financialmodelingprep.com/stable',
   'https://financialmodelingprep.com/api/v3'
 ];
 
-// In-memory dividend cache with 24h TTL
+// Cache TTL in minutes
+const CACHE_TTL_MINUTES = 15;
+
+// In-memory dividend cache with 24h TTL (for edge function runtime)
 const dividendCache = new Map<string, { dividendUSD: number; cachedAt: number }>();
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const DIVIDEND_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+// Create Supabase client for cache operations
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+
+async function checkPriceCache(symbol: string): Promise<{
+  currentPrice: number;
+  currentPriceUSD: number;
+  dividend: number;
+  name: string;
+  exchangeRate: number;
+  source: string;
+} | null> {
+  try {
+    const { data, error } = await supabase
+      .from('price_cache')
+      .select('*')
+      .eq('symbol', symbol)
+      .single();
+
+    if (error || !data) return null;
+
+    // Check if cache is still valid (15 minutes)
+    const cachedAt = new Date(data.cached_at).getTime();
+    const now = Date.now();
+    const ageMinutes = (now - cachedAt) / (1000 * 60);
+
+    if (ageMinutes > CACHE_TTL_MINUTES) {
+      console.log(`Cache expired for ${symbol} (${ageMinutes.toFixed(1)} min old)`);
+      return null;
+    }
+
+    console.log(`✓ Cache hit for ${symbol} (${ageMinutes.toFixed(1)} min old)`);
+    return {
+      currentPrice: Number(data.current_price_eur),
+      currentPriceUSD: Number(data.current_price_usd),
+      dividend: Number(data.dividend_usd) * Number(data.exchange_rate),
+      name: data.name || symbol,
+      exchangeRate: Number(data.exchange_rate),
+      source: `${data.source} (cached)`,
+    };
+  } catch (e) {
+    console.warn('Cache check failed:', e);
+    return null;
+  }
+}
+
+async function updatePriceCache(
+  symbol: string,
+  currentPriceEur: number,
+  currentPriceUsd: number,
+  dividendUsd: number,
+  name: string,
+  exchangeRate: number,
+  source: string
+): Promise<void> {
+  try {
+    await supabase.from('price_cache').upsert({
+      symbol,
+      current_price_eur: currentPriceEur,
+      current_price_usd: currentPriceUsd,
+      dividend_usd: dividendUsd,
+      name,
+      exchange_rate: exchangeRate,
+      source,
+      cached_at: new Date().toISOString(),
+    }, { onConflict: 'symbol' });
+    console.log(`✓ Cache updated for ${symbol}`);
+  } catch (e) {
+    console.warn('Cache update failed:', e);
+  }
+}
 
 async function fetchJSON(url: string, logError = true) {
   const res = await fetch(url, {
@@ -25,7 +103,6 @@ async function fetchJSON(url: string, logError = true) {
   });
   if (!res.ok) {
     if (logError) {
-      // Avoid logging response body which may contain sensitive API messages
       console.error(`HTTP ${res.status} for external API request`);
     }
     throw new Error(`External API request failed with status ${res.status}`);
@@ -52,7 +129,6 @@ async function fetchAlphaJSON(url: string) {
   if (!res.ok) throw new Error('External API request failed');
   const data = await res.json();
   
-  // Check for API errors or rate limits (don't expose specific messages)
   if (data['Note'] || data['Information'] || data['Error Message']) {
     throw new Error('External API rate limit or error');
   }
@@ -63,7 +139,6 @@ async function fetchAlphaJSON(url: string) {
 async function fetchDividendFromAV(symbol: string): Promise<{ dividend: number; name?: string }> {
   if (!ALPHA_VANTAGE_API_KEY) return { dividend: 0 };
   
-  // Strategy 1: Try OVERVIEW endpoint for DividendPerShare
   try {
     const url = `https://www.alphavantage.co/query?function=OVERVIEW&symbol=${encodeURIComponent(symbol)}&apikey=${ALPHA_VANTAGE_API_KEY}`;
     const data = await fetchAlphaJSON(url);
@@ -79,14 +154,13 @@ async function fetchDividendFromAV(symbol: string): Promise<{ dividend: number; 
     console.log('Alpha Vantage OVERVIEW failed:', (e as Error).message);
   }
   
-  // Strategy 2: Try TIME_SERIES_MONTHLY_ADJUSTED for TTM sum
   try {
     const url = `https://www.alphavantage.co/query?function=TIME_SERIES_MONTHLY_ADJUSTED&symbol=${encodeURIComponent(symbol)}&apikey=${ALPHA_VANTAGE_API_KEY}`;
     const data = await fetchAlphaJSON(url);
     
     const timeSeries = data['Monthly Adjusted Time Series'];
     if (timeSeries && typeof timeSeries === 'object') {
-      const dates = Object.keys(timeSeries).sort().reverse(); // Most recent first
+      const dates = Object.keys(timeSeries).sort().reverse();
       let ttmDividend = 0;
       
       for (let i = 0; i < Math.min(12, dates.length); i++) {
@@ -128,7 +202,6 @@ async function tryFMPEndpoint(endpoint: string): Promise<any> {
 }
 
 async function fetchDividendFromFMP(symbol: string, currentPrice: number): Promise<number> {
-  // Strategy 1: key-metrics-ttm
   try {
     const metrics = await tryFMPEndpoint(`/key-metrics-ttm/${encodeURIComponent(symbol)}`);
     const dps = Number(metrics?.[0]?.dividendPerShareTTM);
@@ -140,7 +213,6 @@ async function fetchDividendFromFMP(symbol: string, currentPrice: number): Promi
     console.log('Strategy 1 (key-metrics-ttm) failed:', (e as Error).message);
   }
 
-  // Strategy 2: historical-price-full/stock_dividend
   try {
     const divHistory = await tryFMPEndpoint(`/historical-price-full/stock_dividend/${encodeURIComponent(symbol)}`);
     if (divHistory?.historical && Array.isArray(divHistory.historical)) {
@@ -166,7 +238,6 @@ async function fetchDividendFromFMP(symbol: string, currentPrice: number): Promi
     console.log('Strategy 2 (stock_dividend) failed:', (e as Error).message);
   }
 
-  // Strategy 3: ratios-ttm (dividendYieldTTM * price)
   try {
     const ratios = await tryFMPEndpoint(`/ratios-ttm/${encodeURIComponent(symbol)}`);
     const yieldTTM = Number(ratios?.[0]?.dividendYieldTTM);
@@ -186,7 +257,6 @@ async function fetchDividendFromFMP(symbol: string, currentPrice: number): Promi
 async function fetchFromFMP(symbol: string) {
   if (!FMP_API_KEY) throw new Error('FMP key missing');
 
-  // Quote for price and possibly name
   const quote = await tryFMPEndpoint(`/quote/${encodeURIComponent(symbol)}`);
   if (!Array.isArray(quote) || quote.length === 0) throw new Error('FMP quote empty');
   
@@ -194,7 +264,6 @@ async function fetchFromFMP(symbol: string) {
   const currentPrice = Number(q?.price ?? q?.previousClose ?? q?.open);
   if (!Number.isFinite(currentPrice)) throw new Error('FMP price invalid');
 
-  // Company name (quote.name is usually present, otherwise profile)
   let name: string = q?.name || symbol;
   if (!name || name === symbol) {
     try {
@@ -207,7 +276,6 @@ async function fetchFromFMP(symbol: string) {
     }
   }
 
-  // Fetch dividend with multiple fallback strategies
   const dividend = await fetchDividendFromFMP(symbol, currentPrice);
 
   return { currentPrice, name, dividend, source: 'FMP' };
@@ -232,17 +300,15 @@ async function fetchFromStooq(symbol: string) {
     return price;
   };
 
-  // Build list of symbol variants to try (handles symbols like BRK-B, BRK.B)
   const symbolVariants = [
     symbol.toLowerCase(),
     `${symbol.toLowerCase()}.us`,
-    symbol.replace('-', '.').toLowerCase(), // BRK-B -> brk.b
-    `${symbol.replace('-', '.').toLowerCase()}.us`, // brk.b.us
-    symbol.replace('.', '-').toLowerCase(), // BRK.B -> brk-b
-    `${symbol.replace('.', '-').toLowerCase()}.us`, // brk-b.us
+    symbol.replace('-', '.').toLowerCase(),
+    `${symbol.replace('-', '.').toLowerCase()}.us`,
+    symbol.replace('.', '-').toLowerCase(),
+    `${symbol.replace('.', '-').toLowerCase()}.us`,
   ];
   
-  // Remove duplicates
   const uniqueVariants = [...new Set(symbolVariants)];
 
   for (const variant of uniqueVariants) {
@@ -264,9 +330,8 @@ serve(async (req) => {
   }
 
   try {
-    const { symbol } = await req.json();
+    const { symbol, force_refresh } = await req.json();
 
-    // Validate symbol
     if (!symbol || typeof symbol !== 'string') {
       throw new Error('Stock symbol is required');
     }
@@ -282,14 +347,27 @@ serve(async (req) => {
 
     const cleanSymbol = trimmedSymbol.toUpperCase();
 
-    console.log(`Fetching stock data for ${cleanSymbol}`);
+    console.log(`Fetching stock data for ${cleanSymbol}${force_refresh ? ' (force refresh)' : ''}`);
+
+    // Check cache first (unless force refresh)
+    if (!force_refresh) {
+      const cached = await checkPriceCache(cleanSymbol);
+      if (cached) {
+        return new Response(JSON.stringify({
+          symbol: cleanSymbol,
+          ...cached,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
     let currentPriceUSD = 0;
     let name = cleanSymbol;
     let dividendUSD = 0;
     let source = 'Unknown';
 
-    // Prefer FMP if key is available for reliability + dividends
+    // Prefer FMP if key is available
     if (FMP_API_KEY) {
       try {
         const fmp = await fetchFromFMP(cleanSymbol);
@@ -307,7 +385,7 @@ serve(async (req) => {
       const stooq = await fetchFromStooq(cleanSymbol);
       currentPriceUSD = stooq.currentPrice;
       name = stooq.name;
-      dividendUSD = dividendUSD || 0; // Stooq has no dividend data
+      dividendUSD = dividendUSD || 0;
       source = stooq.source;
     }
 
@@ -317,21 +395,18 @@ serve(async (req) => {
 
     // Try Alpha Vantage for dividends if we don't have them yet
     if ((!dividendUSD || dividendUSD <= 0) && ALPHA_VANTAGE_API_KEY) {
-      // Check cache first
       const cached = dividendCache.get(cleanSymbol);
       const now = Date.now();
       
-      if (cached && (now - cached.cachedAt) < CACHE_TTL_MS) {
-        console.log(`✓ Using cached dividend for ${cleanSymbol}: $${cached.dividendUSD.toFixed(2)}`);
+      if (cached && (now - cached.cachedAt) < DIVIDEND_CACHE_TTL_MS) {
+        console.log(`✓ Using in-memory cached dividend for ${cleanSymbol}: $${cached.dividendUSD.toFixed(2)}`);
         dividendUSD = cached.dividendUSD;
       } else {
         console.log('Attempting Alpha Vantage dividend fetch...');
         const avResult = await fetchDividendFromAV(cleanSymbol);
         if (avResult.dividend > 0) {
           dividendUSD = avResult.dividend;
-          // Cache the result
           dividendCache.set(cleanSymbol, { dividendUSD, cachedAt: now });
-          // Update name if we only have the ticker and AV provided a better name
           if (avResult.name && (name === cleanSymbol || name === symbol)) {
             name = avResult.name;
           }
@@ -347,6 +422,9 @@ serve(async (req) => {
     const dividend = dividendUSD * usdToEur;
 
     console.log(`✓ Final: ${name} @ $${currentPriceUSD.toFixed(2)} (€${currentPrice.toFixed(2)}), Div: $${dividendUSD.toFixed(2)} (€${dividend.toFixed(2)}), Source: ${source}`);
+
+    // Update cache
+    await updatePriceCache(cleanSymbol, currentPrice, currentPriceUSD, dividendUSD, name, usdToEur, source);
 
     const stockData = { 
       symbol: cleanSymbol, 

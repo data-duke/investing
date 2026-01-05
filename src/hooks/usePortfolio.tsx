@@ -20,6 +20,8 @@ export interface Portfolio {
   manual_dividend_eur?: number;
   dividend_last_fetched?: string;
   exchange_suffix?: string;
+  tags?: string[];
+  // Legacy fields - still supported for backwards compatibility
   tag?: string;
   auto_tag_date?: string;
 }
