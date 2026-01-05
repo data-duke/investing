@@ -14,27 +14,15 @@ import { AddInvestmentDialog } from "@/components/AddInvestmentDialog";
 import { TagFilterBar } from "@/components/TagFilterBar";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { TaxSettingsDialog } from "@/components/TaxSettingsDialog";
-import { LogOut, Plus, RefreshCw, TrendingUp, Crown, Eye, EyeOff } from "lucide-react";
+import { ShareDialog } from "@/components/ShareDialog";
+import { ManageSharesDialog } from "@/components/ManageSharesDialog";
+import { LogOut, Plus, RefreshCw, TrendingUp, Crown, Eye, EyeOff, Share2, Link } from "lucide-react";
 import { fetchStockData } from "@/services/stockApi";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { calculateDividendTax, calculateCapitalGainsTax } from "@/lib/taxCalculations";
-
-interface AggregatedPosition {
-  symbol: string;
-  name: string;
-  country: string;
-  totalQuantity: number;
-  totalOriginalInvestment: number;
-  avgOriginalPrice: number;
-  current_price_eur?: number;
-  current_value_eur?: number;
-  gain_loss_eur?: number;
-  gain_loss_percent?: number;
-  dividend_annual_eur?: number;
-  lots: Portfolio[];
-}
+import { calculateDividendTax } from "@/lib/taxCalculations";
+import { AggregatedPosition, MAX_CONCURRENT_REQUESTS, REFRESH_INTERVAL_MS } from "@/lib/constants";
 
 const Dashboard = () => {
   const { t } = useTranslation();
@@ -47,12 +35,15 @@ const Dashboard = () => {
   const [enrichedPortfolios, setEnrichedPortfolios] = useState<Portfolio[]>([]);
   const [aggregatedPositions, setAggregatedPositions] = useState<AggregatedPosition[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [isManageSharesOpen, setIsManageSharesOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingEnriched, setIsLoadingEnriched] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [userCountry, setUserCountry] = useState<string>('AT');
+  const [refreshProgress, setRefreshProgress] = useState<{ current: number; total: number } | null>(null);
   const { toast } = useToast();
 
   // Fetch user's tax residence country
@@ -77,7 +68,7 @@ const Dashboard = () => {
       refreshPrices();
       const interval = setInterval(() => {
         refreshPrices();
-      }, 10 * 60 * 1000); // 10 minutes
+      }, REFRESH_INTERVAL_MS);
       
       return () => clearInterval(interval);
     }
@@ -98,15 +89,12 @@ const Dashboard = () => {
     
     if (newId) {
       setHighlightedId(newId);
-      // Remove the parameters from URL
       const params = new URLSearchParams(searchParams);
       params.delete('newId');
       params.delete('upgraded');
       setSearchParams(params);
-      // Clear highlight after animation
       setTimeout(() => setHighlightedId(null), 4000);
       
-      // Scroll to the new investment (on mobile)
       setTimeout(() => {
         const element = document.getElementById(`investment-${newId}`);
         if (element) {
@@ -128,7 +116,6 @@ const Dashboard = () => {
 
       setIsLoadingEnriched(true);
 
-      // Fetch latest snapshot for each portfolio
       const enriched = await Promise.all(
         portfolios.map(async (portfolio) => {
           const { data: snapshots } = await supabase
@@ -150,7 +137,6 @@ const Dashboard = () => {
               dividend_annual_eur: dividend,
             };
           }
-          // No snapshot yet - show original investment values until first refresh
           return {
             ...portfolio,
             current_price_eur: Number(portfolio.original_price_eur),
@@ -172,6 +158,21 @@ const Dashboard = () => {
     }
   }, [portfolios, loading]);
 
+  // Helper to get all tags from a portfolio (including legacy fields)
+  const getPortfolioTags = (portfolio: Portfolio): string[] => {
+    const tags: string[] = [];
+    if (portfolio.tags && portfolio.tags.length > 0) {
+      tags.push(...portfolio.tags);
+    }
+    if (portfolio.tag && !tags.includes(portfolio.tag)) {
+      tags.push(portfolio.tag);
+    }
+    if (portfolio.auto_tag_date && !tags.includes(portfolio.auto_tag_date)) {
+      tags.push(portfolio.auto_tag_date);
+    }
+    return tags;
+  };
+
   const aggregatePositions = (portfolios: Portfolio[]) => {
     const grouped = new Map<string, AggregatedPosition>();
 
@@ -185,7 +186,6 @@ const Dashboard = () => {
         if (p.current_value_eur) {
           existing.current_value_eur = (existing.current_value_eur || 0) + p.current_value_eur;
         }
-        // manual_dividend_eur is per-share, so multiply by quantity
         const dividend = p.manual_dividend_eur 
           ? p.manual_dividend_eur * Number(p.quantity)
           : p.dividend_annual_eur ?? 0;
@@ -193,7 +193,6 @@ const Dashboard = () => {
           existing.dividend_annual_eur = (existing.dividend_annual_eur || 0) + dividend;
         }
       } else {
-        // manual_dividend_eur is per-share, so multiply by quantity
         const dividend = p.manual_dividend_eur 
           ? p.manual_dividend_eur * Number(p.quantity)
           : p.dividend_annual_eur ?? 0;
@@ -203,7 +202,7 @@ const Dashboard = () => {
           country: p.country,
           totalQuantity: Number(p.quantity),
           totalOriginalInvestment: Number(p.original_investment_eur),
-          avgOriginalPrice: 0, // Will calculate below
+          avgOriginalPrice: 0,
           current_price_eur: p.current_price_eur,
           current_value_eur: p.current_value_eur,
           dividend_annual_eur: dividend,
@@ -212,7 +211,6 @@ const Dashboard = () => {
       }
     });
 
-    // Calculate weighted averages and gains
     const aggregated = Array.from(grouped.values()).map((pos) => {
       pos.avgOriginalPrice = pos.totalOriginalInvestment / pos.totalQuantity;
       if (pos.current_value_eur) {
@@ -225,10 +223,29 @@ const Dashboard = () => {
     setAggregatedPositions(aggregated);
   };
 
+  // Parallel fetching with concurrency limit
+  const fetchWithConcurrencyLimit = async <T,>(
+    items: T[],
+    fetchFn: (item: T) => Promise<any>,
+    maxConcurrent: number = MAX_CONCURRENT_REQUESTS
+  ): Promise<PromiseSettledResult<any>[]> => {
+    const results: PromiseSettledResult<any>[] = [];
+    
+    for (let i = 0; i < items.length; i += maxConcurrent) {
+      const batch = items.slice(i, i + maxConcurrent);
+      const batchResults = await Promise.allSettled(batch.map(fetchFn));
+      results.push(...batchResults);
+      setRefreshProgress({ current: Math.min(i + maxConcurrent, items.length), total: items.length });
+    }
+    
+    return results;
+  };
+
   const refreshPrices = async () => {
     setIsRefreshing(true);
+    setRefreshProgress({ current: 0, total: 0 });
 
-    // CRITICAL: Fetch fresh data directly from DB to avoid using stale hook state
+    // Fetch fresh portfolios from DB
     const { data: freshPortfolios, error } = await supabase
       .from('portfolios')
       .select('*')
@@ -237,47 +254,62 @@ const Dashboard = () => {
     if (error || !freshPortfolios || freshPortfolios.length === 0) {
       console.error('Failed to fetch fresh portfolios:', error);
       setIsRefreshing(false);
+      setRefreshProgress(null);
       return;
     }
 
+    // Deduplicate symbols to avoid redundant API calls
+    const uniqueSymbols = [...new Set(freshPortfolios.map(p => p.symbol))];
+    setRefreshProgress({ current: 0, total: uniqueSymbols.length });
+
+    // Fetch prices in parallel with concurrency limit
+    const priceMap = new Map<string, any>();
+    
+    const results = await fetchWithConcurrencyLimit(
+      uniqueSymbols,
+      async (symbol) => {
+        try {
+          let stockData;
+          try {
+            stockData = await fetchStockData(symbol);
+          } catch (apiError) {
+            console.log(`API failed for ${symbol}, trying scraping...`);
+            const { data: scrapedData, error: scrapeError } = await supabase.functions.invoke('scrape-stock-price', {
+              body: { symbol }
+            });
+            if (scrapeError || !scrapedData) throw new Error('Both API and scraping failed');
+            stockData = scrapedData;
+          }
+          return { symbol, stockData, success: true };
+        } catch (e) {
+          console.error(`Failed to fetch ${symbol}:`, e);
+          return { symbol, success: false };
+        }
+      }
+    );
+
+    // Build price map from successful fetches
+    results.forEach((result) => {
+      if (result.status === 'fulfilled' && result.value.success) {
+        priceMap.set(result.value.symbol, result.value.stockData);
+      }
+    });
+
+    // Apply prices to all portfolios
     const updated: Portfolio[] = [];
-    let successCount = 0;
-    let failCount = 0;
+    const snapshotInserts: any[] = [];
 
     for (const portfolio of freshPortfolios) {
-      try {
-        let stockData;
-        let dataSource = 'api';
-        
-        // Try API first
-        try {
-          stockData = await fetchStockData(portfolio.symbol);
-        } catch (apiError) {
-          console.log(`API failed for ${portfolio.symbol}, trying scraping...`);
-          
-          // Fallback to web scraping
-          const { data: scrapedData, error: scrapeError } = await supabase.functions.invoke('scrape-stock-price', {
-            body: { symbol: portfolio.symbol }
-          });
-          
-          if (scrapeError || !scrapedData) {
-            throw new Error(`Both API and scraping failed: ${scrapeError?.message || 'Unknown error'}`);
-          }
-          
-          stockData = scrapedData;
-          dataSource = 'scrape';
-        }
-
+      const stockData = priceMap.get(portfolio.symbol);
+      
+      if (stockData) {
         const currentPrice = stockData.currentPrice;
         const currentValue = currentPrice * Number(portfolio.quantity);
         const gainLoss = currentValue - Number(portfolio.original_investment_eur);
         const gainLossPercent = (gainLoss / Number(portfolio.original_investment_eur)) * 100;
 
-        // Use manual dividend if set, otherwise calculate with comprehensive tax
         let netDividend = 0;
-        
         if (portfolio.manual_dividend_eur) {
-          // Manual dividend is per-share gross, apply tax
           const taxBreakdown = calculateDividendTax(
             portfolio.manual_dividend_eur,
             Number(portfolio.quantity),
@@ -286,7 +318,6 @@ const Dashboard = () => {
           );
           netDividend = taxBreakdown.netDividend;
         } else if (stockData.dividend) {
-          // API dividend - apply comprehensive tax calculation
           const taxBreakdown = calculateDividendTax(
             stockData.dividend,
             Number(portfolio.quantity),
@@ -296,7 +327,7 @@ const Dashboard = () => {
           netDividend = taxBreakdown.netDividend;
         }
 
-        await supabase.from('portfolio_snapshots').insert({
+        snapshotInserts.push({
           portfolio_id: portfolio.id,
           current_price_eur: currentPrice,
           current_value_eur: currentValue,
@@ -313,36 +344,40 @@ const Dashboard = () => {
           gain_loss_percent: gainLossPercent,
           dividend_annual_eur: netDividend,
         });
-        
-        successCount++;
-        console.log(`✓ ${portfolio.symbol} updated via ${dataSource}`);
-      } catch (error) {
-        console.error(`✗ Error refreshing ${portfolio.symbol}:`, error);
-        failCount++;
+      } else {
         updated.push(portfolio);
       }
     }
+
+    // Batch insert snapshots
+    if (snapshotInserts.length > 0) {
+      await supabase.from('portfolio_snapshots').insert(snapshotInserts);
+    }
+
+    const successCount = priceMap.size;
+    const failCount = uniqueSymbols.length - successCount;
+    
+    console.log(`Refreshed ${successCount} symbols, ${failCount} failed`);
 
     setEnrichedPortfolios(updated);
     aggregatePositions(updated);
     setLastUpdated(new Date());
     setIsRefreshing(false);
+    setRefreshProgress(null);
   };
 
-  // Extract unique tags
+  // Extract unique tags from all portfolios
   const allTags = Array.from(
     new Set(
-      enrichedPortfolios
-        .map((p) => p.tag || p.auto_tag_date)
-        .filter(Boolean) as string[]
+      enrichedPortfolios.flatMap((p) => getPortfolioTags(p))
     )
-  ).sort();
+  ).filter(Boolean).sort();
 
   // Filter portfolios by selected tags
   const filteredPortfolios = selectedTags.length > 0
     ? enrichedPortfolios.filter((p) => {
-        const itemTag = p.tag || p.auto_tag_date;
-        return itemTag && selectedTags.includes(itemTag);
+        const portfolioTags = getPortfolioTags(p);
+        return portfolioTags.some(tag => selectedTags.includes(tag));
       })
     : enrichedPortfolios;
 
@@ -359,7 +394,6 @@ const Dashboard = () => {
             if (p.current_value_eur) {
               existing.current_value_eur = (existing.current_value_eur || 0) + p.current_value_eur;
             }
-            // manual_dividend_eur is per-share, so multiply by quantity
             const dividend = p.manual_dividend_eur 
               ? p.manual_dividend_eur * Number(p.quantity)
               : p.dividend_annual_eur ?? 0;
@@ -367,7 +401,6 @@ const Dashboard = () => {
               existing.dividend_annual_eur = (existing.dividend_annual_eur || 0) + dividend;
             }
           } else {
-            // manual_dividend_eur is per-share, so multiply by quantity
             const dividend = p.manual_dividend_eur 
               ? p.manual_dividend_eur * Number(p.quantity)
               : p.dividend_annual_eur ?? 0;
@@ -425,7 +458,6 @@ const Dashboard = () => {
             )}
           </div>
           <div className="flex items-center gap-2">
-            {/* Privacy Mode Toggle */}
             <div className="hidden sm:flex items-center gap-2 mr-2">
               <Button
                 variant="ghost"
@@ -518,7 +550,11 @@ const Dashboard = () => {
             {isRefreshing && (
               <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 flex items-center gap-3">
                 <RefreshCw className="h-4 w-4 animate-spin text-primary" />
-                <span className="text-sm font-medium">{t('dashboard.refreshingPrices')}</span>
+                <span className="text-sm font-medium">
+                  {refreshProgress 
+                    ? t('dashboard.refreshingProgress', { current: refreshProgress.current, total: refreshProgress.total })
+                    : t('dashboard.refreshingPrices')}
+                </span>
               </div>
             )}
             
@@ -545,6 +581,31 @@ const Dashboard = () => {
                 >
                   {privacyMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
+                
+                {/* Share buttons */}
+                {allTags.length > 0 && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsShareDialogOpen(true)}
+                      className="hidden sm:flex"
+                    >
+                      <Share2 className="mr-2 h-4 w-4" />
+                      {t('dashboard.share')}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setIsManageSharesOpen(true)}
+                      className="hidden sm:flex"
+                      title={t('share.manageTitle')}
+                    >
+                      <Link className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+                
                 <Button
                   variant="outline"
                   size="sm"
@@ -597,6 +658,17 @@ const Dashboard = () => {
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
         onSuccess={fetchPortfolios}
+      />
+      
+      <ShareDialog
+        open={isShareDialogOpen}
+        onOpenChange={setIsShareDialogOpen}
+        availableTags={allTags}
+      />
+      
+      <ManageSharesDialog
+        open={isManageSharesOpen}
+        onOpenChange={setIsManageSharesOpen}
       />
     </div>
   );

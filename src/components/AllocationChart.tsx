@@ -14,11 +14,13 @@ interface AggregatedPosition {
 
 interface AllocationChartProps {
   aggregatedPositions: AggregatedPosition[];
+  privacyMode?: boolean;
 }
 
-export const AllocationChart = ({ aggregatedPositions }: AllocationChartProps) => {
+export const AllocationChart = ({ aggregatedPositions, privacyMode: privacyModeProp }: AllocationChartProps) => {
   const isMobile = useIsMobile();
-  const { privacyMode } = usePrivacy();
+  const { privacyMode: contextPrivacyMode } = usePrivacy();
+  const privacyMode = privacyModeProp ?? contextPrivacyMode;
 
   if (aggregatedPositions.length === 0) {
     return (

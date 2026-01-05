@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -15,21 +15,14 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useSubscription } from "@/hooks/useSubscription";
 import { UpgradeDialog } from "./UpgradeDialog";
+import { TagInput } from "./TagInput";
+import { SUPPORTED_COUNTRIES, FREE_TIER_PORTFOLIO_LIMIT } from "@/lib/constants";
 
 interface AddInvestmentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => Promise<void> | void;
 }
-
-const countries = [
-  { code: "AT", name: "Austria" },
-  { code: "DE", name: "Germany" },
-  { code: "US", name: "United States" },
-  { code: "UK", name: "United Kingdom" },
-  { code: "CH", name: "Switzerland" },
-  { code: "RS", name: "Serbia" },
-];
 
 export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvestmentDialogProps) => {
   const { t } = useTranslation();
@@ -38,18 +31,30 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
   const [amount, setAmount] = useState("");
   const [quantity, setQuantity] = useState("");
   const [purchaseDate, setPurchaseDate] = useState<Date | undefined>(new Date());
-  const [tag, setTag] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const { addInvestment, portfolios } = usePortfolio();
   const { subscribed, loading: subLoading } = useSubscription();
   const { toast } = useToast();
 
+  // Get all existing tags for autocomplete
+  const existingTags = Array.from(
+    new Set(
+      portfolios.flatMap((p) => {
+        const allTags: string[] = [];
+        if (p.tags && p.tags.length > 0) allTags.push(...p.tags);
+        if (p.tag) allTags.push(p.tag);
+        return allTags;
+      })
+    )
+  ).filter(Boolean);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Check if user has reached free tier limit
-    if (!subLoading && !subscribed && portfolios.length >= 3) {
+    if (!subLoading && !subscribed && portfolios.length >= FREE_TIER_PORTFOLIO_LIMIT) {
       setShowUpgradeDialog(true);
       return;
     }
@@ -86,15 +91,6 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
       return;
     }
 
-    if (tag && tag.length > 50) {
-      toast({
-        variant: "destructive",
-        title: t('addInvestment.invalidTag'),
-        description: t('addInvestment.tagTooLong'),
-      });
-      return;
-    }
-
     if (!symbol || symbol.length > 10 || !/^[A-Z0-9.:-]+$/i.test(symbol)) {
       toast({
         variant: "destructive",
@@ -122,8 +118,9 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
 
       const originalPriceEur = finalAmount / finalQuantity;
       
-      // Generate auto tag if no custom tag provided
+      // Generate auto tag if no custom tags provided
       const autoTag = purchaseDate.toISOString().split('T')[0];
+      const finalTags = tags.length > 0 ? tags : [autoTag];
       
       const result = await addInvestment({
         symbol: symbol.toUpperCase(),
@@ -133,8 +130,7 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
         original_price_eur: originalPriceEur,
         original_investment_eur: finalAmount,
         purchase_date: purchaseDate.toISOString(),
-        tag: tag.trim() || undefined,
-        auto_tag_date: tag.trim() ? undefined : autoTag,
+        tags: finalTags,
       });
 
       // Check if addInvestment returned an error
@@ -160,7 +156,7 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
       setAmount("");
       setQuantity("");
       setPurchaseDate(new Date());
-      setTag("");
+      setTags([]);
     } catch (error) {
       toast({
         variant: "destructive",
@@ -174,7 +170,7 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t('addInvestment.title')}</DialogTitle>
           <DialogDescription>{t('addInvestment.description')}</DialogDescription>
@@ -187,7 +183,7 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
                 <SelectValue placeholder={t('form.selectCountry')} />
               </SelectTrigger>
               <SelectContent>
-                {countries.map((c) => (
+                {SUPPORTED_COUNTRIES.map((c) => (
                   <SelectItem key={c.code} value={c.code}>
                     {t(`countries.${c.code}`)}
                   </SelectItem>
@@ -271,16 +267,13 @@ export const AddInvestmentDialog = ({ open, onOpenChange, onSuccess }: AddInvest
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="tag">{t('form.tag')}</Label>
-            <Input
-              id="tag"
-              value={tag}
-              onChange={(e) => setTag(e.target.value)}
-              placeholder={t('form.tagPlaceholder')}
+            <Label>{t('form.tags')}</Label>
+            <TagInput
+              tags={tags}
+              onChange={setTags}
+              existingTags={existingTags}
+              placeholder={t('form.tagsPlaceholder')}
             />
-            <p className="text-xs text-muted-foreground">
-              {t('form.tagHelp')}
-            </p>
           </div>
 
           <Button type="submit" className="w-full" disabled={isLoading}>

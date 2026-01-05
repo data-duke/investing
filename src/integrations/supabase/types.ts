@@ -71,6 +71,7 @@ export type Database = {
           quantity: number
           symbol: string
           tag: string | null
+          tags: string[] | null
           updated_at: string
           user_id: string
         }
@@ -89,6 +90,7 @@ export type Database = {
           quantity: number
           symbol: string
           tag?: string | null
+          tags?: string[] | null
           updated_at?: string
           user_id: string
         }
@@ -107,6 +109,7 @@ export type Database = {
           quantity?: number
           symbol?: string
           tag?: string | null
+          tags?: string[] | null
           updated_at?: string
           user_id?: string
         }
@@ -119,6 +122,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      price_cache: {
+        Row: {
+          cached_at: string | null
+          current_price_eur: number
+          current_price_usd: number
+          dividend_usd: number | null
+          exchange_rate: number | null
+          name: string | null
+          source: string | null
+          symbol: string
+        }
+        Insert: {
+          cached_at?: string | null
+          current_price_eur: number
+          current_price_usd: number
+          dividend_usd?: number | null
+          exchange_rate?: number | null
+          name?: string | null
+          source?: string | null
+          symbol: string
+        }
+        Update: {
+          cached_at?: string | null
+          current_price_eur?: number
+          current_price_usd?: number
+          dividend_usd?: number | null
+          exchange_rate?: number | null
+          name?: string | null
+          source?: string | null
+          symbol?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -141,6 +177,45 @@ export type Database = {
           id?: string
           residence_country?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      shared_views: {
+        Row: {
+          created_at: string | null
+          expires_at: string
+          id: string
+          is_active: boolean | null
+          name: string | null
+          show_values: boolean | null
+          tags: string[]
+          token: string
+          user_id: string
+          view_count: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          is_active?: boolean | null
+          name?: string | null
+          show_values?: boolean | null
+          tags: string[]
+          token?: string
+          user_id: string
+          view_count?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string | null
+          show_values?: boolean | null
+          tags?: string[]
+          token?: string
+          user_id?: string
+          view_count?: number | null
         }
         Relationships: []
       }

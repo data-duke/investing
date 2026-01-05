@@ -22,7 +22,8 @@
     "ofPortfolio": "of portfolio",
     "multiple": "Multiple",
     "single": "Single",
-    "saving": "Saving..."
+    "saving": "Saving...",
+    "done": "Done"
   },
   "settings": {
     "taxSettings": "Tax Settings",
@@ -87,6 +88,7 @@
     "premiumAutoRefresh": "Premium users get auto-refresh",
     "refreshPrices": "Refresh Prices",
     "refreshingPrices": "Refreshing prices...",
+    "refreshingProgress": "Refreshing {{current}}/{{total}}...",
     "addInvestment": "Add Investment",
     "addFirstInvestment": "Add First Investment",
     "welcomeTitle": "Welcome to Your Portfolio Tracker",
@@ -98,7 +100,13 @@
     "holdings": "Holdings",
     "privacyMode": "Privacy Mode",
     "privacyModeOn": "Privacy mode is on - showing relative values",
-    "privacyModeOff": "Privacy mode is off - showing absolute values"
+    "privacyModeOff": "Privacy mode is off - showing absolute values",
+    "share": "Share",
+    "totalValue": "Total Value",
+    "totalGainLoss": "Total Gain/Loss",
+    "annualDividend": "Annual Dividend",
+    "positions": "Positions",
+    "allocation": "Allocation"
   },
   "portfolio": {
     "totalValue": "Total Portfolio Value",
@@ -164,9 +172,13 @@
     "purchaseDate": "Purchase Date",
     "pickDate": "Pick a date",
     "tag": "Tag (optional)",
+    "tags": "Tags",
+    "tagsPlaceholder": "Type and press Enter to add tags...",
+    "tagsHelp": "{{count}}/{{max}} tags - Press Enter or comma to add",
     "tagPlaceholder": "e.g., 'tech-stocks', 'retirement', or leave empty for date tag",
     "tagHelp": "Group your investments with custom tags for easy filtering",
-    "amountTip": "Tip: Enter both amount and quantity to preserve your exact average purchase price"
+    "amountTip": "Tip: Enter both amount and quantity to preserve your exact average purchase price",
+    "purchasePrice": "Purchase Price (EUR)"
   },
   "addInvestment": {
     "title": "Add Investment",
@@ -200,6 +212,19 @@
     "investmentAdded": "Investment added",
     "addedToPortfolio": "{{name}} has been added to your portfolio.",
     "errorAdding": "Error adding investment"
+  },
+  "editInvestment": {
+    "title": "Edit Investment - {{symbol}}",
+    "invalidInput": "Invalid Input",
+    "enterValidNumbers": "Please enter valid numbers.",
+    "invalidQuantity": "Invalid Quantity",
+    "quantityRange": "Quantity must be between 0 and 1,000,000.",
+    "invalidPrice": "Invalid Price",
+    "priceRange": "Price must be between 0 and 1,000,000.",
+    "updating": "Updating...",
+    "update": "Update Investment",
+    "updated": "Investment updated",
+    "updatedDescription": "Your investment has been updated successfully."
   },
   "upgrade": {
     "title": "Upgrade to Premium",
@@ -260,5 +285,58 @@
     "filterByTag": "Filter by tag",
     "clearAll": "Clear all",
     "showing": "Showing {{filtered}} of {{total}}"
+  },
+  "share": {
+    "title": "Share Portfolio",
+    "description": "Create a shareable link to your portfolio filtered by tags",
+    "selectTags": "Select tags to include",
+    "name": "Share Name (optional)",
+    "namePlaceholder": "e.g., Tech Portfolio Q1",
+    "expiration": "Link Expiration",
+    "showValues": "Show absolute values",
+    "showValuesDesc": "If off, only percentages will be shown",
+    "createLink": "Create Share Link",
+    "creating": "Creating...",
+    "linkCreated": "Share link created!",
+    "linkCreatedDesc": "Your portfolio share link is ready to copy.",
+    "yourLink": "Your share link",
+    "linkExpiresIn": "This link will expire in {{hours}} hours",
+    "copied": "Copied!",
+    "linkCopied": "Share link copied to clipboard",
+    "noTagsSelected": "No tags selected",
+    "selectAtLeastOneTag": "Please select at least one tag to share",
+    "noTagsAvailable": "No tags available. Add tags to your investments first.",
+    "errorCreating": "Failed to create share link. Please try again.",
+    "manageTitle": "Manage Shared Links",
+    "manageDescription": "View and manage your active share links",
+    "noShares": "You haven't created any share links yet.",
+    "untitled": "Untitled Share",
+    "expired": "Expired",
+    "views": "views",
+    "expiresIn": "Expires in {{time}}",
+    "expiredAgo": "Expired {{time}} ago",
+    "openLink": "Open link",
+    "copyLink": "Copy link",
+    "deleteLink": "Delete link",
+    "deleted": "Share deleted",
+    "linkDeleted": "The share link has been deleted.",
+    "errorFetching": "Failed to load shares. Please try again.",
+    "errorDeleting": "Failed to delete share. Please try again.",
+    "linkNotFound": "Share Not Found",
+    "linkExpiredOrInvalid": "This share link has expired or is invalid.",
+    "createYourOwn": "Create Your Own Portfolio",
+    "sharedPortfolio": "Shared Portfolio",
+    "readOnly": "Read Only",
+    "wantToTrack": "Want to track your own investments?",
+    "createYourPortfolio": "Create a free account to build and monitor your portfolio.",
+    "signUpFree": "Sign Up Free",
+    "expiresOn": "This share expires on {{date}}"
+  },
+  "table": {
+    "symbol": "Symbol",
+    "name": "Name",
+    "value": "Value",
+    "allocation": "Allocation",
+    "gainLoss": "Gain/Loss"
   }
 }
