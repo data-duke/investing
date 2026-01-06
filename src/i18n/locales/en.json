@@ -290,6 +290,8 @@
     "title": "Share Portfolio",
     "description": "Create a shareable link to your portfolio filtered by tags",
     "selectTags": "Select tags to include",
+    "shareAll": "Share entire portfolio",
+    "shareAllDesc": "Include all positions regardless of tags",
     "name": "Share Name (optional)",
     "namePlaceholder": "e.g., Tech Portfolio Q1",
     "expiration": "Link Expiration",
@@ -304,7 +306,7 @@
     "copied": "Copied!",
     "linkCopied": "Share link copied to clipboard",
     "noTagsSelected": "No tags selected",
-    "selectAtLeastOneTag": "Please select at least one tag to share",
+    "selectAtLeastOneTag": "Please select at least one tag or enable 'Share All'",
     "noTagsAvailable": "No tags available. Add tags to your investments first.",
     "errorCreating": "Failed to create share link. Please try again.",
     "manageTitle": "Manage Shared Links",
@@ -338,5 +340,40 @@
     "value": "Value",
     "allocation": "Allocation",
     "gainLoss": "Gain/Loss"
+  },
+  "calculator": {
+    "freeAnalysis": "Free Investment Analysis",
+    "freeForever": "Free forever • No signup required",
+    "subtagline": "Enter any stock symbol to get instant analysis with real-time prices, dividend calculations, and future projections.",
+    "realTimeData": "Real-time data",
+    "noSignupRequired": "No signup required",
+    "popularStocks": "Quick pick popular stocks:",
+    "noResults": "Your Analysis Results",
+    "enterDetails": "Enter investment details on the left to see your personalized analysis with projections and dividend calculations.",
+    "trackOverTime": "Monitor performance over time",
+    "createFreeAccount": "Create a free account to save this investment and track your portfolio performance over time."
+  },
+  "comparison": {
+    "title": "Free Calculator vs Full Portfolio",
+    "freeCalculator": "Free Calculator",
+    "fullPortfolio": "Full Portfolio Tracker",
+    "singleStock": "Single stock analysis",
+    "basicProjections": "Basic projections",
+    "taxCalculations": "Tax calculations",
+    "portfolioTracking": "Portfolio tracking",
+    "autoRefresh": "Auto-refresh prices",
+    "unlimitedStocks": "Unlimited stocks",
+    "autoRefreshPrices": "Auto-refresh prices",
+    "historicalTracking": "Historical tracking",
+    "sharePortfolio": "Share portfolio",
+    "exportReports": "Export reports",
+    "usingNow": "Using Now",
+    "recommended": "Recommended",
+    "getStartedFree": "Get Started Free →"
+  },
+  "stickyCta": {
+    "title": "Track this investment",
+    "subtitle": "Save to your portfolio",
+    "signUp": "Sign Up"
   }
 }

@@ -41,6 +41,7 @@ export const ShareDialog = ({
   const { t } = useTranslation();
   const { toast } = useToast();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [shareAll, setShareAll] = useState(false);
   const [name, setName] = useState("");
   const [expirationHours, setExpirationHours] = useState("24");
   const [showValues, setShowValues] = useState(true);
@@ -52,10 +53,22 @@ export const ShareDialog = ({
     setSelectedTags((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
     );
+    // Deselect "share all" when picking specific tags
+    if (!selectedTags.includes(tag)) {
+      setShareAll(false);
+    }
+  };
+
+  const handleShareAllToggle = (checked: boolean) => {
+    setShareAll(checked);
+    if (checked) {
+      setSelectedTags([]);
+    }
   };
 
   const handleCreate = async () => {
-    if (selectedTags.length === 0) {
+    // Allow creation if share all is selected OR specific tags are selected
+    if (!shareAll && selectedTags.length === 0 && availableTags.length > 0) {
       toast({
         title: t("share.noTagsSelected"),
         description: t("share.selectAtLeastOneTag"),
@@ -74,11 +87,16 @@ export const ShareDialog = ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      // If sharing all or no tags available, use special marker
+      const tagsToShare = shareAll || availableTags.length === 0 
+        ? ["__ALL__"] 
+        : selectedTags;
+
       const { data, error } = await supabase
         .from("shared_views")
         .insert({
           user_id: user.id,
-          tags: selectedTags,
+          tags: tagsToShare,
           name: name.trim() || null,
           expires_at: expiresAt.toISOString(),
           show_values: showValues,
@@ -124,6 +142,7 @@ export const ShareDialog = ({
 
   const handleClose = () => {
     setSelectedTags([]);
+    setShareAll(false);
     setName("");
     setExpirationHours("24");
     setShowValues(true);
@@ -145,11 +164,23 @@ export const ShareDialog = ({
 
         {!generatedUrl ? (
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>{t("share.selectTags")}</Label>
-              <div className="flex flex-wrap gap-2">
-                {availableTags.length > 0 ? (
-                  availableTags.map((tag) => (
+            {/* Share All toggle */}
+            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+              <div className="space-y-0.5">
+                <Label className="font-medium">{t("share.shareAll")}</Label>
+                <p className="text-xs text-muted-foreground">
+                  {t("share.shareAllDesc")}
+                </p>
+              </div>
+              <Switch checked={shareAll} onCheckedChange={handleShareAllToggle} />
+            </div>
+
+            {/* Tag selection - only show if not sharing all and tags exist */}
+            {!shareAll && availableTags.length > 0 && (
+              <div className="space-y-2">
+                <Label>{t("share.selectTags")}</Label>
+                <div className="flex flex-wrap gap-2">
+                  {availableTags.map((tag) => (
                     <Badge
                       key={tag}
                       variant={selectedTags.includes(tag) ? "default" : "outline"}
@@ -158,14 +189,10 @@ export const ShareDialog = ({
                     >
                       {tag}
                     </Badge>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    {t("share.noTagsAvailable")}
-                  </p>
-                )}
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="share-name">{t("share.name")}</Label>
@@ -243,7 +270,7 @@ export const ShareDialog = ({
               </Button>
               <Button
                 onClick={handleCreate}
-                disabled={isCreating || selectedTags.length === 0}
+                disabled={isCreating || (!shareAll && selectedTags.length === 0 && availableTags.length > 0)}
               >
                 {isCreating ? t("share.creating") : t("share.createLink")}
               </Button>
