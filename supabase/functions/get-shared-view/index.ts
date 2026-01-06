@@ -72,18 +72,23 @@ serve(async (req) => {
       throw new Error("Failed to fetch portfolio data");
     }
 
+    // Check if sharing all portfolios (special marker "__ALL__" or empty tags)
+    const isShareAll = share.tags.length === 0 || share.tags.includes("__ALL__");
+
     // Filter by tags (check if any of portfolio's tags match share's tags)
-    const filteredPortfolios = portfolios?.filter((p) => {
-      const portfolioTags = p.tags || [];
-      // Also check legacy tag and auto_tag_date
-      if (p.tag && !portfolioTags.includes(p.tag)) {
-        portfolioTags.push(p.tag);
-      }
-      if (p.auto_tag_date && !portfolioTags.includes(p.auto_tag_date)) {
-        portfolioTags.push(p.auto_tag_date);
-      }
-      return portfolioTags.some((t: string) => share.tags.includes(t));
-    }) || [];
+    const filteredPortfolios = isShareAll 
+      ? portfolios || []
+      : portfolios?.filter((p) => {
+          const portfolioTags = p.tags || [];
+          // Also check legacy tag and auto_tag_date
+          if (p.tag && !portfolioTags.includes(p.tag)) {
+            portfolioTags.push(p.tag);
+          }
+          if (p.auto_tag_date && !portfolioTags.includes(p.auto_tag_date)) {
+            portfolioTags.push(p.auto_tag_date);
+          }
+          return portfolioTags.some((t: string) => share.tags.includes(t));
+        }) || [];
 
     console.log(`Found ${filteredPortfolios.length} portfolios matching tags`);
 

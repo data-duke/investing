@@ -582,29 +582,35 @@ const Dashboard = () => {
                   {privacyMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
                 
-                {/* Share buttons */}
-                {allTags.length > 0 && (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsShareDialogOpen(true)}
-                      className="hidden sm:flex"
-                    >
-                      <Share2 className="mr-2 h-4 w-4" />
-                      {t('dashboard.share')}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setIsManageSharesOpen(true)}
-                      className="hidden sm:flex"
-                      title={t('share.manageTitle')}
-                    >
-                      <Link className="h-4 w-4" />
-                    </Button>
-                  </>
-                )}
+                {/* Share buttons - always visible */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsShareDialogOpen(true)}
+                  className="hidden sm:flex"
+                >
+                  <Share2 className="mr-2 h-4 w-4" />
+                  {t('dashboard.share')}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsManageSharesOpen(true)}
+                  className="hidden sm:flex"
+                  title={t('share.manageTitle')}
+                >
+                  <Link className="h-4 w-4" />
+                </Button>
+                {/* Mobile share button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsShareDialogOpen(true)}
+                  className="sm:hidden"
+                  title={t('dashboard.share')}
+                >
+                  <Share2 className="h-4 w-4" />
+                </Button>
                 
                 <Button
                   variant="outline"
