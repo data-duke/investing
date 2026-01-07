@@ -82,6 +82,7 @@ const Index = () => {
         exchangeRate: stockData.exchangeRate,
         currentPriceUSD: stockData.currentPriceUSD,
         source: stockData.source,
+        cagr5y: stockData.cagr5y,
       });
       
       toast({
@@ -110,6 +111,7 @@ const Index = () => {
     exchangeRate?: number;
     currentPriceUSD?: number;
     source?: string;
+    cagr5y?: number;
   }) => {
     const country = COUNTRY_TAX_RATES[data.country as keyof typeof COUNTRY_TAX_RATES];
     
@@ -120,7 +122,8 @@ const Index = () => {
     const grossDividendAnnual = data.announcedDividend * data.quantity;
     const netDividendAnnual = grossDividendAnnual * (1 - country.dividendTax);
     
-    const estimatedCAGR = 0.08;
+    // Use stock-specific CAGR if available, otherwise fall back to 8%
+    const estimatedCAGR = data.cagr5y !== undefined ? data.cagr5y : 0.08;
     
     const projectedValue1Year = currentValue * Math.pow(1 + estimatedCAGR, 1);
     const projectedValue3Years = currentValue * Math.pow(1 + estimatedCAGR, 3);

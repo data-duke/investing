@@ -91,9 +91,12 @@ export const PortfolioChart = ({ portfolios, privacyMode = false }: PortfolioCha
       allDates.add(new Date(snap.snapshot_date).toISOString().split('T')[0]);
     });
 
-    // If no dates in range but we have portfolios, add today
-    if (allDates.size === 0 && portfolios.length > 0) {
-      allDates.add(new Date().toISOString().split('T')[0]);
+    // Always add today's date to show current values
+    allDates.add(new Date().toISOString().split('T')[0]);
+    
+    // If we have pre-existing portfolios but no snapshot dates in range, add start date
+    if (allDates.size === 1 && portfolios.some(p => new Date(p.purchase_date) < startDate)) {
+      allDates.add(startDate.toISOString().split('T')[0]);
     }
 
     if (allDates.size === 0) {
@@ -110,17 +113,25 @@ export const PortfolioChart = ({ portfolios, privacyMode = false }: PortfolioCha
     const activePortfolios = new Set<string>();
     
     // Initialize portfolios that existed before chart start date
-    portfolios.forEach(p => {
-      const purchaseDate = new Date(p.purchase_date);
-      if (purchaseDate < startDate) {
-        activePortfolios.add(p.id);
+    // For these, we need to find their value at start date from snapshots
+    const preExistingPortfolios = portfolios.filter(p => new Date(p.purchase_date) < startDate);
+    
+    for (const p of preExistingPortfolios) {
+      activePortfolios.add(p.id);
+      // Try to find snapshot closest to start date for this portfolio
+      const portfolioSnapshots = snapshots?.filter(s => s.portfolio_id === p.id) || [];
+      if (portfolioSnapshots.length > 0) {
+        // Use the earliest snapshot we have as the starting value
+        const earliestSnapshot = portfolioSnapshots[portfolioSnapshots.length - 1]; // Already sorted descending
+        portfolioLastKnownValue.set(p.id, Number(earliestSnapshot.current_value_eur));
+      } else {
+        // No snapshots, use original investment
         portfolioLastKnownValue.set(p.id, Number(p.original_investment_eur));
       }
-    });
+    }
 
     // Calculate cumulative invested before start
-    let cumulativeInvested = portfolios
-      .filter(p => new Date(p.purchase_date) < startDate)
+    let cumulativeInvested = preExistingPortfolios
       .reduce((sum, p) => sum + Number(p.original_investment_eur), 0);
 
     const data = sortedDates.map(dateKey => {

@@ -126,6 +126,8 @@ export type Database = {
       price_cache: {
         Row: {
           cached_at: string | null
+          cagr_5y: number | null
+          cagr_calculated_at: string | null
           current_price_eur: number
           current_price_usd: number
           dividend_usd: number | null
@@ -136,6 +138,8 @@ export type Database = {
         }
         Insert: {
           cached_at?: string | null
+          cagr_5y?: number | null
+          cagr_calculated_at?: string | null
           current_price_eur: number
           current_price_usd: number
           dividend_usd?: number | null
@@ -146,6 +150,8 @@ export type Database = {
         }
         Update: {
           cached_at?: string | null
+          cagr_5y?: number | null
+          cagr_calculated_at?: string | null
           current_price_eur?: number
           current_price_usd?: number
           dividend_usd?: number | null
