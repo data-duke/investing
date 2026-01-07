@@ -19,6 +19,7 @@ const FMP_BASES = [
 
 // Cache TTL in minutes
 const CACHE_TTL_MINUTES = 15;
+const CAGR_CACHE_HOURS = 24;
 
 // In-memory dividend cache with 24h TTL (for edge function runtime)
 const dividendCache = new Map<string, { dividendUSD: number; cachedAt: number }>();
@@ -34,6 +35,7 @@ async function checkPriceCache(symbol: string): Promise<{
   name: string;
   exchangeRate: number;
   source: string;
+  cagr5y?: number;
 } | null> {
   try {
     const { data, error } = await supabase
@@ -62,6 +64,7 @@ async function checkPriceCache(symbol: string): Promise<{
       name: data.name || symbol,
       exchangeRate: Number(data.exchange_rate),
       source: `${data.source} (cached)`,
+      cagr5y: data.cagr_5y ? Number(data.cagr_5y) : undefined,
     };
   } catch (e) {
     console.warn('Cache check failed:', e);
@@ -76,10 +79,11 @@ async function updatePriceCache(
   dividendUsd: number,
   name: string,
   exchangeRate: number,
-  source: string
+  source: string,
+  cagr5y?: number
 ): Promise<void> {
   try {
-    await supabase.from('price_cache').upsert({
+    const updateData: any = {
       symbol,
       current_price_eur: currentPriceEur,
       current_price_usd: currentPriceUsd,
@@ -88,7 +92,14 @@ async function updatePriceCache(
       exchange_rate: exchangeRate,
       source,
       cached_at: new Date().toISOString(),
-    }, { onConflict: 'symbol' });
+    };
+    
+    if (cagr5y !== undefined) {
+      updateData.cagr_5y = cagr5y;
+      updateData.cagr_calculated_at = new Date().toISOString();
+    }
+    
+    await supabase.from('price_cache').upsert(updateData, { onConflict: 'symbol' });
     console.log(`✓ Cache updated for ${symbol}`);
   } catch (e) {
     console.warn('Cache update failed:', e);
@@ -254,6 +265,64 @@ async function fetchDividendFromFMP(symbol: string, currentPrice: number): Promi
   return 0;
 }
 
+// Calculate 5-year CAGR from historical prices
+async function calculateCAGR(symbol: string, currentPrice: number): Promise<number | undefined> {
+  try {
+    // Try FMP historical prices first
+    if (FMP_API_KEY) {
+      const historical = await tryFMPEndpoint(`/historical-price-full/${encodeURIComponent(symbol)}`);
+      if (historical?.historical && Array.isArray(historical.historical) && historical.historical.length > 0) {
+        // Get price from ~5 years ago
+        const fiveYearsAgo = new Date();
+        fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
+        
+        // Historical data is sorted descending (newest first)
+        const sorted = historical.historical.sort((a: any, b: any) => 
+          new Date(a.date).getTime() - new Date(b.date).getTime()
+        );
+        
+        // Find the closest price to 5 years ago
+        let oldPrice: number | null = null;
+        let oldDate: Date | null = null;
+        
+        for (const entry of sorted) {
+          const entryDate = new Date(entry.date);
+          if (entryDate <= fiveYearsAgo && entry.close) {
+            oldPrice = Number(entry.close);
+            oldDate = entryDate;
+            break;
+          }
+        }
+        
+        // If no data from 5 years ago, use the oldest available
+        if (!oldPrice && sorted.length > 0) {
+          const oldest = sorted[0];
+          if (oldest.close) {
+            oldPrice = Number(oldest.close);
+            oldDate = new Date(oldest.date);
+          }
+        }
+        
+        if (oldPrice && oldDate && oldPrice > 0) {
+          const yearsDiff = (Date.now() - oldDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+          if (yearsDiff >= 1) {
+            const cagr = Math.pow(currentPrice / oldPrice, 1 / yearsDiff) - 1;
+            // Sanity check: CAGR should be between -50% and +100%
+            if (cagr >= -0.5 && cagr <= 1.0) {
+              console.log(`✓ CAGR calculated: ${(cagr * 100).toFixed(2)}% over ${yearsDiff.toFixed(1)} years`);
+              return cagr;
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.log('CAGR calculation failed:', (e as Error).message);
+  }
+  
+  return undefined;
+}
+
 async function fetchFromFMP(symbol: string) {
   if (!FMP_API_KEY) throw new Error('FMP key missing');
 
@@ -324,6 +393,58 @@ async function fetchFromStooq(symbol: string) {
   throw new Error(`Stooq: No valid price found for ${symbol} (tried: ${uniqueVariants.join(', ')})`);
 }
 
+// Yahoo Finance fallback for OTC and international stocks
+async function fetchFromYahoo(symbol: string) {
+  const trySymbol = async (sym: string) => {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`;
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; LovableBot/1.0)'
+      }
+    });
+    if (!res.ok) throw new Error(`Yahoo request failed: ${res.status}`);
+    const data = await res.json();
+    
+    const result = data?.chart?.result?.[0];
+    if (!result) throw new Error('Yahoo: No result');
+    
+    const meta = result.meta;
+    const price = meta?.regularMarketPrice || meta?.previousClose;
+    if (!Number.isFinite(price) || price <= 0) throw new Error('Yahoo: Invalid price');
+    
+    return {
+      currentPrice: price,
+      name: meta?.shortName || meta?.longName || sym,
+      dividend: 0, // Yahoo doesn't provide dividend in chart API
+      source: 'Yahoo',
+      currency: meta?.currency || 'USD'
+    };
+  };
+
+  // Try different symbol formats for OTC stocks
+  const symbolVariants = [
+    symbol,
+    `${symbol}.PK`, // Pink sheets
+    `${symbol}.OB`, // OTC Bulletin Board  
+    `${symbol}.F`,  // Frankfurt
+    `${symbol}.L`,  // London
+    `${symbol}.TO`, // Toronto
+    `${symbol}.HK`, // Hong Kong
+  ];
+
+  for (const variant of symbolVariants) {
+    try {
+      const result = await trySymbol(variant);
+      console.log(`✓ Yahoo success with variant: ${variant}`);
+      return result;
+    } catch (_) {
+      continue;
+    }
+  }
+  
+  throw new Error(`Yahoo: No valid price found for ${symbol}`);
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -337,11 +458,12 @@ serve(async (req) => {
     }
 
     const trimmedSymbol = symbol.trim();
-    if (trimmedSymbol.length === 0 || trimmedSymbol.length > 10) {
+    if (trimmedSymbol.length === 0 || trimmedSymbol.length > 15) {
       throw new Error('Invalid stock symbol length');
     }
 
-    if (!/^[A-Z0-9.:-]+$/i.test(trimmedSymbol)) {
+    // Allow letters, numbers, dots, dashes, colons for international symbols
+    if (!/^[A-Z0-9.:\-]+$/i.test(trimmedSymbol)) {
       throw new Error('Invalid stock symbol format');
     }
 
@@ -366,31 +488,52 @@ serve(async (req) => {
     let name = cleanSymbol;
     let dividendUSD = 0;
     let source = 'Unknown';
+    const triedSources: string[] = [];
 
     // Prefer FMP if key is available
     if (FMP_API_KEY) {
       try {
+        triedSources.push('FMP');
         const fmp = await fetchFromFMP(cleanSymbol);
         currentPriceUSD = fmp.currentPrice;
         name = fmp.name || cleanSymbol;
         dividendUSD = fmp.dividend || 0;
         source = fmp.source;
       } catch (e) {
-        console.warn('FMP fetch failed, falling back to Stooq:', e);
+        console.warn('FMP fetch failed:', (e as Error).message);
       }
     }
 
     // Fallback to Stooq if price is not yet set
     if (!Number.isFinite(currentPriceUSD) || currentPriceUSD <= 0) {
-      const stooq = await fetchFromStooq(cleanSymbol);
-      currentPriceUSD = stooq.currentPrice;
-      name = stooq.name;
-      dividendUSD = dividendUSD || 0;
-      source = stooq.source;
+      try {
+        triedSources.push('Stooq');
+        const stooq = await fetchFromStooq(cleanSymbol);
+        currentPriceUSD = stooq.currentPrice;
+        name = stooq.name;
+        dividendUSD = dividendUSD || 0;
+        source = stooq.source;
+      } catch (e) {
+        console.warn('Stooq fetch failed:', (e as Error).message);
+      }
+    }
+
+    // Fallback to Yahoo Finance for OTC/international stocks
+    if (!Number.isFinite(currentPriceUSD) || currentPriceUSD <= 0) {
+      try {
+        triedSources.push('Yahoo');
+        const yahoo = await fetchFromYahoo(cleanSymbol);
+        currentPriceUSD = yahoo.currentPrice;
+        name = yahoo.name;
+        dividendUSD = dividendUSD || 0;
+        source = yahoo.source;
+      } catch (e) {
+        console.warn('Yahoo fetch failed:', (e as Error).message);
+      }
     }
 
     if (!Number.isFinite(currentPriceUSD) || currentPriceUSD <= 0) {
-      throw new Error(`No price available for symbol: ${cleanSymbol}`);
+      throw new Error(`No price available for symbol: ${cleanSymbol}. Tried: ${triedSources.join(', ')}`);
     }
 
     // Try Alpha Vantage for dividends if we don't have them yet
@@ -414,6 +557,9 @@ serve(async (req) => {
       }
     }
 
+    // Calculate CAGR
+    const cagr5y = await calculateCAGR(cleanSymbol, currentPriceUSD);
+
     // Fetch USD to EUR exchange rate
     const usdToEur = await fetchExchangeRate();
     
@@ -421,12 +567,12 @@ serve(async (req) => {
     const currentPrice = currentPriceUSD * usdToEur;
     const dividend = dividendUSD * usdToEur;
 
-    console.log(`✓ Final: ${name} @ $${currentPriceUSD.toFixed(2)} (€${currentPrice.toFixed(2)}), Div: $${dividendUSD.toFixed(2)} (€${dividend.toFixed(2)}), Source: ${source}`);
+    console.log(`✓ Final: ${name} @ $${currentPriceUSD.toFixed(2)} (€${currentPrice.toFixed(2)}), Div: $${dividendUSD.toFixed(2)} (€${dividend.toFixed(2)}), CAGR: ${cagr5y ? (cagr5y * 100).toFixed(1) : 'N/A'}%, Source: ${source}`);
 
     // Update cache
-    await updatePriceCache(cleanSymbol, currentPrice, currentPriceUSD, dividendUSD, name, usdToEur, source);
+    await updatePriceCache(cleanSymbol, currentPrice, currentPriceUSD, dividendUSD, name, usdToEur, source, cagr5y);
 
-    const stockData = { 
+    const stockData: any = { 
       symbol: cleanSymbol, 
       currentPrice, 
       dividend, 
@@ -435,14 +581,18 @@ serve(async (req) => {
       currentPriceUSD,
       source
     };
+    
+    if (cagr5y !== undefined) {
+      stockData.cagr5y = cagr5y;
+    }
 
     return new Response(JSON.stringify(stockData), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Stock data fetch failed');
+    console.error('Stock data fetch failed:', (error as Error).message);
     return new Response(
-      JSON.stringify({ error: 'Failed to fetch stock data. Please try again.' }),
+      JSON.stringify({ error: (error as Error).message || 'Failed to fetch stock data. Please try again.' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

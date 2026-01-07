@@ -228,7 +228,11 @@ export const AnalysisTable = ({ data, positionName, isLoggedIn, onNavigateToSign
           {t('analysis.futureValueProjections')}
         </h3>
         <p className="text-xs text-muted-foreground mb-3">
-          {t('analysis.basedOnCAGR', { cagr: data.estimatedCAGR.toFixed(0) })}
+          {data.estimatedCAGR === 8 ? (
+            t('analysis.basedOnMarketAverage')
+          ) : (
+            t('analysis.basedOnHistoricalCAGR', { cagr: data.estimatedCAGR.toFixed(1) })
+          )}
         </p>
         
         <div className="flex items-center justify-between gap-2">
