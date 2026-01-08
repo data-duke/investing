@@ -9,13 +9,12 @@ import { StickyCTA } from "@/components/StickyCTA";
 import { StockAIInsight } from "@/components/StockAIInsight";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Sparkles, Shield, Clock } from "lucide-react";
+import { TrendingUp, Sparkles, Clock } from "lucide-react";
 import { fetchStockData } from "@/services/stockApi";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { calculateDividendTax } from "@/lib/taxCalculations";
-
 export interface AnalysisData {
   currentPrice: number;
   originallyInvested: number;
@@ -38,27 +37,30 @@ export interface AnalysisData {
   country?: string;
   stockCountry?: string;
 }
-
 const Index = () => {
-  const { t } = useTranslation();
+  const {
+    t
+  } = useTranslation();
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const [positionName, setPositionName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedSymbol, setSelectedSymbol] = useState("");
   const [stockCountry, setStockCountry] = useState("US");
-  const { toast } = useToast();
-  const { user } = useAuth();
+  const {
+    toast
+  } = useToast();
+  const {
+    user
+  } = useAuth();
   const navigate = useNavigate();
-
   const handlePopularStockSelect = (symbol: string) => {
     setSelectedSymbol(symbol);
   };
-
   const handleSearch = async (country: string, symbol: string, amount: number, inputQuantity: number) => {
     setIsLoading(true);
     try {
       const stockData = await fetchStockData(symbol);
-      
+
       // Detect stock country from symbol (simplified - US by default, CA for .TO, etc.)
       let detectedStockCountry = "US";
       if (symbol.includes(".TO") || symbol.includes(".V")) {
@@ -69,10 +71,8 @@ const Index = () => {
         detectedStockCountry = "DE";
       }
       setStockCountry(detectedStockCountry);
-      
       let finalQuantity = inputQuantity;
       let finalAmount = amount;
-      
       if (amount && !inputQuantity) {
         finalQuantity = amount / stockData.currentPrice;
       } else if (inputQuantity && !amount) {
@@ -81,10 +81,9 @@ const Index = () => {
         finalAmount = inputQuantity * stockData.currentPrice;
         toast({
           title: t('common.note'),
-          description: t('toast.bothAmountAndQuantity'),
+          description: t('toast.bothAmountAndQuantity')
         });
       }
-      
       calculateAnalysis({
         investorCountry: country,
         stockCountry: detectedStockCountry,
@@ -97,24 +96,24 @@ const Index = () => {
         exchangeRate: stockData.exchangeRate,
         currentPriceUSD: stockData.currentPriceUSD,
         source: stockData.source,
-        cagr5y: stockData.cagr5y,
+        cagr5y: stockData.cagr5y
       });
-      
       toast({
         title: t('form.dataFetched'),
-        description: t('form.retrievedDataFor', { name: stockData.name }),
+        description: t('form.retrievedDataFor', {
+          name: stockData.name
+        })
       });
     } catch (error) {
       toast({
         title: t('common.error'),
         description: error instanceof Error ? error.message : "Failed to fetch stock data",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsLoading(false);
     }
   };
-
   const calculateAnalysis = (data: {
     investorCountry: string;
     stockCountry: string;
@@ -131,23 +130,16 @@ const Index = () => {
   }) => {
     const currentValue = data.currentPrice * data.quantity;
     const currentGain = currentValue - data.originallyInvested;
-    const currentGainPercent = (currentGain / data.originallyInvested) * 100;
-    
+    const currentGainPercent = currentGain / data.originallyInvested * 100;
+
     // Use cross-border tax calculation for dividends
-    const taxBreakdown = calculateDividendTax(
-      data.announcedDividend,
-      data.quantity,
-      data.stockCountry,
-      data.investorCountry
-    );
-    
+    const taxBreakdown = calculateDividendTax(data.announcedDividend, data.quantity, data.stockCountry, data.investorCountry);
+
     // Use stock-specific CAGR if available, otherwise fall back to 8%
     const estimatedCAGR = data.cagr5y !== undefined ? data.cagr5y : 0.08;
-    
     const projectedValue1Year = currentValue * Math.pow(1 + estimatedCAGR, 1);
     const projectedValue3Years = currentValue * Math.pow(1 + estimatedCAGR, 3);
     const projectedValue5Years = currentValue * Math.pow(1 + estimatedCAGR, 5);
-
     setAnalysisData({
       currentPrice: data.currentPrice,
       originallyInvested: data.originallyInvested,
@@ -168,19 +160,18 @@ const Index = () => {
       symbol: data.symbol,
       name: data.positionName,
       country: data.investorCountry,
-      stockCountry: data.stockCountry,
+      stockCountry: data.stockCountry
     });
-    
     setPositionName(data.positionName);
   };
-
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       {/* Hero Section with animated background */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10 pointer-events-none" />
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl pointer-events-none animate-pulse" />
-        <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-primary/10 rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDelay: "1s" }} />
+        <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-primary/10 rounded-full blur-3xl pointer-events-none animate-pulse" style={{
+        animationDelay: "1s"
+      }} />
         
         <div className="container mx-auto px-4 py-8 max-w-7xl relative">
           {/* Header */}
@@ -196,35 +187,26 @@ const Index = () => {
             </div>
             <div className="flex items-center gap-2">
               <LanguageSwitcher />
-              {user ? (
-                <Button variant="outline" onClick={() => navigate('/dashboard')}>
+              {user ? <Button variant="outline" onClick={() => navigate('/dashboard')}>
                   {t('nav.goToPortfolio')}
-                </Button>
-              ) : (
-                <>
+                </Button> : <>
                   <Button variant="ghost" onClick={() => navigate('/login')} className="hidden sm:inline-flex">
                     {t('nav.login')}
                   </Button>
                   <Button onClick={() => navigate('/signup')}>
                     {t('nav.signup')}
                   </Button>
-                </>
-              )}
+                </>}
             </div>
           </header>
 
           {/* Hero Content */}
           <div className="text-center mb-8 animate-fade-in">
-            <Badge variant="secondary" className="mb-4 px-4 py-1">
-              <Sparkles className="h-3 w-3 mr-1" />
-              {t('calculator.freeForever')}
-            </Badge>
+            
             <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-4 leading-tight">
               {t('home.tagline')}
             </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-6">
-              {t('calculator.subtagline')}
-            </p>
+            
             
             {/* Trust Indicators */}
             <div className="flex flex-wrap justify-center gap-4 text-sm text-muted-foreground">
@@ -233,18 +215,17 @@ const Index = () => {
                 <span>{t('calculator.realTimeData')}</span>
               </div>
               <div className="flex items-center gap-1">
-                <Shield className="h-4 w-4" />
+                
                 <span>{t('calculator.noSignupRequired')}</span>
               </div>
             </div>
           </div>
 
           {/* Popular Stocks Picker */}
-          <div className="mb-6 animate-fade-in" style={{ animationDelay: "0.1s" }}>
-            <PopularStocksPicker 
-              onSelect={handlePopularStockSelect} 
-              isLoading={isLoading}
-            />
+          <div className="mb-6 animate-fade-in" style={{
+          animationDelay: "0.1s"
+        }}>
+            <PopularStocksPicker onSelect={handlePopularStockSelect} isLoading={isLoading} />
           </div>
         </div>
       </div>
@@ -253,57 +234,38 @@ const Index = () => {
       <div className="container mx-auto px-4 pb-8 max-w-7xl">
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Form Section */}
-          <div className="space-y-6 animate-fade-in" style={{ animationDelay: "0.2s" }}>
-            <InvestmentForm 
-              onSearch={handleSearch} 
-              isLoading={isLoading}
-              prefilledSymbol={selectedSymbol}
-            />
+          <div className="space-y-6 animate-fade-in" style={{
+          animationDelay: "0.2s"
+        }}>
+            <InvestmentForm onSearch={handleSearch} isLoading={isLoading} prefilledSymbol={selectedSymbol} />
           </div>
 
           {/* Results Section */}
-          <div className="space-y-6 animate-fade-in" style={{ animationDelay: "0.3s" }}>
-            <AnalysisTable 
-              data={analysisData} 
-              positionName={positionName}
-              isLoggedIn={!!user}
-              onNavigateToSignup={() => navigate('/signup')}
-              onNavigateToDashboard={() => navigate('/dashboard')}
-            />
+          <div className="space-y-6 animate-fade-in" style={{
+          animationDelay: "0.3s"
+        }}>
+            <AnalysisTable data={analysisData} positionName={positionName} isLoggedIn={!!user} onNavigateToSignup={() => navigate('/signup')} onNavigateToDashboard={() => navigate('/dashboard')} />
             
             {/* AI Insight Section */}
-            {analysisData && analysisData.symbol && (
-              <StockAIInsight
-                symbol={analysisData.symbol}
-                stockName={analysisData.name || analysisData.symbol}
-                stockData={{
-                  currentPrice: analysisData.currentPrice,
-                  dividend: analysisData.grossDividendAnnual / analysisData.quantity,
-                  cagr5y: analysisData.estimatedCAGR / 100,
-                }}
-                isLoggedIn={!!user}
-                onNavigateToSignup={() => navigate('/signup')}
-              />
-            )}
+            {analysisData && analysisData.symbol && <StockAIInsight symbol={analysisData.symbol} stockName={analysisData.name || analysisData.symbol} stockData={{
+            currentPrice: analysisData.currentPrice,
+            dividend: analysisData.grossDividendAnnual / analysisData.quantity,
+            cagr5y: analysisData.estimatedCAGR / 100
+          }} isLoggedIn={!!user} onNavigateToSignup={() => navigate('/signup')} />}
           </div>
         </div>
 
         {/* Feature Comparison - show after analysis or for new users */}
-        {!user && (
-          <div className="mt-12 animate-fade-in" style={{ animationDelay: "0.4s" }}>
+        {!user && <div className="mt-12 animate-fade-in" style={{
+        animationDelay: "0.4s"
+      }}>
             <h3 className="text-2xl font-bold text-center mb-6">{t('comparison.title')}</h3>
             <FeatureComparisonBanner onSignUp={() => navigate('/signup')} />
-          </div>
-        )}
+          </div>}
       </div>
 
       {/* Sticky CTA for Mobile */}
-      <StickyCTA 
-        show={!!analysisData && !user} 
-        onSignUp={() => navigate('/signup')} 
-      />
-    </div>
-  );
+      <StickyCTA show={!!analysisData && !user} onSignUp={() => navigate('/signup')} />
+    </div>;
 };
-
 export default Index;
