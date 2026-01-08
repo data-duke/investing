@@ -241,7 +241,42 @@
     "in5Years": "In 5 Jahren",
     "disclaimer": "Prognosen sind Schätzungen basierend auf historischen Durchschnittswerten und garantieren keine zukünftigen Renditen.",
     "saveToPortfolio": "Ins Portfolio speichern",
-    "signUpToSave": "Registrieren Sie sich, um dieses Investment in Ihrem Portfolio zu speichern"
+    "signUpToSave": "Registrieren Sie sich, um dieses Investment in Ihrem Portfolio zu speichern",
+    "basedOnMarketAverage": "Basierend auf 8% Marktdurchschnitt",
+    "basedOnHistoricalCAGR": "Basierend auf {{cagr}}% historischer CAGR",
+    "crossBorderTax": "Grenzüberschreitende Steuer ({{stockCountry}} → {{investorCountry}})"
+  },
+  "ai": {
+    "askAboutStock": "Fragen Sie AI über {{symbol}}",
+    "questions": {
+      "risks": "Welche Risiken?",
+      "dividend": "Gute Dividendenaktie?",
+      "outlook": "Was ist der Ausblick?",
+      "competitors": "Mit Konkurrenten vergleichen"
+    },
+    "analyzing": "Analysiere...",
+    "errorGettingInsight": "KI-Analyse fehlgeschlagen. Bitte erneut versuchen.",
+    "unlockUnlimited": "Registrieren für unbegrenzte KI-Analyse",
+    "getPremium": "Premium erhalten",
+    "portfolioAdvisor": "KI Portfolio-Berater",
+    "howCanIHelp": "Wie kann ich Ihnen bei der Analyse helfen?",
+    "prompts": {
+      "analyze": "Diversifikation analysieren",
+      "dividends": "Beste Dividenden?",
+      "tax": "Steueroptimierung",
+      "suggest": "Verbesserungen?"
+    },
+    "thinking": "Denke nach...",
+    "typeQuestion": "Stellen Sie Ihre Frage..."
+  },
+  "countries": {
+    "AT": "Österreich",
+    "DE": "Deutschland",
+    "US": "Vereinigte Staaten",
+    "UK": "Vereinigtes Königreich",
+    "CH": "Schweiz",
+    "RS": "Serbien",
+    "CA": "Kanada"
   },
   "toast": {
     "investmentSaved": "Investment gespeichert!",

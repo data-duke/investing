@@ -16,6 +16,7 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { TaxSettingsDialog } from "@/components/TaxSettingsDialog";
 import { ShareDialog } from "@/components/ShareDialog";
 import { ManageSharesDialog } from "@/components/ManageSharesDialog";
+import { AIAdvisorButton } from "@/components/AIAdvisorButton";
 import { LogOut, Plus, RefreshCw, TrendingUp, Crown, Eye, EyeOff, Share2, Link } from "lucide-react";
 import { fetchStockData } from "@/services/stockApi";
 import { supabase } from "@/integrations/supabase/client";
@@ -658,6 +659,18 @@ const Dashboard = () => {
             />
           </>
         )}
+        
+        {/* AI Advisor Button - Premium Only */}
+        {subscribed && aggregatedPositions.length > 0 && (
+          <AIAdvisorButton
+            portfolioSummary={aggregatedPositions.map(p => 
+              `${p.symbol} (${p.name}): ${p.totalQuantity} shares, Value: €${p.current_value_eur?.toFixed(2) || 'N/A'}, Gain: ${p.gain_loss_percent?.toFixed(1) || 0}%, Dividend: €${p.dividend_annual_eur?.toFixed(2) || 0}/year`
+            ).join('\n')}
+            userCountry={userCountry}
+            aggregatedPositions={aggregatedPositions}
+          />
+        )}
+
       </main>
 
       <AddInvestmentDialog

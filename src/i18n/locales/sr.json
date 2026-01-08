@@ -241,7 +241,42 @@
     "in5Years": "Za 5 godina",
     "disclaimer": "Projekcije su procene bazirane na istorijskim prosecima i ne garantuju buduće prinose.",
     "saveToPortfolio": "Sačuvaj u portfolio",
-    "signUpToSave": "Registrujte se da biste sačuvali ovu investiciju u svom portfoliu"
+    "signUpToSave": "Registrujte se da biste sačuvali ovu investiciju u svom portfoliu",
+    "basedOnMarketAverage": "Bazirano na 8% tržišnom proseku",
+    "basedOnHistoricalCAGR": "Bazirano na {{cagr}}% istorijskom CAGR-u",
+    "crossBorderTax": "Prekogranični porez ({{stockCountry}} → {{investorCountry}})"
+  },
+  "ai": {
+    "askAboutStock": "Pitajte AI o {{symbol}}",
+    "questions": {
+      "risks": "Koji su rizici?",
+      "dividend": "Dobra dividendna akcija?",
+      "outlook": "Kakav je izgled?",
+      "competitors": "Uporedi sa konkurentima"
+    },
+    "analyzing": "Analiziranje...",
+    "errorGettingInsight": "Greška pri dobijanju AI analize.",
+    "unlockUnlimited": "Registrujte se za neograničenu AI analizu",
+    "getPremium": "Dobij Premium",
+    "portfolioAdvisor": "AI Portfolio Savetnik",
+    "howCanIHelp": "Kako vam mogu pomoći danas?",
+    "prompts": {
+      "analyze": "Analiziraj diversifikaciju",
+      "dividends": "Najbolje dividende?",
+      "tax": "Optimizacija poreza",
+      "suggest": "Poboljšanja?"
+    },
+    "thinking": "Razmišljam...",
+    "typeQuestion": "Unesite pitanje..."
+  },
+  "countries": {
+    "AT": "Austrija",
+    "DE": "Nemačka",
+    "US": "Sjedinjene Države",
+    "UK": "Ujedinjeno Kraljevstvo",
+    "CH": "Švajcarska",
+    "RS": "Srbija",
+    "CA": "Kanada"
   },
   "toast": {
     "investmentSaved": "Investicija sačuvana!",

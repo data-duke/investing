@@ -6,6 +6,7 @@ import { AnalysisTable } from "@/components/AnalysisTable";
 import { FeatureComparisonBanner } from "@/components/FeatureComparisonBanner";
 import { PopularStocksPicker } from "@/components/PopularStocksPicker";
 import { StickyCTA } from "@/components/StickyCTA";
+import { StockAIInsight } from "@/components/StockAIInsight";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Sparkles, Shield, Clock } from "lucide-react";
@@ -13,7 +14,7 @@ import { fetchStockData } from "@/services/stockApi";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { COUNTRY_TAX_RATES } from "@/lib/constants";
+import { calculateDividendTax } from "@/lib/taxCalculations";
 
 export interface AnalysisData {
   currentPrice: number;
@@ -35,6 +36,7 @@ export interface AnalysisData {
   symbol?: string;
   name?: string;
   country?: string;
+  stockCountry?: string;
 }
 
 const Index = () => {
@@ -43,6 +45,7 @@ const Index = () => {
   const [positionName, setPositionName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedSymbol, setSelectedSymbol] = useState("");
+  const [stockCountry, setStockCountry] = useState("US");
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -55,6 +58,17 @@ const Index = () => {
     setIsLoading(true);
     try {
       const stockData = await fetchStockData(symbol);
+      
+      // Detect stock country from symbol (simplified - US by default, CA for .TO, etc.)
+      let detectedStockCountry = "US";
+      if (symbol.includes(".TO") || symbol.includes(".V")) {
+        detectedStockCountry = "CA";
+      } else if (symbol.includes(".L")) {
+        detectedStockCountry = "UK";
+      } else if (symbol.includes(".DE") || symbol.includes(".F")) {
+        detectedStockCountry = "DE";
+      }
+      setStockCountry(detectedStockCountry);
       
       let finalQuantity = inputQuantity;
       let finalAmount = amount;
@@ -72,7 +86,8 @@ const Index = () => {
       }
       
       calculateAnalysis({
-        country,
+        investorCountry: country,
+        stockCountry: detectedStockCountry,
         symbol,
         positionName: stockData.name,
         quantity: finalQuantity,
@@ -101,7 +116,8 @@ const Index = () => {
   };
 
   const calculateAnalysis = (data: {
-    country: string;
+    investorCountry: string;
+    stockCountry: string;
     symbol: string;
     positionName: string;
     quantity: number;
@@ -113,14 +129,17 @@ const Index = () => {
     source?: string;
     cagr5y?: number;
   }) => {
-    const country = COUNTRY_TAX_RATES[data.country as keyof typeof COUNTRY_TAX_RATES];
-    
     const currentValue = data.currentPrice * data.quantity;
     const currentGain = currentValue - data.originallyInvested;
     const currentGainPercent = (currentGain / data.originallyInvested) * 100;
     
-    const grossDividendAnnual = data.announcedDividend * data.quantity;
-    const netDividendAnnual = grossDividendAnnual * (1 - country.dividendTax);
+    // Use cross-border tax calculation for dividends
+    const taxBreakdown = calculateDividendTax(
+      data.announcedDividend,
+      data.quantity,
+      data.stockCountry,
+      data.investorCountry
+    );
     
     // Use stock-specific CAGR if available, otherwise fall back to 8%
     const estimatedCAGR = data.cagr5y !== undefined ? data.cagr5y : 0.08;
@@ -135,9 +154,9 @@ const Index = () => {
       currentValue,
       currentGain,
       currentGainPercent,
-      grossDividendAnnual,
-      netDividendAnnual,
-      dividendTaxRate: country.dividendTax * 100,
+      grossDividendAnnual: taxBreakdown.grossDividend,
+      netDividendAnnual: taxBreakdown.netDividend,
+      dividendTaxRate: taxBreakdown.totalTaxRate * 100,
       projectedValue1Year,
       projectedValue3Years,
       projectedValue5Years,
@@ -148,7 +167,8 @@ const Index = () => {
       source: data.source,
       symbol: data.symbol,
       name: data.positionName,
-      country: data.country,
+      country: data.investorCountry,
+      stockCountry: data.stockCountry,
     });
     
     setPositionName(data.positionName);
@@ -250,6 +270,21 @@ const Index = () => {
               onNavigateToSignup={() => navigate('/signup')}
               onNavigateToDashboard={() => navigate('/dashboard')}
             />
+            
+            {/* AI Insight Section */}
+            {analysisData && analysisData.symbol && (
+              <StockAIInsight
+                symbol={analysisData.symbol}
+                stockName={analysisData.name || analysisData.symbol}
+                stockData={{
+                  currentPrice: analysisData.currentPrice,
+                  dividend: analysisData.grossDividendAnnual / analysisData.quantity,
+                  cagr5y: analysisData.estimatedCAGR / 100,
+                }}
+                isLoggedIn={!!user}
+                onNavigateToSignup={() => navigate('/signup')}
+              />
+            )}
           </div>
         </div>
 

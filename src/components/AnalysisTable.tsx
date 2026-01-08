@@ -28,6 +28,7 @@ export interface AnalysisData {
   symbol?: string;
   name?: string;
   country?: string;
+  stockCountry?: string;
 }
 
 interface AnalysisTableProps {
@@ -232,6 +233,14 @@ export const AnalysisTable = ({ data, positionName, isLoggedIn, onNavigateToSign
             t('analysis.basedOnMarketAverage')
           ) : (
             t('analysis.basedOnHistoricalCAGR', { cagr: data.estimatedCAGR.toFixed(1) })
+          )}
+          {data.stockCountry && data.country && data.stockCountry !== data.country && (
+            <span className="block mt-1 text-amber-600">
+              {t('analysis.crossBorderTax', { 
+                stockCountry: data.stockCountry, 
+                investorCountry: data.country 
+              })}
+            </span>
           )}
         </p>
         
