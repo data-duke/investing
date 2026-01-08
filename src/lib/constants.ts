@@ -7,6 +7,7 @@ export const SUPPORTED_COUNTRIES = [
   { code: "UK", name: "United Kingdom" },
   { code: "CH", name: "Switzerland" },
   { code: "RS", name: "Serbia" },
+  { code: "CA", name: "Canada" },
 ] as const;
 
 export type CountryCode = typeof SUPPORTED_COUNTRIES[number]['code'];
@@ -20,6 +21,7 @@ export const COUNTRY_TAX_RATES = {
   UK: { name: "United Kingdom", dividendTax: 0.125, capitalGainsTax: 0.20 },
   CH: { name: "Switzerland", dividendTax: 0.35, capitalGainsTax: 0 },
   RS: { name: "Serbia", dividendTax: 0.15, capitalGainsTax: 0.15 },
+  CA: { name: "Canada", dividendTax: 0.39, capitalGainsTax: 0.25 },
 } as const;
 
 // Subscription limits

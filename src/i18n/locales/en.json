@@ -266,7 +266,42 @@
     "in5Years": "In 5 Years",
     "disclaimer": "Projections are estimates based on historical averages and do not guarantee future returns.",
     "saveToPortfolio": "Save to Portfolio",
-    "signUpToSave": "Sign up to save this investment to your portfolio"
+    "signUpToSave": "Sign up to save this investment to your portfolio",
+    "basedOnMarketAverage": "Based on 8% market average",
+    "basedOnHistoricalCAGR": "Based on {{cagr}}% historical CAGR",
+    "crossBorderTax": "Cross-border tax applied ({{stockCountry}} → {{investorCountry}})"
+  },
+  "ai": {
+    "askAboutStock": "Ask AI about {{symbol}}",
+    "questions": {
+      "risks": "What are the risks?",
+      "dividend": "Good dividend stock?",
+      "outlook": "What's the outlook?",
+      "competitors": "Compare to competitors"
+    },
+    "analyzing": "Analyzing...",
+    "errorGettingInsight": "Failed to get AI insight. Please try again.",
+    "unlockUnlimited": "Sign up for unlimited AI analysis and portfolio tracking",
+    "getPremium": "Get Premium",
+    "portfolioAdvisor": "AI Portfolio Advisor",
+    "howCanIHelp": "How can I help you analyze your portfolio today?",
+    "prompts": {
+      "analyze": "Analyze diversification",
+      "dividends": "Best dividends?",
+      "tax": "Tax optimization",
+      "suggest": "Improvements?"
+    },
+    "thinking": "Thinking...",
+    "typeQuestion": "Type your question..."
+  },
+  "countries": {
+    "AT": "Austria",
+    "DE": "Germany",
+    "US": "United States",
+    "UK": "United Kingdom",
+    "CH": "Switzerland",
+    "RS": "Serbia",
+    "CA": "Canada"
   },
   "toast": {
     "investmentSaved": "Investment saved!",

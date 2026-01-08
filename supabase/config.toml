@@ -20,3 +20,9 @@ verify_jwt = true
 
 [functions.get-shared-view]
 verify_jwt = false
+
+[functions.stock-ai-insight]
+verify_jwt = false
+
+[functions.portfolio-ai-advisor]
+verify_jwt = false

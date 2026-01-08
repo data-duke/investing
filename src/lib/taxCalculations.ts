@@ -13,6 +13,7 @@ const withholdingTaxMatrix: Record<string, Record<string, number>> = {
     UK: 0.15, // US-UK treaty
     CH: 0.15, // US-Switzerland treaty
     RS: 0.15, // US-Serbia treaty (assumed standard)
+    CA: 0.15, // US-Canada treaty
   },
   AT: {
     AT: 0.00, // No withholding in home country
@@ -21,6 +22,7 @@ const withholdingTaxMatrix: Record<string, Record<string, number>> = {
     UK: 0.00, // EU-UK agreement
     CH: 0.00, // Bilateral treaty
     RS: 0.15, // Standard
+    CA: 0.25, // Austria-Canada treaty
   },
   DE: {
     AT: 0.00, // EU directive
@@ -29,6 +31,7 @@ const withholdingTaxMatrix: Record<string, Record<string, number>> = {
     UK: 0.00, // EU-UK agreement
     CH: 0.00, // Bilateral treaty
     RS: 0.15, // Standard
+    CA: 0.2637, // Germany-Canada treaty
   },
   UK: {
     AT: 0.00,
@@ -37,6 +40,7 @@ const withholdingTaxMatrix: Record<string, Record<string, number>> = {
     UK: 0.00, // No withholding in home country
     CH: 0.00,
     RS: 0.15,
+    CA: 0.00, // UK-Canada treaty
   },
   CH: {
     AT: 0.35,
@@ -45,6 +49,7 @@ const withholdingTaxMatrix: Record<string, Record<string, number>> = {
     UK: 0.35,
     CH: 0.35, // Switzerland has high withholding, partially refundable
     RS: 0.35,
+    CA: 0.35, // Switzerland-Canada
   },
   RS: {
     AT: 0.15,
@@ -53,6 +58,16 @@ const withholdingTaxMatrix: Record<string, Record<string, number>> = {
     UK: 0.15,
     CH: 0.15,
     RS: 0.00, // No withholding in home country
+    CA: 0.15, // RS-Canada
+  },
+  CA: {
+    AT: 0.25, // Canada-Austria: 25% withheld, 15% creditable
+    DE: 0.25, // Canada-Germany treaty
+    US: 0.15, // Canada-US treaty
+    UK: 0.15, // Canada-UK treaty
+    CH: 0.25, // Canada-Switzerland
+    RS: 0.25, // Canada-Serbia (standard)
+    CA: 0.00, // No withholding in home country
   },
 };
 
@@ -71,6 +86,20 @@ export const countries: Record<string, CountryTaxRates> = {
   UK: { name: "United Kingdom", dividendTax: 0.125, capitalGainsTax: 0.20, allowsForeignTaxCredit: true },
   CH: { name: "Switzerland", dividendTax: 0.35, capitalGainsTax: 0, allowsForeignTaxCredit: true },
   RS: { name: "Serbia", dividendTax: 0.15, capitalGainsTax: 0.15, allowsForeignTaxCredit: true },
+  CA: { name: "Canada", dividendTax: 0.39, capitalGainsTax: 0.25, allowsForeignTaxCredit: true },
+};
+
+// Creditable withholding rates (may differ from total withholding)
+// For example: Canada withholds 25% but only 15% is creditable against Austrian tax
+export const creditableWithholdingRates: Record<string, Record<string, number>> = {
+  CA: {
+    AT: 0.15, // Only 15% of 25% is creditable, 10% is reclaimable
+    DE: 0.15,
+    US: 0.15,
+    UK: 0.15,
+    CH: 0.15,
+    RS: 0.15,
+  },
 };
 
 export interface DividendTaxBreakdown {
