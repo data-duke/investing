@@ -22,7 +22,8 @@
     "ofPortfolio": "des Portfolios",
     "multiple": "Mehrere",
     "single": "Einzeln",
-    "saving": "Wird gespeichert..."
+    "saving": "Wird gespeichert...",
+    "done": "Fertig"
   },
   "settings": {
     "taxSettings": "Steuer-Einstellungen",

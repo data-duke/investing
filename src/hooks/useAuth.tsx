@@ -49,7 +49,7 @@ export const useAuth = () => {
     try {
       await supabase.auth.signOut();
     } catch (e) {
-      console.log('Sign out API call failed, clearing local state anyway');
+      if (import.meta.env.DEV) console.log('Sign out API call failed, clearing local state anyway');
     }
     // Always navigate to login regardless of API response
     navigate('/login');
