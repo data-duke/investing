@@ -12,11 +12,27 @@ interface PortfolioChartProps {
   privacyMode?: boolean;
 }
 
+interface ChartDataPoint {
+  date: string;
+  invested: number;
+  value: number;
+}
+
+interface SnapshotData {
+  id: string;
+  portfolio_id: string;
+  snapshot_date: string;
+  current_price_eur: number;
+  current_value_eur: number;
+  dividend_annual_eur: number | null;
+  exchange_rate: number | null;
+}
+
 type TimeRange = '1M' | '1Y' | '5Y' | 'ALL';
 
 export const PortfolioChart = ({ portfolios, privacyMode = false }: PortfolioChartProps) => {
   const [timeRange, setTimeRange] = useState<TimeRange>('ALL');
-  const [chartData, setChartData] = useState<any[]>([]);
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const isMobile = useIsMobile();
 
@@ -65,9 +81,20 @@ export const PortfolioChart = ({ portfolios, privacyMode = false }: PortfolioCha
       .gte('snapshot_date', startDate.toISOString())
       .order('snapshot_date', { ascending: true });
 
-    // Group snapshots by date
+    // Deduplicate snapshots by portfolio+date, keeping the latest one
+    // This provides JS-level safety even with DB constraints
+    const deduplicatedSnapshots = new Map<string, SnapshotData>();
+    (snapshots as SnapshotData[] | null)?.forEach((snap) => {
+      const key = `${snap.portfolio_id}_${new Date(snap.snapshot_date).toISOString().split('T')[0]}`;
+      const existing = deduplicatedSnapshots.get(key);
+      if (!existing || new Date(snap.snapshot_date) > new Date(existing.snapshot_date)) {
+        deduplicatedSnapshots.set(key, snap);
+      }
+    });
+
+    // Group deduplicated snapshots by date
     const snapshotsByDate = new Map<string, Map<string, number>>();
-    snapshots?.forEach((snap: any) => {
+    deduplicatedSnapshots.forEach((snap) => {
       const dateKey = new Date(snap.snapshot_date).toISOString().split('T')[0];
       if (!snapshotsByDate.has(dateKey)) {
         snapshotsByDate.set(dateKey, new Map());
@@ -86,8 +113,8 @@ export const PortfolioChart = ({ portfolios, privacyMode = false }: PortfolioCha
       }
     });
 
-    // Add all snapshot dates
-    snapshots?.forEach((snap: any) => {
+    // Add all snapshot dates from deduplicated data
+    deduplicatedSnapshots.forEach((snap) => {
       allDates.add(new Date(snap.snapshot_date).toISOString().split('T')[0]);
     });
 
@@ -177,7 +204,17 @@ export const PortfolioChart = ({ portfolios, privacyMode = false }: PortfolioCha
     setLoading(false);
   };
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  interface TooltipPayloadItem {
+    value: number;
+    payload: ChartDataPoint;
+  }
+
+  interface CustomTooltipProps {
+    active?: boolean;
+    payload?: TooltipPayloadItem[];
+  }
+
+  const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
     if (active && payload && payload.length) {
       const invested = payload[0]?.value || 0;
       const value = payload[1]?.value || 0;

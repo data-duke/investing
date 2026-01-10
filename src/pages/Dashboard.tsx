@@ -253,7 +253,7 @@ const Dashboard = () => {
       .eq('user_id', user?.id);
 
     if (error || !freshPortfolios || freshPortfolios.length === 0) {
-      console.error('Failed to fetch fresh portfolios:', error);
+      if (import.meta.env.DEV) console.error('Failed to fetch fresh portfolios:', error);
       setIsRefreshing(false);
       setRefreshProgress(null);
       return;
@@ -274,7 +274,7 @@ const Dashboard = () => {
           try {
             stockData = await fetchStockData(symbol);
           } catch (apiError) {
-            console.log(`API failed for ${symbol}, trying scraping...`);
+            if (import.meta.env.DEV) console.log(`API failed for ${symbol}, trying scraping...`);
             const { data: scrapedData, error: scrapeError } = await supabase.functions.invoke('scrape-stock-price', {
               body: { symbol }
             });
@@ -283,7 +283,7 @@ const Dashboard = () => {
           }
           return { symbol, stockData, success: true };
         } catch (e) {
-          console.error(`Failed to fetch ${symbol}:`, e);
+          if (import.meta.env.DEV) console.error(`Failed to fetch ${symbol}:`, e);
           return { symbol, success: false };
         }
       }
@@ -350,15 +350,43 @@ const Dashboard = () => {
       }
     }
 
-    // Batch insert snapshots
+    // Upsert snapshots - update existing or insert new (one per portfolio per day)
     if (snapshotInserts.length > 0) {
-      await supabase.from('portfolio_snapshots').insert(snapshotInserts);
+      const today = new Date().toISOString().split('T')[0];
+      
+      for (const snapshot of snapshotInserts) {
+        // Check for existing snapshot for this portfolio today
+        const { data: existing } = await supabase
+          .from('portfolio_snapshots')
+          .select('id')
+          .eq('portfolio_id', snapshot.portfolio_id)
+          .gte('snapshot_date', `${today}T00:00:00Z`)
+          .lt('snapshot_date', `${today}T23:59:59Z`)
+          .maybeSingle();
+
+        if (existing) {
+          // Update existing snapshot
+          await supabase
+            .from('portfolio_snapshots')
+            .update({
+              current_price_eur: snapshot.current_price_eur,
+              current_value_eur: snapshot.current_value_eur,
+              dividend_annual_eur: snapshot.dividend_annual_eur,
+              exchange_rate: snapshot.exchange_rate,
+              snapshot_date: snapshot.snapshot_date,
+            })
+            .eq('id', existing.id);
+        } else {
+          // Insert new snapshot
+          await supabase.from('portfolio_snapshots').insert(snapshot);
+        }
+      }
     }
 
     const successCount = priceMap.size;
     const failCount = uniqueSymbols.length - successCount;
     
-    console.log(`Refreshed ${successCount} symbols, ${failCount} failed`);
+    if (import.meta.env.DEV) console.log(`Refreshed ${successCount} symbols, ${failCount} failed`);
 
     setEnrichedPortfolios(updated);
     aggregatePositions(updated);

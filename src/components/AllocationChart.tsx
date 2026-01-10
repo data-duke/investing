@@ -71,7 +71,22 @@ export const AllocationChart = ({ aggregatedPositions, privacyMode: privacyModeP
     'hsl(var(--secondary))',
   ];
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  interface ChartPayloadData {
+    name: string;
+    fullName: string;
+    value: number;
+  }
+
+  interface TooltipPayloadItem {
+    payload: ChartPayloadData;
+  }
+
+  interface CustomTooltipProps {
+    active?: boolean;
+    payload?: TooltipPayloadItem[];
+  }
+
+  const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       const percentage = (data.value / totalValue) * 100;
