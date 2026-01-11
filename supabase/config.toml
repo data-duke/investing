@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.portfolio-ai-advisor]
 verify_jwt = false
+
+[functions.fetch-dividend-calendar]
+verify_jwt = true

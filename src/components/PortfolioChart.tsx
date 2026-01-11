@@ -135,6 +135,10 @@ export const PortfolioChart = ({ portfolios, privacyMode = false }: PortfolioCha
     // Sort dates chronologically
     const sortedDates = Array.from(allDates).sort();
 
+    // Determine if data spans multiple years
+    const years = new Set(sortedDates.map(d => new Date(d).getFullYear()));
+    const spanMultipleYears = years.size > 1;
+
     // Track per-portfolio values and when they were added
     const portfolioLastKnownValue = new Map<string, number>();
     const activePortfolios = new Set<string>();
@@ -193,7 +197,7 @@ export const PortfolioChart = ({ portfolios, privacyMode = false }: PortfolioCha
         date: new Date(dateKey).toLocaleDateString('en-US', { 
           month: 'short', 
           day: isMobile ? undefined : 'numeric',
-          year: isMobile ? undefined : '2-digit'
+          year: spanMultipleYears ? '2-digit' : undefined
         }),
         invested: cumulativeInvested,
         value: totalValue,

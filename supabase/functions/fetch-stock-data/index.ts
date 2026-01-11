@@ -265,10 +265,62 @@ async function fetchDividendFromFMP(symbol: string, currentPrice: number): Promi
   return 0;
 }
 
+// Calculate 5-year CAGR from Yahoo Finance historical prices
+async function calculateCAGRFromYahoo(symbol: string): Promise<number | undefined> {
+  try {
+    const endDate = Math.floor(Date.now() / 1000);
+    const startDate = endDate - (5 * 365 * 24 * 60 * 60); // 5 years ago
+    
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${startDate}&period2=${endDate}&interval=1mo`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LovableBot/1.0)' }
+    });
+    
+    if (!res.ok) return undefined;
+    
+    const data = await res.json();
+    const prices = data.chart?.result?.[0]?.indicators?.quote?.[0]?.close;
+    const timestamps = data.chart?.result?.[0]?.timestamp;
+    
+    if (!prices || prices.length < 2 || !timestamps || timestamps.length < 2) return undefined;
+    
+    // Find first valid price and last valid price
+    let oldestPrice: number | null = null;
+    let oldestTimestamp: number | null = null;
+    let latestPrice: number | null = null;
+    
+    for (let i = 0; i < prices.length; i++) {
+      if (prices[i] != null && prices[i] > 0) {
+        if (oldestPrice === null) {
+          oldestPrice = prices[i];
+          oldestTimestamp = timestamps[i];
+        }
+        latestPrice = prices[i];
+      }
+    }
+    
+    if (!oldestPrice || !latestPrice || !oldestTimestamp) return undefined;
+    
+    const yearsDiff = (Date.now() / 1000 - oldestTimestamp) / (365.25 * 24 * 60 * 60);
+    if (yearsDiff < 1) return undefined;
+    
+    const cagr = Math.pow(latestPrice / oldestPrice, 1 / yearsDiff) - 1;
+    
+    // Sanity check: CAGR should be between -50% and +100%
+    if (cagr >= -0.5 && cagr <= 1.0) {
+      console.log(`✓ CAGR from Yahoo: ${(cagr * 100).toFixed(2)}% over ${yearsDiff.toFixed(1)} years`);
+      return cagr;
+    }
+  } catch (e) {
+    console.log('Yahoo CAGR calculation failed:', (e as Error).message);
+  }
+  return undefined;
+}
+
 // Calculate 5-year CAGR from historical prices
 async function calculateCAGR(symbol: string, currentPrice: number): Promise<number | undefined> {
+  // Try FMP first
   try {
-    // Try FMP historical prices first
     if (FMP_API_KEY) {
       const historical = await tryFMPEndpoint(`/historical-price-full/${encodeURIComponent(symbol)}`);
       if (historical?.historical && Array.isArray(historical.historical) && historical.historical.length > 0) {
@@ -309,7 +361,7 @@ async function calculateCAGR(symbol: string, currentPrice: number): Promise<numb
             const cagr = Math.pow(currentPrice / oldPrice, 1 / yearsDiff) - 1;
             // Sanity check: CAGR should be between -50% and +100%
             if (cagr >= -0.5 && cagr <= 1.0) {
-              console.log(`✓ CAGR calculated: ${(cagr * 100).toFixed(2)}% over ${yearsDiff.toFixed(1)} years`);
+              console.log(`✓ CAGR from FMP: ${(cagr * 100).toFixed(2)}% over ${yearsDiff.toFixed(1)} years`);
               return cagr;
             }
           }
@@ -317,7 +369,13 @@ async function calculateCAGR(symbol: string, currentPrice: number): Promise<numb
       }
     }
   } catch (e) {
-    console.log('CAGR calculation failed:', (e as Error).message);
+    console.log('FMP CAGR calculation failed:', (e as Error).message);
+  }
+  
+  // Fallback to Yahoo Finance
+  const yahooCagr = await calculateCAGRFromYahoo(symbol);
+  if (yahooCagr !== undefined) {
+    return yahooCagr;
   }
   
   return undefined;

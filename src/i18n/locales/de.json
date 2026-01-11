@@ -99,7 +99,22 @@
     "holdings": "Positionen",
     "privacyMode": "Privatsphäre-Modus",
     "privacyModeOn": "Privatsphäre-Modus ist an - zeigt relative Werte",
-    "privacyModeOff": "Privatsphäre-Modus ist aus - zeigt absolute Werte"
+    "privacyModeOff": "Privatsphäre-Modus ist aus - zeigt absolute Werte",
+    "annualDividend": "Jährliche Dividende",
+    "positions": "Positionen",
+    "allocation": "Allokation",
+    "projectedAllocation": "Projizierte Allokation",
+    "5years": "5 Jahre",
+    "others": "Andere",
+    "otherPositions": "andere Positionen",
+    "currentValue": "Aktueller Wert",
+    "projectedValue": "Projizierter Wert",
+    "cagr": "CAGR",
+    "growth5Y": "5J Wachstum",
+    "projectedTotal": "Projizierte Summe",
+    "currentTotal": "Aktuelle Summe",
+    "projectedGrowth": "Wachstum",
+    "noPositions": "Keine Positionen vorhanden"
   },
   "portfolio": {
     "totalValue": "Gesamtportfoliowert",
@@ -290,7 +305,16 @@
     "setManualDividend": "Dividende manuell setzen",
     "enterAnnualDividend": "Geben Sie die jährliche Dividende in EUR für {{symbol}} ein",
     "annualDividendEur": "Jährliche Dividende (EUR)",
-    "save": "Dividende speichern"
+    "save": "Dividende speichern",
+    "calendar": "Dividenden-Kalender",
+    "upcoming": "Bevorstehend",
+    "past": "Vergangen",
+    "expected": "Erwartet",
+    "received": "Erhalten",
+    "pending": "Ausstehend",
+    "paysOn": "Zahlung",
+    "noUpcoming": "Keine bevorstehenden Dividenden für Ihre Positionen gefunden",
+    "noPast": "Keine vergangenen Dividenden in den letzten 6 Monaten gefunden"
   },
   "tags": {
     "filterByTag": "Nach Tag filtern",

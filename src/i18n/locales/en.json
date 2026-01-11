@@ -106,7 +106,19 @@
     "totalGainLoss": "Total Gain/Loss",
     "annualDividend": "Annual Dividend",
     "positions": "Positions",
-    "allocation": "Allocation"
+    "allocation": "Allocation",
+    "projectedAllocation": "Projected Allocation",
+    "5years": "5 years",
+    "others": "Others",
+    "otherPositions": "other positions",
+    "currentValue": "Current Value",
+    "projectedValue": "Projected Value",
+    "cagr": "CAGR",
+    "growth5Y": "5Y Growth",
+    "projectedTotal": "Projected Total",
+    "currentTotal": "Current Total",
+    "projectedGrowth": "Growth",
+    "noPositions": "No positions to display"
   },
   "portfolio": {
     "totalValue": "Total Portfolio Value",
@@ -314,7 +326,16 @@
     "setManualDividend": "Set Manual Dividend",
     "enterAnnualDividend": "Enter the annual dividend amount in EUR for {{symbol}}",
     "annualDividendEur": "Annual Dividend (EUR)",
-    "save": "Save Dividend"
+    "save": "Save Dividend",
+    "calendar": "Dividend Calendar",
+    "upcoming": "Upcoming",
+    "past": "Past",
+    "expected": "Expected",
+    "received": "Received",
+    "pending": "Pending",
+    "paysOn": "Pays",
+    "noUpcoming": "No upcoming dividends found for your holdings",
+    "noPast": "No past dividends found in the last 6 months"
   },
   "tags": {
     "filterByTag": "Filter by tag",
