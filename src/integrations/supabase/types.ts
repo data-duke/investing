@@ -38,6 +38,42 @@ export type Database = {
         }
         Relationships: []
       }
+      dividend_dates: {
+        Row: {
+          currency: string | null
+          declaration_date: string | null
+          dividend_amount: number | null
+          ex_date: string
+          fetched_at: string | null
+          id: string
+          payment_date: string | null
+          record_date: string | null
+          symbol: string
+        }
+        Insert: {
+          currency?: string | null
+          declaration_date?: string | null
+          dividend_amount?: number | null
+          ex_date: string
+          fetched_at?: string | null
+          id?: string
+          payment_date?: string | null
+          record_date?: string | null
+          symbol: string
+        }
+        Update: {
+          currency?: string | null
+          declaration_date?: string | null
+          dividend_amount?: number | null
+          ex_date?: string
+          fetched_at?: string | null
+          id?: string
+          payment_date?: string | null
+          record_date?: string | null
+          symbol?: string
+        }
+        Relationships: []
+      }
       portfolio_snapshots: {
         Row: {
           created_at: string

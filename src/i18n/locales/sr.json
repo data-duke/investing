@@ -22,7 +22,8 @@
     "ofPortfolio": "portfolia",
     "multiple": "Više",
     "single": "Jedan",
-    "saving": "Čuvanje..."
+    "saving": "Čuvanje...",
+    "done": "Gotovo"
   },
   "settings": {
     "taxSettings": "Poreske postavke",
@@ -98,7 +99,22 @@
     "holdings": "Pozicije",
     "privacyMode": "Režim privatnosti",
     "privacyModeOn": "Režim privatnosti je uključen - prikazuju se relativne vrednosti",
-    "privacyModeOff": "Režim privatnosti je isključen - prikazuju se apsolutne vrednosti"
+    "privacyModeOff": "Režim privatnosti je isključen - prikazuju se apsolutne vrednosti",
+    "annualDividend": "Godišnja dividenda",
+    "positions": "Pozicije",
+    "allocation": "Alokacija",
+    "projectedAllocation": "Projektovana alokacija",
+    "5years": "5 godina",
+    "others": "Ostali",
+    "otherPositions": "ostalih pozicija",
+    "currentValue": "Trenutna vrednost",
+    "projectedValue": "Projektovana vrednost",
+    "cagr": "CAGR",
+    "growth5Y": "5G rast",
+    "projectedTotal": "Projektovani ukupan iznos",
+    "currentTotal": "Trenutni ukupan iznos",
+    "projectedGrowth": "Rast",
+    "noPositions": "Nema pozicija za prikaz"
   },
   "portfolio": {
     "totalValue": "Ukupna vrednost portfolia",
@@ -289,7 +305,16 @@
     "setManualDividend": "Postavi ručnu dividendu",
     "enterAnnualDividend": "Unesite godišnji iznos dividende u EUR za {{symbol}}",
     "annualDividendEur": "Godišnja dividenda (EUR)",
-    "save": "Sačuvaj dividendu"
+    "save": "Sačuvaj dividendu",
+    "calendar": "Kalendar dividendi",
+    "upcoming": "Predstojeće",
+    "past": "Prošle",
+    "expected": "Očekivano",
+    "received": "Primljeno",
+    "pending": "Na čekanju",
+    "paysOn": "Isplata",
+    "noUpcoming": "Nisu pronađene predstojeće dividende za vaše pozicije",
+    "noPast": "Nisu pronađene dividende u poslednjih 6 meseci"
   },
   "tags": {
     "filterByTag": "Filtriraj po oznaci",

@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PortfolioOverview } from "@/components/PortfolioOverview";
 import { PortfolioChart } from "@/components/PortfolioChart";
 import { AllocationChart } from "@/components/AllocationChart";
+import { ProjectedAllocationChart } from "@/components/ProjectedAllocationChart";
+import { DividendCalendar } from "@/components/DividendCalendar";
 import { SortableHoldingsTable } from "@/components/SortableHoldingsTable";
 import { AddInvestmentDialog } from "@/components/AddInvestmentDialog";
 import { TagFilterBar } from "@/components/TagFilterBar";
@@ -45,6 +47,7 @@ const Dashboard = () => {
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [userCountry, setUserCountry] = useState<string>('AT');
   const [refreshProgress, setRefreshProgress] = useState<{ current: number; total: number } | null>(null);
+  const [cagrData, setCagrData] = useState<Record<string, number>>({});
   const { toast } = useToast();
 
   // Fetch user's tax residence country
@@ -289,12 +292,18 @@ const Dashboard = () => {
       }
     );
 
-    // Build price map from successful fetches
+    // Build price map from successful fetches and collect CAGR data
+    const newCagrData: Record<string, number> = { ...cagrData };
     results.forEach((result) => {
       if (result.status === 'fulfilled' && result.value.success) {
         priceMap.set(result.value.symbol, result.value.stockData);
+        // Store CAGR data if available
+        if (result.value.stockData?.cagr5y !== undefined) {
+          newCagrData[result.value.symbol] = result.value.stockData.cagr5y;
+        }
       }
     });
+    setCagrData(newCagrData);
 
     // Apply prices to all portfolios
     const updated: Portfolio[] = [];
@@ -667,6 +676,22 @@ const Dashboard = () => {
             <div className="grid md:grid-cols-2 gap-6">
               <PortfolioChart portfolios={filteredPortfolios} privacyMode={privacyMode} />
               <AllocationChart aggregatedPositions={displayAggregatedPositions} />
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <ProjectedAllocationChart 
+                positions={displayAggregatedPositions.map(p => ({
+                  symbol: p.symbol,
+                  name: p.name,
+                  current_value_eur: p.current_value_eur,
+                  cagr_5y: cagrData[p.symbol]
+                }))} 
+                privacyMode={privacyMode}
+              />
+              <DividendCalendar 
+                positions={displayAggregatedPositions}
+                privacyMode={privacyMode}
+              />
             </div>
 
             <Button 
