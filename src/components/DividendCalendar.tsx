@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Calendar, ChevronLeft, ChevronRight, DollarSign, Clock } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Calendar, ChevronLeft, ChevronRight, DollarSign, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/formatters";
 import { useTranslation } from "react-i18next";
@@ -42,6 +43,7 @@ export const DividendCalendar = ({ positions, privacyMode: privacyModeProp }: Di
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'upcoming' | 'past'>('upcoming');
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     fetchDividendDates();
@@ -174,33 +176,48 @@ export const DividendCalendar = ({ positions, privacyMode: privacyModeProp }: Di
 
   return (
     <Card className="border-primary/20 shadow-lg">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            {t('dividend.calendar')}
-          </CardTitle>
-          <div className="flex gap-1">
-            <Button
-              variant={viewMode === 'upcoming' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setViewMode('upcoming')}
-              className="text-xs px-3 h-8"
-            >
-              {t('dividend.upcoming')}
-            </Button>
-            <Button
-              variant={viewMode === 'past' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setViewMode('past')}
-              className="text-xs px-3 h-8"
-            >
-              {t('dividend.past')}
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CardHeader className="cursor-pointer" onClick={() => setIsOpen(!isOpen)}>
+          <CollapsibleTrigger asChild>
+            <div className="flex items-center justify-between w-full">
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                {t('dividend.calendar')}
+                {dividendEvents.length > 0 && (
+                  <Badge variant="secondary" className="ml-2">
+                    {dividendEvents.filter(e => !e.isPast).length} {t('dividend.upcoming').toLowerCase()}
+                  </Badge>
+                )}
+              </CardTitle>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+            </div>
+          </CollapsibleTrigger>
+        </CardHeader>
+        
+        <CollapsibleContent>
+          <CardContent>
+            <div className="flex justify-end mb-4">
+              <div className="flex gap-1">
+                <Button
+                  variant={viewMode === 'upcoming' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={(e) => { e.stopPropagation(); setViewMode('upcoming'); }}
+                  className="text-xs px-3 h-8"
+                >
+                  {t('dividend.upcoming')}
+                </Button>
+                <Button
+                  variant={viewMode === 'past' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={(e) => { e.stopPropagation(); setViewMode('past'); }}
+                  className="text-xs px-3 h-8"
+                >
+                  {t('dividend.past')}
+                </Button>
+              </div>
+            </div>
         {monthGroups.length === 0 ? (
           <div className="text-center py-8 space-y-4">
             <div className="flex items-center justify-center gap-4">
@@ -300,8 +317,10 @@ export const DividendCalendar = ({ positions, privacyMode: privacyModeProp }: Di
               </div>
             ))}
           </div>
-        )}
-      </CardContent>
+          )}
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 };

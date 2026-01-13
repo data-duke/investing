@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Loader2, Sparkles, AlertCircle } from "lucide-react";
 import { AggregatedPosition } from "@/lib/constants";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
   role: "user" | "assistant";
@@ -56,13 +57,21 @@ export const AIAdvisorPanel = ({
     setError(null);
 
     try {
+      // Get the user's session token for authorization
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError(t('ai.loginRequired', 'Please log in to use the AI advisor'));
+        setIsLoading(false);
+        return;
+      }
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/portfolio-ai-advisor`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
             messages: [...messages, userMessage],

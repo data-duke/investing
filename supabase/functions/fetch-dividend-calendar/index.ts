@@ -77,45 +77,86 @@ async function fetchDividendsFromFMP(symbol: string): Promise<DividendDate[]> {
 }
 
 async function fetchDividendsFromYahoo(symbol: string): Promise<DividendDate[]> {
+  const dividends: DividendDate[] = [];
+  
   try {
-    // Yahoo Finance doesn't have a direct dividend calendar API
-    // We can try to get upcoming dividends from the quote summary
-    const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=calendarEvents,summaryDetail`;
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LovableBot/1.0)' }
+    // First, try to get historical dividends from chart API
+    const endDate = Math.floor(Date.now() / 1000);
+    const startDate = endDate - (180 * 24 * 60 * 60); // 6 months ago
+    
+    const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${startDate}&period2=${endDate}&interval=1d&events=div`;
+    const chartRes = await fetch(chartUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' }
     });
 
-    if (!res.ok) return [];
-
-    const data = await res.json();
-    const calendarEvents = data?.quoteSummary?.result?.[0]?.calendarEvents;
-    const summaryDetail = data?.quoteSummary?.result?.[0]?.summaryDetail;
-    
-    const dividends: DividendDate[] = [];
-
-    // Get ex-dividend date if available
-    if (calendarEvents?.exDividendDate?.fmt) {
-      const dividendRate = summaryDetail?.dividendRate?.raw || 0;
-      dividends.push({
-        symbol,
-        ex_date: calendarEvents.exDividendDate.fmt,
-        payment_date: calendarEvents.dividendDate?.fmt || null,
-        record_date: null,
-        declaration_date: null,
-        dividend_amount: dividendRate / 4, // Quarterly estimate
-        currency: 'USD'
-      });
+    if (chartRes.ok) {
+      const chartData = await chartRes.json();
+      const divEvents = chartData?.chart?.result?.[0]?.events?.dividends;
+      
+      if (divEvents && typeof divEvents === 'object') {
+        for (const key of Object.keys(divEvents)) {
+          const d = divEvents[key];
+          if (d && d.date && d.amount) {
+            dividends.push({
+              symbol,
+              ex_date: new Date(d.date * 1000).toISOString().split('T')[0],
+              payment_date: null,
+              record_date: null,
+              declaration_date: null,
+              dividend_amount: Number(d.amount || 0),
+              currency: 'USD'
+            });
+          }
+        }
+      }
     }
-
-    if (dividends.length > 0) {
-      console.log(`✓ Found dividend from Yahoo for ${symbol}`);
-    }
-
-    return dividends;
   } catch (e) {
-    console.log(`Yahoo dividend fetch failed for ${symbol}:`, (e as Error).message);
-    return [];
+    console.log(`Yahoo chart dividend fetch failed for ${symbol}:`, (e as Error).message);
   }
+  
+  // Also try to get upcoming dividend from quoteSummary
+  try {
+    const summaryUrl = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=calendarEvents,summaryDetail`;
+    const summaryRes = await fetch(summaryUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' }
+    });
+
+    if (summaryRes.ok) {
+      const summaryData = await summaryRes.json();
+      const calendarEvents = summaryData?.quoteSummary?.result?.[0]?.calendarEvents;
+      const summaryDetail = summaryData?.quoteSummary?.result?.[0]?.summaryDetail;
+      
+      if (calendarEvents?.exDividendDate?.fmt) {
+        const exDateStr = calendarEvents.exDividendDate.fmt;
+        const exDate = new Date(exDateStr);
+        const now = new Date();
+        
+        // Only add if it's upcoming and not already in the list
+        if (exDate > now && !dividends.some(d => d.ex_date === exDateStr)) {
+          const dividendRate = summaryDetail?.dividendRate?.raw || 0;
+          const frequency = summaryDetail?.dividendFrequency?.raw || 4;
+          
+          dividends.push({
+            symbol,
+            ex_date: exDateStr,
+            payment_date: calendarEvents.dividendDate?.fmt || null,
+            record_date: null,
+            declaration_date: null,
+            dividend_amount: dividendRate > 0 ? dividendRate / frequency : 0,
+            currency: 'USD'
+          });
+        }
+      }
+    }
+  } catch (e) {
+    console.log(`Yahoo summary fetch failed for ${symbol}:`, (e as Error).message);
+  }
+
+  if (dividends.length > 0) {
+    console.log(`✓ Found ${dividends.length} dividend(s) from Yahoo for ${symbol}`);
+  }
+
+  return dividends;
 }
 
 async function getCachedDividends(symbols: string[]): Promise<Map<string, DividendDate[]>> {
