@@ -650,7 +650,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Stock data fetch failed:', (error as Error).message);
     return new Response(
-      JSON.stringify({ error: (error as Error).message || 'Failed to fetch stock data. Please try again.' }),
+      JSON.stringify({ error: 'Failed to fetch stock data. Please try again.' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
