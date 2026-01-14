@@ -114,7 +114,8 @@
     "projectedTotal": "Projizierte Summe",
     "currentTotal": "Aktuelle Summe",
     "projectedGrowth": "Wachstum",
-    "noPositions": "Keine Positionen vorhanden"
+    "noPositions": "Keine Positionen vorhanden",
+    "cagrDisclaimer": "Vergangene Wertentwicklung garantiert keine zukünftigen Ergebnisse. Wachstumsraten auf 25% begrenzt."
   },
   "portfolio": {
     "totalValue": "Gesamtportfoliowert",

@@ -116,6 +116,18 @@ export interface DividendTaxBreakdown {
 
 /**
  * Calculate comprehensive dividend taxation including withholding and residence tax
+ * 
+ * For flat tax countries (AT, DE): Total tax = residence rate (e.g., 27.5% for Austria)
+ * Foreign withholding is credited against residence tax, not added on top.
+ * 
+ * Example for Austrian investor with Canadian stock (CNQ):
+ * - Gross: €7.30
+ * - Canada withholds: 25% = €1.825 (only 15% = €1.095 is creditable)
+ * - Austrian KESt due: 27.5% = €2.01
+ * - Foreign tax credit: €1.095 (creditable portion)
+ * - Net Austrian tax: €2.01 - €1.095 = €0.915
+ * - Net dividend: €7.30 - €1.825 - €0.915 = €4.56
+ * - Total tax rate: 27.5% (Austrian flat rate) + 10% non-creditable = 37.5%
  */
 export const calculateDividendTax = (
   grossDividendPerShare: number,
@@ -130,7 +142,7 @@ export const calculateDividendTax = (
   const withholdingTax = grossDividend * withholdingRate;
   const afterWithholding = grossDividend - withholdingTax;
   
-  // Step 2: Apply residence country tax
+  // Step 2: Get residence country tax rates
   const investorTaxRates = countries[investorCountry];
   if (!investorTaxRates) {
     // Fallback if country not found
@@ -150,18 +162,40 @@ export const calculateDividendTax = (
   // Calculate residence tax on gross dividend
   const residenceTaxOnGross = grossDividend * investorTaxRates.dividendTax;
   
-  // Step 3: Apply foreign tax credit (if allowed)
+  // Step 3: Determine creditable withholding (may be less than actual withholding)
+  // Some countries withhold more than is creditable (e.g., Canada 25% withheld, only 15% creditable)
+  const creditableRate = creditableWithholdingRates[stockCountry]?.[investorCountry] ?? withholdingRate;
+  const creditableWithholding = grossDividend * Math.min(creditableRate, withholdingRate);
+  
+  // Step 4: Apply foreign tax credit (if allowed)
   let foreignTaxCredit = 0;
   let residenceTax = residenceTaxOnGross;
+  let netDividend: number;
   
-  if (investorTaxRates.allowsForeignTaxCredit) {
-    // Credit is the lesser of: withholding tax paid OR residence tax due
-    foreignTaxCredit = Math.min(withholdingTax, residenceTaxOnGross);
-    residenceTax = residenceTaxOnGross - foreignTaxCredit;
+  if (investorTaxRates.allowsForeignTaxCredit && stockCountry !== investorCountry) {
+    // For flat tax countries (AT, DE): total tax burden = residence tax rate
+    // Withholding is credited, any non-creditable portion is additional cost
+    if (investorCountry === 'AT' || investorCountry === 'DE') {
+      // Credit is limited to the creditable portion of withholding OR residence tax, whichever is lower
+      foreignTaxCredit = Math.min(creditableWithholding, residenceTaxOnGross);
+      
+      // Remaining residence tax after credit
+      residenceTax = Math.max(0, residenceTaxOnGross - foreignTaxCredit);
+      
+      // Net = Gross - Withholding (actual) - Remaining residence tax
+      netDividend = grossDividend - withholdingTax - residenceTax;
+    } else {
+      // Other countries: standard foreign tax credit logic
+      foreignTaxCredit = Math.min(withholdingTax, residenceTaxOnGross);
+      residenceTax = residenceTaxOnGross - foreignTaxCredit;
+      netDividend = grossDividend - withholdingTax - residenceTax;
+    }
+  } else {
+    // No foreign tax credit (same country or not allowed)
+    netDividend = afterWithholding - residenceTax;
   }
   
-  const netDividend = grossDividend - withholdingTax - residenceTax;
-  const totalTaxRate = (withholdingTax + residenceTax) / grossDividend;
+  const totalTaxRate = grossDividend > 0 ? (grossDividend - netDividend) / grossDividend : 0;
   
   return {
     grossDividend,
