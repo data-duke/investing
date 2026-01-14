@@ -18,6 +18,7 @@ interface ProjectedAllocationChartProps {
 }
 
 const DEFAULT_CAGR = 0.08; // 8% default market average
+const MAX_CAGR = 0.25; // 25% cap for more realistic projections
 
 export const ProjectedAllocationChart = ({ positions, privacyMode: privacyModeProp }: ProjectedAllocationChartProps) => {
   const { t } = useTranslation();
@@ -38,16 +39,19 @@ export const ProjectedAllocationChart = ({ positions, privacyMode: privacyModePr
     );
   }
 
-  // Calculate projected values (5 years)
+  // Calculate projected values (5 years) with CAGR capped at MAX_CAGR for realistic projections
   const projectedPositions = positions
     .filter(p => p.current_value_eur && p.current_value_eur > 0)
     .map(p => {
-      const cagr = p.cagr_5y ?? DEFAULT_CAGR;
+      const rawCagr = p.cagr_5y ?? DEFAULT_CAGR;
+      // Cap CAGR at MAX_CAGR to prevent unrealistic projections
+      const cagr = Math.min(rawCagr, MAX_CAGR);
       const projectedValue = (p.current_value_eur || 0) * Math.pow(1 + cagr, 5);
       return {
         ...p,
         projectedValue,
         cagr,
+        rawCagr, // Keep original for display
         currentValue: p.current_value_eur || 0,
       };
     })
@@ -201,6 +205,9 @@ export const ProjectedAllocationChart = ({ positions, privacyMode: privacyModePr
           </p>
           <p className="text-xs text-muted-foreground">
             {t('dashboard.currentTotal')}: {privacyMode ? "•••" : formatCurrency(totalCurrentValue)} → {t('dashboard.projectedGrowth')}: <span className="text-green-500 font-medium">+{formatPercentage(((totalProjectedValue - totalCurrentValue) / totalCurrentValue) * 100, 0)}</span>
+          </p>
+          <p className="text-xs text-muted-foreground/70 italic mt-2">
+            {t('dashboard.cagrDisclaimer')}
           </p>
         </div>
       </CardContent>

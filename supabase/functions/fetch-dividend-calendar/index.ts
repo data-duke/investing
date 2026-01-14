@@ -80,9 +80,9 @@ async function fetchDividendsFromYahoo(symbol: string): Promise<DividendDate[]> 
   const dividends: DividendDate[] = [];
   
   try {
-    // First, try to get historical dividends from chart API
+    // First, try to get historical dividends from chart API (last 18 months for better pattern detection)
     const endDate = Math.floor(Date.now() / 1000);
-    const startDate = endDate - (180 * 24 * 60 * 60); // 6 months ago
+    const startDate = endDate - (540 * 24 * 60 * 60); // 18 months ago
     
     const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${startDate}&period2=${endDate}&interval=1d&events=div`;
     const chartRes = await fetch(chartUrl, {
@@ -157,6 +157,73 @@ async function fetchDividendsFromYahoo(symbol: string): Promise<DividendDate[]> 
   }
 
   return dividends;
+}
+
+/**
+ * Estimate upcoming dividends based on historical payment patterns
+ */
+function estimateUpcomingDividends(symbol: string, historicalDivs: DividendDate[]): DividendDate[] {
+  if (historicalDivs.length < 2) return [];
+  
+  // Sort by date descending (most recent first)
+  const sorted = [...historicalDivs].sort((a, b) => 
+    new Date(b.ex_date).getTime() - new Date(a.ex_date).getTime()
+  );
+  
+  const lastDiv = sorted[0];
+  const secondLastDiv = sorted[1];
+  
+  // Calculate frequency in days
+  const daysBetween = Math.round(
+    (new Date(lastDiv.ex_date).getTime() - new Date(secondLastDiv.ex_date).getTime()) / (1000 * 60 * 60 * 24)
+  );
+  
+  // Validate frequency (should be roughly quarterly=90, monthly=30, semi-annual=180, annual=365)
+  if (daysBetween < 25 || daysBetween > 400) {
+    console.log(`${symbol}: Unusual dividend frequency (${daysBetween} days), skipping estimation`);
+    return [];
+  }
+  
+  const now = new Date();
+  const lastDate = new Date(lastDiv.ex_date);
+  const upcomingDivs: DividendDate[] = [];
+  
+  // Project next 3 dividend dates
+  for (let i = 1; i <= 3; i++) {
+    const nextDate = new Date(lastDate);
+    nextDate.setDate(nextDate.getDate() + (daysBetween * i));
+    
+    // Only add if it's in the future and within 6 months
+    const sixMonthsFromNow = new Date();
+    sixMonthsFromNow.setMonth(sixMonthsFromNow.getMonth() + 6);
+    
+    if (nextDate > now && nextDate <= sixMonthsFromNow) {
+      const exDateStr = nextDate.toISOString().split('T')[0];
+      
+      // Check if this date isn't already in historical data
+      if (!historicalDivs.some(d => d.ex_date === exDateStr)) {
+        // Estimate payment date (typically 2-4 weeks after ex-date)
+        const paymentDate = new Date(nextDate);
+        paymentDate.setDate(paymentDate.getDate() + 21); // ~3 weeks later
+        
+        upcomingDivs.push({
+          symbol,
+          ex_date: exDateStr,
+          payment_date: paymentDate.toISOString().split('T')[0],
+          record_date: null,
+          declaration_date: null,
+          dividend_amount: lastDiv.dividend_amount, // Use last known amount
+          currency: lastDiv.currency
+        });
+      }
+    }
+  }
+  
+  if (upcomingDivs.length > 0) {
+    console.log(`✓ Estimated ${upcomingDivs.length} upcoming dividend(s) for ${symbol}`);
+  }
+  
+  return upcomingDivs;
 }
 
 async function getCachedDividends(symbols: string[]): Promise<Map<string, DividendDate[]>> {
@@ -291,12 +358,33 @@ serve(async (req) => {
     });
     allDividends.push(...newDividends);
 
+    // Estimate upcoming dividends from historical patterns for all symbols
+    const estimatedDividends: DividendDate[] = [];
+    const dividendsBySymbol = new Map<string, DividendDate[]>();
+    
+    // Group all dividends by symbol
+    for (const div of allDividends) {
+      if (!dividendsBySymbol.has(div.symbol)) {
+        dividendsBySymbol.set(div.symbol, []);
+      }
+      dividendsBySymbol.get(div.symbol)!.push(div);
+    }
+    
+    // Estimate upcoming for each symbol
+    for (const [symbol, divs] of dividendsBySymbol) {
+      const estimated = estimateUpcomingDividends(symbol, divs);
+      estimatedDividends.push(...estimated);
+    }
+    
+    // Add estimated dividends (they won't be cached, but will appear in calendar)
+    allDividends.push(...estimatedDividends);
+
     // Sort by ex-date descending
     allDividends.sort((a, b) => 
       new Date(b.ex_date).getTime() - new Date(a.ex_date).getTime()
     );
 
-    console.log(`✓ Returning ${allDividends.length} total dividend dates`);
+    console.log(`✓ Returning ${allDividends.length} total dividend dates (including ${estimatedDividends.length} estimated)`);
 
     return new Response(
       JSON.stringify({ dividends: allDividends }),

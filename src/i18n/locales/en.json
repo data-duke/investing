@@ -118,7 +118,8 @@
     "projectedTotal": "Projected Total",
     "currentTotal": "Current Total",
     "projectedGrowth": "Growth",
-    "noPositions": "No positions to display"
+    "noPositions": "No positions to display",
+    "cagrDisclaimer": "Past performance does not guarantee future results. Growth rates capped at 25%."
   },
   "portfolio": {
     "totalValue": "Total Portfolio Value",

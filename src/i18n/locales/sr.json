@@ -114,7 +114,8 @@
     "projectedTotal": "Projektovani ukupan iznos",
     "currentTotal": "Trenutni ukupan iznos",
     "projectedGrowth": "Rast",
-    "noPositions": "Nema pozicija za prikaz"
+    "noPositions": "Nema pozicija za prikaz",
+    "cagrDisclaimer": "Prošle performanse ne garantuju buduće rezultate. Stope rasta ograničene na 25%."
   },
   "portfolio": {
     "totalValue": "Ukupna vrednost portfolia",
