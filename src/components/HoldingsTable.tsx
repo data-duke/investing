@@ -1,14 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Portfolio, usePortfolio } from "@/hooks/usePortfolio";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronUp, Trash2, Pencil, DollarSign } from "lucide-react";
+import { ChevronDown, ChevronUp, Trash2, Pencil, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
 import { StockNewsSection } from "./StockNewsSection";
 import { EditInvestmentDialog } from "./EditInvestmentDialog";
 import { ManualDividendDialog } from "./ManualDividendDialog";
 import { Fragment } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useTranslation } from "react-i18next";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +34,8 @@ interface AggregatedPosition {
   gain_loss_eur?: number;
   gain_loss_percent?: number;
   dividend_annual_eur?: number;
+  dividend_growth_1y?: number;
+  dividend_growth_5y?: number;
   lots: Portfolio[];
 }
 
@@ -47,7 +51,35 @@ export const HoldingsTable = ({ portfolios, aggregatedPositions, onRefresh, high
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editPortfolio, setEditPortfolio] = useState<Portfolio | null>(null);
   const [manualDivDialog, setManualDivDialog] = useState<{ open: boolean; position: AggregatedPosition | null }>({ open: false, position: null });
+  const [dividendGrowth, setDividendGrowth] = useState<Record<string, { growth1y?: number; growth5y?: number }>>({});
   const { deleteInvestment } = usePortfolio();
+  const { t } = useTranslation();
+
+  // Fetch dividend growth data for all symbols
+  useEffect(() => {
+    const fetchGrowthData = async () => {
+      const symbols = aggregatedPositions.map(p => p.symbol);
+      if (symbols.length === 0) return;
+      
+      const { data } = await supabase
+        .from('price_cache')
+        .select('symbol, dividend_growth_1y, dividend_growth_5y')
+        .in('symbol', symbols);
+      
+      if (data) {
+        const growthMap: Record<string, { growth1y?: number; growth5y?: number }> = {};
+        data.forEach(item => {
+          growthMap[item.symbol] = {
+            growth1y: item.dividend_growth_1y ? Number(item.dividend_growth_1y) : undefined,
+            growth5y: item.dividend_growth_5y ? Number(item.dividend_growth_5y) : undefined,
+          };
+        });
+        setDividendGrowth(growthMap);
+      }
+    };
+    
+    fetchGrowthData();
+  }, [aggregatedPositions]);
 
   const handleDelete = async () => {
     if (deleteId) {
@@ -190,23 +222,62 @@ export const HoldingsTable = ({ portfolios, aggregatedPositions, onRefresh, high
 
                               <Card>
                                 <CardHeader>
-                                  <CardTitle className="text-sm">Dividends & Returns</CardTitle>
+                                  <CardTitle className="text-sm">{t('portfolio.dividendsReturns')}</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-2 text-sm">
                                   <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Annual Dividend (Net):</span>
+                                    <span className="text-muted-foreground">{t('holdings.annualDividend')} (Net):</span>
                                     <span className="font-semibold">
                                       {position.dividend_annual_eur ? `€${position.dividend_annual_eur.toFixed(2)}` : 'N/A'}
                                     </span>
                                   </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Total Return:</span>
+                                  
+                                  {/* Dividend Growth Section */}
+                                  {(dividendGrowth[position.symbol]?.growth1y !== undefined || dividendGrowth[position.symbol]?.growth5y !== undefined) && (
+                                    <>
+                                      {dividendGrowth[position.symbol]?.growth1y !== undefined && (
+                                        <div className="flex justify-between items-center">
+                                          <span className="text-muted-foreground flex items-center gap-1">
+                                            {t('holdings.dividendGrowth1Y')}:
+                                          </span>
+                                          <span className={`font-semibold flex items-center gap-1 ${dividendGrowth[position.symbol].growth1y! >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                            {dividendGrowth[position.symbol].growth1y! >= 0 ? (
+                                              <TrendingUp className="h-3 w-3" />
+                                            ) : (
+                                              <TrendingDown className="h-3 w-3" />
+                                            )}
+                                            {dividendGrowth[position.symbol].growth1y! >= 0 ? '+' : ''}
+                                            {(dividendGrowth[position.symbol].growth1y! * 100).toFixed(1)}%
+                                          </span>
+                                        </div>
+                                      )}
+                                      {dividendGrowth[position.symbol]?.growth5y !== undefined && (
+                                        <div className="flex justify-between items-center">
+                                          <span className="text-muted-foreground flex items-center gap-1">
+                                            {t('holdings.dividendGrowth5Y')}:
+                                          </span>
+                                          <span className={`font-semibold flex items-center gap-1 ${dividendGrowth[position.symbol].growth5y! >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                            {dividendGrowth[position.symbol].growth5y! >= 0 ? (
+                                              <TrendingUp className="h-3 w-3" />
+                                            ) : (
+                                              <TrendingDown className="h-3 w-3" />
+                                            )}
+                                            {dividendGrowth[position.symbol].growth5y! >= 0 ? '+' : ''}
+                                            {(dividendGrowth[position.symbol].growth5y! * 100).toFixed(1)}%/yr
+                                          </span>
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
+                                  
+                                  <div className="flex justify-between pt-1 border-t">
+                                    <span className="text-muted-foreground">{t('portfolio.totalReturn')}:</span>
                                     <span className={position.gain_loss_eur && position.gain_loss_eur >= 0 ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}>
                                       {position.gain_loss_eur ? `€${position.gain_loss_eur.toFixed(2)}` : 'N/A'}
                                     </span>
                                   </div>
                                   <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Return %:</span>
+                                    <span className="text-muted-foreground">{t('portfolio.returnPercent')}:</span>
                                     <span className={position.gain_loss_percent && position.gain_loss_percent >= 0 ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}>
                                       {position.gain_loss_percent ? `${position.gain_loss_percent >= 0 ? '+' : ''}${position.gain_loss_percent.toFixed(2)}%` : 'N/A'}
                                     </span>

@@ -154,7 +154,11 @@
     "news": "Nachrichten",
     "set": "Setzen",
     "confirmDelete": "Löschen bestätigen",
-    "deleteConfirmMessage": "Sind Sie sicher, dass Sie diese Investition löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden."
+    "deleteConfirmMessage": "Sind Sie sicher, dass Sie diese Investition löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+    "dividendGrowth": "Dividendenwachstum",
+    "dividendGrowth1Y": "1J Div.-Wachstum",
+    "dividendGrowth5Y": "5J Ø Wachstum",
+    "noGrowthData": "Wachstumsdaten nicht verfügbar"
   },
   "chart": {
     "portfolioPerformance": "Portfolio-Performance",

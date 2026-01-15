@@ -31,7 +31,7 @@ interface SnapshotData {
 type TimeRange = '1M' | '1Y' | '5Y' | 'ALL';
 
 export const PortfolioChart = ({ portfolios, privacyMode = false }: PortfolioChartProps) => {
-  const [timeRange, setTimeRange] = useState<TimeRange>('ALL');
+  const [timeRange, setTimeRange] = useState<TimeRange>('1M');
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const isMobile = useIsMobile();

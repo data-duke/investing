@@ -80,7 +80,8 @@ async function updatePriceCache(
   name: string,
   exchangeRate: number,
   source: string,
-  cagr5y?: number
+  cagr5y?: number,
+  dividendGrowth?: { growth1y?: number; growth3y?: number; growth5y?: number }
 ): Promise<void> {
   try {
     const updateData: any = {
@@ -97,6 +98,12 @@ async function updatePriceCache(
     if (cagr5y !== undefined) {
       updateData.cagr_5y = cagr5y;
       updateData.cagr_calculated_at = new Date().toISOString();
+    }
+    
+    if (dividendGrowth) {
+      if (dividendGrowth.growth1y !== undefined) updateData.dividend_growth_1y = dividendGrowth.growth1y;
+      if (dividendGrowth.growth3y !== undefined) updateData.dividend_growth_3y = dividendGrowth.growth3y;
+      if (dividendGrowth.growth5y !== undefined) updateData.dividend_growth_5y = dividendGrowth.growth5y;
     }
     
     await supabase.from('price_cache').upsert(updateData, { onConflict: 'symbol' });
@@ -193,6 +200,107 @@ async function fetchDividendFromAV(symbol: string): Promise<{ dividend: number; 
   
   console.log('Alpha Vantage dividend fetch returned 0');
   return { dividend: 0 };
+}
+
+// Fetch historical dividends and calculate growth rates
+async function fetchDividendGrowth(symbol: string): Promise<{
+  growth1y?: number;
+  growth3y?: number;
+  growth5y?: number;
+}> {
+  try {
+    // First check if we have cached growth data
+    const { data: cached } = await supabase
+      .from('price_cache')
+      .select('dividend_growth_1y, dividend_growth_3y, dividend_growth_5y')
+      .eq('symbol', symbol)
+      .single();
+    
+    if (cached && (cached.dividend_growth_1y !== null || cached.dividend_growth_5y !== null)) {
+      console.log(`✓ Using cached dividend growth for ${symbol}`);
+      return {
+        growth1y: cached.dividend_growth_1y ? Number(cached.dividend_growth_1y) : undefined,
+        growth3y: cached.dividend_growth_3y ? Number(cached.dividend_growth_3y) : undefined,
+        growth5y: cached.dividend_growth_5y ? Number(cached.dividend_growth_5y) : undefined,
+      };
+    }
+    
+    // Try to fetch historical dividend data from Yahoo Finance
+    const endDate = Math.floor(Date.now() / 1000);
+    const startDate = endDate - (6 * 365 * 24 * 60 * 60); // 6 years ago
+    
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${startDate}&period2=${endDate}&interval=1mo&events=div`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LovableBot/1.0)' }
+    });
+    
+    if (!res.ok) return {};
+    
+    const data = await res.json();
+    const events = data.chart?.result?.[0]?.events?.dividends;
+    
+    if (!events || Object.keys(events).length < 2) {
+      console.log(`No dividend history for ${symbol}`);
+      return {};
+    }
+    
+    // Group dividends by year
+    const dividendsByYear: Record<number, number> = {};
+    Object.values(events).forEach((div: any) => {
+      const year = new Date(div.date * 1000).getFullYear();
+      dividendsByYear[year] = (dividendsByYear[year] || 0) + (div.amount || 0);
+    });
+    
+    const years = Object.keys(dividendsByYear).map(Number).sort();
+    const currentYear = new Date().getFullYear();
+    
+    // Store historical data in dividend_history table
+    for (const year of years) {
+      const prevYear = year - 1;
+      const growth = dividendsByYear[prevYear] && dividendsByYear[prevYear] > 0
+        ? (dividendsByYear[year] - dividendsByYear[prevYear]) / dividendsByYear[prevYear]
+        : null;
+      
+      await supabase.from('dividend_history').upsert({
+        symbol,
+        year,
+        annual_dividend_usd: dividendsByYear[year],
+        dividend_growth_yoy: growth,
+      }, { onConflict: 'symbol,year' });
+    }
+    
+    // Calculate growth rates
+    let growth1y: number | undefined;
+    let growth3y: number | undefined;
+    let growth5y: number | undefined;
+    
+    const lastYear = currentYear - 1;
+    const twoYearsAgo = currentYear - 2;
+    const threeYearsAgo = currentYear - 3;
+    const fiveYearsAgo = currentYear - 5;
+    
+    // 1-year growth
+    if (dividendsByYear[lastYear] && dividendsByYear[twoYearsAgo] && dividendsByYear[twoYearsAgo] > 0) {
+      growth1y = (dividendsByYear[lastYear] - dividendsByYear[twoYearsAgo]) / dividendsByYear[twoYearsAgo];
+    }
+    
+    // 3-year CAGR
+    if (dividendsByYear[lastYear] && dividendsByYear[threeYearsAgo] && dividendsByYear[threeYearsAgo] > 0) {
+      growth3y = Math.pow(dividendsByYear[lastYear] / dividendsByYear[threeYearsAgo], 1/3) - 1;
+    }
+    
+    // 5-year CAGR
+    if (dividendsByYear[lastYear] && dividendsByYear[fiveYearsAgo] && dividendsByYear[fiveYearsAgo] > 0) {
+      growth5y = Math.pow(dividendsByYear[lastYear] / dividendsByYear[fiveYearsAgo], 1/5) - 1;
+    }
+    
+    console.log(`✓ Dividend growth for ${symbol}: 1Y=${growth1y ? (growth1y * 100).toFixed(1) : 'N/A'}%, 5Y=${growth5y ? (growth5y * 100).toFixed(1) : 'N/A'}%`);
+    
+    return { growth1y, growth3y, growth5y };
+  } catch (e) {
+    console.log('Dividend growth calculation failed:', (e as Error).message);
+    return {};
+  }
 }
 
 async function tryFMPEndpoint(endpoint: string): Promise<any> {
@@ -615,8 +723,11 @@ serve(async (req) => {
       }
     }
 
-    // Calculate CAGR
-    const cagr5y = await calculateCAGR(cleanSymbol, currentPriceUSD);
+    // Calculate CAGR and dividend growth in parallel
+    const [cagr5y, dividendGrowth] = await Promise.all([
+      calculateCAGR(cleanSymbol, currentPriceUSD),
+      fetchDividendGrowth(cleanSymbol)
+    ]);
 
     // Fetch USD to EUR exchange rate
     const usdToEur = await fetchExchangeRate();
@@ -625,10 +736,10 @@ serve(async (req) => {
     const currentPrice = currentPriceUSD * usdToEur;
     const dividend = dividendUSD * usdToEur;
 
-    console.log(`✓ Final: ${name} @ $${currentPriceUSD.toFixed(2)} (€${currentPrice.toFixed(2)}), Div: $${dividendUSD.toFixed(2)} (€${dividend.toFixed(2)}), CAGR: ${cagr5y ? (cagr5y * 100).toFixed(1) : 'N/A'}%, Source: ${source}`);
+    console.log(`✓ Final: ${name} @ $${currentPriceUSD.toFixed(2)} (€${currentPrice.toFixed(2)}), Div: $${dividendUSD.toFixed(2)} (€${dividend.toFixed(2)}), CAGR: ${cagr5y ? (cagr5y * 100).toFixed(1) : 'N/A'}%, DivGrowth5Y: ${dividendGrowth.growth5y ? (dividendGrowth.growth5y * 100).toFixed(1) : 'N/A'}%, Source: ${source}`);
 
     // Update cache
-    await updatePriceCache(cleanSymbol, currentPrice, currentPriceUSD, dividendUSD, name, usdToEur, source, cagr5y);
+    await updatePriceCache(cleanSymbol, currentPrice, currentPriceUSD, dividendUSD, name, usdToEur, source, cagr5y, dividendGrowth);
 
     const stockData: any = { 
       symbol: cleanSymbol, 
@@ -642,6 +753,13 @@ serve(async (req) => {
     
     if (cagr5y !== undefined) {
       stockData.cagr5y = cagr5y;
+    }
+    
+    if (dividendGrowth.growth1y !== undefined) {
+      stockData.dividendGrowth1y = dividendGrowth.growth1y;
+    }
+    if (dividendGrowth.growth5y !== undefined) {
+      stockData.dividendGrowth5y = dividendGrowth.growth5y;
     }
 
     return new Response(JSON.stringify(stockData), {
