@@ -158,7 +158,11 @@
     "news": "News",
     "set": "Set",
     "confirmDelete": "Confirm Delete",
-    "deleteConfirmMessage": "Are you sure you want to delete this investment? This action cannot be undone."
+    "deleteConfirmMessage": "Are you sure you want to delete this investment? This action cannot be undone.",
+    "dividendGrowth": "Dividend Growth",
+    "dividendGrowth1Y": "1Y Dividend Growth",
+    "dividendGrowth5Y": "5Y Avg Growth",
+    "noGrowthData": "Growth data unavailable"
   },
   "chart": {
     "portfolioPerformance": "Portfolio Performance",

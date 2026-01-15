@@ -74,6 +74,33 @@ export type Database = {
         }
         Relationships: []
       }
+      dividend_history: {
+        Row: {
+          annual_dividend_usd: number
+          dividend_growth_yoy: number | null
+          fetched_at: string | null
+          id: string
+          symbol: string
+          year: number
+        }
+        Insert: {
+          annual_dividend_usd: number
+          dividend_growth_yoy?: number | null
+          fetched_at?: string | null
+          id?: string
+          symbol: string
+          year: number
+        }
+        Update: {
+          annual_dividend_usd?: number
+          dividend_growth_yoy?: number | null
+          fetched_at?: string | null
+          id?: string
+          symbol?: string
+          year?: number
+        }
+        Relationships: []
+      }
       portfolio_snapshots: {
         Row: {
           created_at: string
@@ -190,6 +217,9 @@ export type Database = {
           cagr_calculated_at: string | null
           current_price_eur: number
           current_price_usd: number
+          dividend_growth_1y: number | null
+          dividend_growth_3y: number | null
+          dividend_growth_5y: number | null
           dividend_usd: number | null
           exchange_rate: number | null
           name: string | null
@@ -202,6 +232,9 @@ export type Database = {
           cagr_calculated_at?: string | null
           current_price_eur: number
           current_price_usd: number
+          dividend_growth_1y?: number | null
+          dividend_growth_3y?: number | null
+          dividend_growth_5y?: number | null
           dividend_usd?: number | null
           exchange_rate?: number | null
           name?: string | null
@@ -214,6 +247,9 @@ export type Database = {
           cagr_calculated_at?: string | null
           current_price_eur?: number
           current_price_usd?: number
+          dividend_growth_1y?: number | null
+          dividend_growth_3y?: number | null
+          dividend_growth_5y?: number | null
           dividend_usd?: number | null
           exchange_rate?: number | null
           name?: string | null

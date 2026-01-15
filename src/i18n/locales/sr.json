@@ -45,7 +45,7 @@
   },
   "home": {
     "title": "Investing Lovable",
-    "tagline": "Donosite informisane investicione odluke uz sveobuhvatnu analizu troškova i koristi"
+    "tagline": "Analizirajte investicije brzo i besplatno"
   },
   "auth": {
     "login": "Prijava",
@@ -154,7 +154,11 @@
     "news": "Vesti",
     "set": "Postavi",
     "confirmDelete": "Potvrdi brisanje",
-    "deleteConfirmMessage": "Da li ste sigurni da želite da obrišete ovu investiciju? Ova akcija se ne može poništiti."
+    "deleteConfirmMessage": "Da li ste sigurni da želite da obrišete ovu investiciju? Ova akcija se ne može poništiti.",
+    "dividendGrowth": "Rast dividendi",
+    "dividendGrowth1Y": "1G rast div.",
+    "dividendGrowth5Y": "5G pros. rast",
+    "noGrowthData": "Podaci o rastu nisu dostupni"
   },
   "chart": {
     "portfolioPerformance": "Performanse portfolia",
@@ -378,12 +382,12 @@
     "gainLoss": "Dobitak/Gubitak"
   },
   "calculator": {
-    "freeAnalysis": "Besplatna investiciona analiza",
-    "freeForever": "Zauvek besplatno • Nije potrebna registracija",
-    "subtagline": "Unesite bilo koji simbol akcije za trenutnu analizu sa cenama u realnom vremenu, izračunima dividendi i projekcijama.",
-    "realTimeData": "Podaci u realnom vremenu",
-    "noSignupRequired": "Nije potrebna registracija",
-    "popularStocks": "Brzi izbor popularnih akcija:",
+    "freeAnalysis": "Besplatna analiza",
+    "freeForever": "Besplatno • Bez registracije",
+    "subtagline": "Unesite simbol akcije za analizu sa cenama uživo i projekcijama.",
+    "realTimeData": "Podaci uživo",
+    "noSignupRequired": "Bez registracije",
+    "popularStocks": "Popularne akcije:",
     "noResults": "Vaši rezultati analize",
     "enterDetails": "Unesite detalje investicije sa leve strane da vidite personalizovanu analizu.",
     "trackOverTime": "Pratite performanse tokom vremena",
