@@ -415,5 +415,39 @@
     "title": "Pratite ovu investiciju",
     "subtitle": "Sačuvajte u portfolio",
     "signUp": "Registracija"
+  },
+  "chatCalculator": {
+    "title": "AI Investicioni Analitičar",
+    "greeting": "Zdravo! 👋 Ja sam vaš AI investicioni analitičar. Recite mi o akciji koja vas zanima, i pomoći ću vam da analizirate dividende, poreze i potencijal rasta. Probajte nešto kao 'Analiziraj €5000 u Apple' ili samo pomenite simbol akcije!",
+    "heroTitle": "Razgovarajte sa AI da analizirate akcije",
+    "heroSubtitle": "Samo mi recite u šta želite da investirate, a ja ću izračunati sve za vas - dividende, poreze i projekcije.",
+    "placeholder": "npr. 'Analiziraj €5000 u AAPL za Austriju'",
+    "quickPrompts": "Brzi početak:",
+    "analyzing": "Analiziranje..."
+  },
+  "analysis": {
+    "investmentSummary": "Rezime investicije",
+    "currentPrice": "Trenutna cena",
+    "sharesOwned": "Broj akcija",
+    "shares": "Akcije",
+    "originallyInvested": "Prvobitno investirano",
+    "currentValue": "Trenutna vrednost",
+    "unrealizedGainLoss": "Nerealizovani dobitak/gubitak",
+    "dividendDetails": "Detalji dividendi",
+    "grossAnnualDividend": "Bruto godišnja dividenda",
+    "taxRate": "Poreska stopa",
+    "netAnnualDividend": "Neto godišnja dividenda",
+    "netDividend": "Neto dividenda",
+    "futureValueProjections": "Projekcije buduće vrednosti",
+    "basedOnCAGR": "Bazirano na {{cagr}}% procenjenom CAGR-u",
+    "in1Year": "Za 1 godinu",
+    "in3Years": "Za 3 godine",
+    "in5Years": "Za 5 godina",
+    "disclaimer": "Projekcije su procene bazirane na istorijskim prosecima i ne garantuju buduće prinose.",
+    "saveToPortfolio": "Sačuvaj u portfolio",
+    "signUpToSave": "Registrujte se da biste sačuvali ovu investiciju u svom portfoliu",
+    "basedOnMarketAverage": "Bazirano na 8% tržišnom proseku",
+    "basedOnHistoricalCAGR": "Bazirano na {{cagr}}% istorijskom CAGR-u",
+    "crossBorderTax": "Prekogranični porez ({{stockCountry}} → {{investorCountry}})"
   }
 }

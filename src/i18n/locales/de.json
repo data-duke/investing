@@ -415,5 +415,14 @@
     "title": "Investment verfolgen",
     "subtitle": "Im Portfolio speichern",
     "signUp": "Registrieren"
+  },
+  "chatCalculator": {
+    "title": "KI Investment-Analyst",
+    "greeting": "Hallo! 👋 Ich bin Ihr KI Investment-Analyst. Erzählen Sie mir von einer Aktie, die Sie interessiert, und ich helfe Ihnen, Dividenden, Steuern und Wachstumspotenzial zu analysieren. Versuchen Sie etwas wie 'Analysiere €5000 in Apple' oder nennen Sie einfach ein Aktiensymbol!",
+    "heroTitle": "Chatten Sie mit KI, um Aktien zu analysieren",
+    "heroSubtitle": "Sagen Sie mir einfach, was Sie investieren möchten, und ich berechne alles für Sie - Dividenden, Steuern und Prognosen.",
+    "placeholder": "z.B. 'Analysiere €5000 in AAPL für Österreich'",
+    "quickPrompts": "Schnellstart:",
+    "analyzing": "Analysiere..."
   }
 }

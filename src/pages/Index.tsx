@@ -1,271 +1,95 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { InvestmentForm } from "@/components/InvestmentForm";
-import { AnalysisTable } from "@/components/AnalysisTable";
+import { CalculatorChatOrb } from "@/components/CalculatorChatOrb";
 import { FeatureComparisonBanner } from "@/components/FeatureComparisonBanner";
-import { PopularStocksPicker } from "@/components/PopularStocksPicker";
-import { StickyCTA } from "@/components/StickyCTA";
-import { StockAIInsight } from "@/components/StockAIInsight";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Sparkles, Clock } from "lucide-react";
-import { fetchStockData } from "@/services/stockApi";
-import { useToast } from "@/hooks/use-toast";
+import { TrendingUp } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { calculateDividendTax } from "@/lib/taxCalculations";
-export interface AnalysisData {
-  currentPrice: number;
-  originallyInvested: number;
-  currentValue: number;
-  currentGain: number;
-  currentGainPercent: number;
-  grossDividendAnnual: number;
-  netDividendAnnual: number;
-  dividendTaxRate: number;
-  projectedValue1Year: number;
-  projectedValue3Years: number;
-  projectedValue5Years: number;
-  estimatedCAGR: number;
-  quantity: number;
-  exchangeRate?: number;
-  currentPriceUSD?: number;
-  source?: string;
-  symbol?: string;
-  name?: string;
-  country?: string;
-  stockCountry?: string;
-}
+
 const Index = () => {
-  const {
-    t
-  } = useTranslation();
-  const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
-  const [positionName, setPositionName] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedSymbol, setSelectedSymbol] = useState("");
-  const [stockCountry, setStockCountry] = useState("US");
-  const {
-    toast
-  } = useToast();
-  const {
-    user
-  } = useAuth();
+  const { t } = useTranslation();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const handlePopularStockSelect = (symbol: string) => {
-    setSelectedSymbol(symbol);
-  };
-  const handleSearch = async (country: string, symbol: string, amount: number, inputQuantity: number) => {
-    setIsLoading(true);
-    try {
-      const stockData = await fetchStockData(symbol);
 
-      // Detect stock country from symbol (simplified - US by default, CA for .TO, etc.)
-      let detectedStockCountry = "US";
-      if (symbol.includes(".TO") || symbol.includes(".V")) {
-        detectedStockCountry = "CA";
-      } else if (symbol.includes(".L")) {
-        detectedStockCountry = "UK";
-      } else if (symbol.includes(".DE") || symbol.includes(".F")) {
-        detectedStockCountry = "DE";
-      }
-      setStockCountry(detectedStockCountry);
-      let finalQuantity = inputQuantity;
-      let finalAmount = amount;
-      if (amount && !inputQuantity) {
-        finalQuantity = amount / stockData.currentPrice;
-      } else if (inputQuantity && !amount) {
-        finalAmount = inputQuantity * stockData.currentPrice;
-      } else if (amount && inputQuantity) {
-        finalAmount = inputQuantity * stockData.currentPrice;
-        toast({
-          title: t('common.note'),
-          description: t('toast.bothAmountAndQuantity')
-        });
-      }
-      calculateAnalysis({
-        investorCountry: country,
-        stockCountry: detectedStockCountry,
-        symbol,
-        positionName: stockData.name,
-        quantity: finalQuantity,
-        currentPrice: stockData.currentPrice,
-        originallyInvested: finalAmount,
-        announcedDividend: stockData.dividend,
-        exchangeRate: stockData.exchangeRate,
-        currentPriceUSD: stockData.currentPriceUSD,
-        source: stockData.source,
-        cagr5y: stockData.cagr5y
-      });
-      toast({
-        title: t('form.dataFetched'),
-        description: t('form.retrievedDataFor', {
-          name: stockData.name
-        })
-      });
-    } catch (error) {
-      toast({
-        title: t('common.error'),
-        description: error instanceof Error ? error.message : "Failed to fetch stock data",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  const calculateAnalysis = (data: {
-    investorCountry: string;
-    stockCountry: string;
-    symbol: string;
-    positionName: string;
-    quantity: number;
-    currentPrice: number;
-    originallyInvested: number;
-    announcedDividend: number;
-    exchangeRate?: number;
-    currentPriceUSD?: number;
-    source?: string;
-    cagr5y?: number;
-  }) => {
-    const currentValue = data.currentPrice * data.quantity;
-    const currentGain = currentValue - data.originallyInvested;
-    const currentGainPercent = currentGain / data.originallyInvested * 100;
+  return (
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      {/* Animated background */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5" />
+        <div 
+          className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] animate-pulse" 
+        />
+        <div 
+          className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-secondary/10 rounded-full blur-[100px] animate-pulse" 
+          style={{ animationDelay: "2s" }} 
+        />
+        <div 
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[150px] animate-pulse" 
+          style={{ animationDelay: "1s" }} 
+        />
+      </div>
 
-    // Use cross-border tax calculation for dividends
-    const taxBreakdown = calculateDividendTax(data.announcedDividend, data.quantity, data.stockCountry, data.investorCountry);
-
-    // Use stock-specific CAGR if available, otherwise fall back to 8%
-    const estimatedCAGR = data.cagr5y !== undefined ? data.cagr5y : 0.08;
-    const projectedValue1Year = currentValue * Math.pow(1 + estimatedCAGR, 1);
-    const projectedValue3Years = currentValue * Math.pow(1 + estimatedCAGR, 3);
-    const projectedValue5Years = currentValue * Math.pow(1 + estimatedCAGR, 5);
-    setAnalysisData({
-      currentPrice: data.currentPrice,
-      originallyInvested: data.originallyInvested,
-      currentValue,
-      currentGain,
-      currentGainPercent,
-      grossDividendAnnual: taxBreakdown.grossDividend,
-      netDividendAnnual: taxBreakdown.netDividend,
-      dividendTaxRate: taxBreakdown.totalTaxRate * 100,
-      projectedValue1Year,
-      projectedValue3Years,
-      projectedValue5Years,
-      estimatedCAGR: estimatedCAGR * 100,
-      quantity: data.quantity,
-      exchangeRate: data.exchangeRate,
-      currentPriceUSD: data.currentPriceUSD,
-      source: data.source,
-      symbol: data.symbol,
-      name: data.positionName,
-      country: data.investorCountry,
-      stockCountry: data.stockCountry
-    });
-    setPositionName(data.positionName);
-  };
-  return <div className="min-h-screen bg-background">
-      {/* Hero Section with animated background */}
-      <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10 pointer-events-none" />
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl pointer-events-none animate-pulse" />
-        <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-primary/10 rounded-full blur-3xl pointer-events-none animate-pulse" style={{
-        animationDelay: "1s"
-      }} />
-        
-        <div className="container mx-auto px-4 py-8 max-w-7xl relative">
+      {/* Content */}
+      <div className="relative z-10">
+        <div className="container mx-auto px-4 py-6 max-w-5xl">
           {/* Header */}
           <header className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-primary/10 rounded-lg">
-                <TrendingUp className="h-8 w-8 text-primary" />
+                <TrendingUp className="h-7 w-7 text-primary" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-foreground">{t('home.title')}</h1>
-                <p className="text-sm text-muted-foreground hidden sm:block">{t('calculator.freeAnalysis')}</p>
+                <h1 className="text-xl font-bold text-foreground">{t('home.title')}</h1>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <LanguageSwitcher />
-              {user ? <Button variant="outline" onClick={() => navigate('/dashboard')}>
+              {user ? (
+                <Button variant="outline" onClick={() => navigate('/dashboard')}>
                   {t('nav.goToPortfolio')}
-                </Button> : <>
+                </Button>
+              ) : (
+                <>
                   <Button variant="ghost" onClick={() => navigate('/login')} className="hidden sm:inline-flex">
                     {t('nav.login')}
                   </Button>
                   <Button onClick={() => navigate('/signup')}>
                     {t('nav.signup')}
                   </Button>
-                </>}
+                </>
+              )}
             </div>
           </header>
 
-          {/* Hero Content */}
-          <div className="text-center mb-8 animate-fade-in">
-            
-            <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-4 leading-tight">
-              {t('home.tagline')}
+          {/* Hero */}
+          <div className="text-center mb-10 animate-fade-in">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3 leading-tight">
+              {t('chatCalculator.heroTitle')}
             </h2>
-            
-            
-            {/* Trust Indicators */}
-            <div className="flex flex-wrap justify-center gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <Clock className="h-4 w-4" />
-                <span>{t('calculator.realTimeData')}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                
-                <span>{t('calculator.noSignupRequired')}</span>
-              </div>
+            <p className="text-muted-foreground max-w-lg mx-auto">
+              {t('chatCalculator.heroSubtitle')}
+            </p>
+          </div>
+
+          {/* Chat Orb */}
+          <div className="animate-fade-in" style={{ animationDelay: "0.2s" }}>
+            <CalculatorChatOrb />
+          </div>
+        </div>
+
+        {/* Feature Comparison - for non-logged users */}
+        {!user && (
+          <div className="container mx-auto px-4 py-12 max-w-5xl">
+            <div className="animate-fade-in" style={{ animationDelay: "0.4s" }}>
+              <h3 className="text-2xl font-bold text-center mb-6">{t('comparison.title')}</h3>
+              <FeatureComparisonBanner onSignUp={() => navigate('/signup')} />
             </div>
           </div>
-
-          {/* Popular Stocks Picker */}
-          <div className="mb-6 animate-fade-in" style={{
-          animationDelay: "0.1s"
-        }}>
-            <PopularStocksPicker onSelect={handlePopularStockSelect} isLoading={isLoading} />
-          </div>
-        </div>
+        )}
       </div>
-
-      {/* Main Content */}
-      <div className="container mx-auto px-4 pb-8 max-w-7xl">
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Form Section */}
-          <div className="space-y-6 animate-fade-in" style={{
-          animationDelay: "0.2s"
-        }}>
-            <InvestmentForm onSearch={handleSearch} isLoading={isLoading} prefilledSymbol={selectedSymbol} />
-          </div>
-
-          {/* Results Section */}
-          <div className="space-y-6 animate-fade-in" style={{
-          animationDelay: "0.3s"
-        }}>
-            <AnalysisTable data={analysisData} positionName={positionName} isLoggedIn={!!user} onNavigateToSignup={() => navigate('/signup')} onNavigateToDashboard={() => navigate('/dashboard')} />
-            
-            {/* AI Insight Section */}
-            {analysisData && analysisData.symbol && <StockAIInsight symbol={analysisData.symbol} stockName={analysisData.name || analysisData.symbol} stockData={{
-            currentPrice: analysisData.currentPrice,
-            dividend: analysisData.grossDividendAnnual / analysisData.quantity,
-            cagr5y: analysisData.estimatedCAGR / 100
-          }} isLoggedIn={!!user} onNavigateToSignup={() => navigate('/signup')} />}
-          </div>
-        </div>
-
-        {/* Feature Comparison - show after analysis or for new users */}
-        {!user && <div className="mt-12 animate-fade-in" style={{
-        animationDelay: "0.4s"
-      }}>
-            <h3 className="text-2xl font-bold text-center mb-6">{t('comparison.title')}</h3>
-            <FeatureComparisonBanner onSignUp={() => navigate('/signup')} />
-          </div>}
-      </div>
-
-      {/* Sticky CTA for Mobile */}
-      <StickyCTA show={!!analysisData && !user} onSignUp={() => navigate('/signup')} />
-    </div>;
+    </div>
+  );
 };
+
 export default Index;

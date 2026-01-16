@@ -100,3 +100,27 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Chat Orb Glow Animation */
+.chat-orb {
+  box-shadow: 
+    0 0 60px hsla(var(--primary) / 0.15),
+    0 0 120px hsla(var(--primary) / 0.08),
+    inset 0 0 60px hsla(var(--primary) / 0.03);
+  animation: orb-pulse 4s ease-in-out infinite;
+}
+
+@keyframes orb-pulse {
+  0%, 100% {
+    box-shadow: 
+      0 0 60px hsla(var(--primary) / 0.15),
+      0 0 120px hsla(var(--primary) / 0.08),
+      inset 0 0 60px hsla(var(--primary) / 0.03);
+  }
+  50% {
+    box-shadow: 
+      0 0 80px hsla(var(--primary) / 0.25),
+      0 0 150px hsla(var(--primary) / 0.12),
+      inset 0 0 80px hsla(var(--primary) / 0.05);
+  }
+}
