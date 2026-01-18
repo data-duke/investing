@@ -1,7 +1,10 @@
 project_id = "gsgowetqzqeviqtxgofl"
 
 [functions.fetch-stock-data]
-verify_jwt = true
+verify_jwt = false
+
+[functions.calculator-chat]
+verify_jwt = false
 
 [functions.fetch-stock-news]
 verify_jwt = true
