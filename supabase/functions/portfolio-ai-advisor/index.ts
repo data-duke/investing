@@ -22,6 +22,9 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
+    // User client for auth
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -34,8 +37,11 @@ serve(async (req) => {
       });
     }
 
-    // Check premium status
-    const { data: override } = await supabase
+    // Admin client to bypass RLS for subscription check
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Check premium status using admin client (subscription_overrides has restrictive RLS)
+    const { data: override } = await supabaseAdmin
       .from('subscription_overrides')
       .select('is_premium')
       .eq('user_id', user.id)
