@@ -6,6 +6,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { StockNewsSection } from "./StockNewsSection";
 import { formatCurrency, formatNumber, formatPercentage } from "@/lib/formatters";
 import { usePrivacy } from "@/contexts/PrivacyContext";
+import { calculateCapitalGainsTax } from "@/lib/taxCalculations";
 import {
   Sheet,
   SheetContent,
@@ -36,6 +37,7 @@ interface MobileStockDetailsSheetProps {
   onEdit: (portfolio: Portfolio) => void;
   onDelete: (id: string) => void;
   onSetDividend: (position: AggregatedPosition) => void;
+  userCountry?: string;
 }
 
 export const MobileStockDetailsSheet = ({
@@ -45,10 +47,17 @@ export const MobileStockDetailsSheet = ({
   onEdit,
   onDelete,
   onSetDividend,
+  userCountry = 'AT',
 }: MobileStockDetailsSheetProps) => {
   const { privacyMode } = usePrivacy();
   
   if (!position) return null;
+
+  // Calculate net value after capital gains tax
+  const marketValue = position.current_value_eur || 0;
+  const gain = position.gain_loss_eur || 0;
+  const taxResult = gain > 0 ? calculateCapitalGainsTax(gain, userCountry) : { tax: 0, taxRate: 0 };
+  const netValue = marketValue - taxResult.tax;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -61,10 +70,22 @@ export const MobileStockDetailsSheet = ({
         <div className="space-y-4 py-4">
           {/* Quick Stats */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-muted/50 rounded-lg p-3">
-              <div className="text-xs text-muted-foreground">Current Value</div>
-              <div className="font-semibold">{privacyMode ? '•••' : formatCurrency(position.current_value_eur || 0)}</div>
+            <div className="bg-primary/10 rounded-lg p-3 border border-primary/20">
+              <div className="text-xs text-muted-foreground">Net Value (After Tax)</div>
+              <div className="font-semibold text-primary">{privacyMode ? '•••' : formatCurrency(netValue)}</div>
+              {!privacyMode && gain > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  -{formatCurrency(taxResult.tax)} tax
+                </div>
+              )}
             </div>
+            <div className="bg-muted/50 rounded-lg p-3">
+              <div className="text-xs text-muted-foreground">Gross Value</div>
+              <div className="font-semibold">{privacyMode ? '•••' : formatCurrency(marketValue)}</div>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-3">
             <div className="bg-muted/50 rounded-lg p-3">
               <div className="text-xs text-muted-foreground">Gain/Loss</div>
               <div className={`font-semibold ${position.gain_loss_eur && position.gain_loss_eur >= 0 ? "text-green-600" : "text-red-600"}`}>
@@ -72,6 +93,12 @@ export const MobileStockDetailsSheet = ({
                 <span className="text-xs ml-1">
                   ({position.gain_loss_percent ? formatPercentage(position.gain_loss_percent) : '-'})
                 </span>
+              </div>
+            </div>
+            <div className="bg-muted/50 rounded-lg p-3">
+              <div className="text-xs text-muted-foreground">Capital Gains Tax</div>
+              <div className="font-semibold">
+                {privacyMode ? '•••' : (gain > 0 ? `${formatPercentage(taxResult.taxRate)}` : 'No tax')}
               </div>
             </div>
           </div>

@@ -118,6 +118,10 @@
     "cagrDisclaimer": "Prošle performanse ne garantuju buduće rezultate. Stope rasta ograničene na 25%."
   },
   "portfolio": {
+    "netLiquidationValue": "Neto likvidaciona vrednost",
+    "afterCapitalGainsTax": "Posle {{tax}} ({{rate}}) poreza na kapitalnu dobit",
+    "afterTaxDesc": "Posle {{rate}} poreza na kapitalnu dobit",
+    "noTaxOnLoss": "Nema poreza na gubitke",
     "totalValue": "Ukupna vrednost portfolia",
     "invested": "Investirano: {{amount}}",
     "totalGainLoss": "Neto dobitak/gubitak",
@@ -130,7 +134,9 @@
     "avgPurchasePrice": "Pros. cena kupovine",
     "totalReturn": "Ukupan prinos",
     "returnPercent": "Prinos %",
-    "afterTax": "posle poreza"
+    "afterTax": "posle poreza",
+    "netValue": "Neto vrednost",
+    "netValueAfterTax": "Posle poreza"
   },
   "holdings": {
     "stock": "Akcija",

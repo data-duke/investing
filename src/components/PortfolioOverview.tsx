@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Portfolio } from "@/hooks/usePortfolio";
-import { TrendingUp, DollarSign, PiggyBank, Award } from "lucide-react";
+import { TrendingUp, DollarSign, PiggyBank, Award, Wallet } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { formatCurrency, formatPercentage } from "@/lib/formatters";
@@ -28,9 +28,15 @@ export const PortfolioOverview = ({
     const grossGain = totalValue - totalInvested;
     
     // Apply capital gains tax to get net gain
-    const capitalGainsTax = calculateCapitalGainsTax(grossGain, userCountry);
-    const netGain = capitalGainsTax.netGain;
+    const capitalGainsTaxResult = calculateCapitalGainsTax(grossGain, userCountry);
+    const netGain = capitalGainsTaxResult.netGain;
     const totalGainPercent = totalInvested > 0 ? (netGain / totalInvested) * 100 : 0;
+    
+    // Calculate Net Liquidation Value (what you get if you sell everything today)
+    // Only gains are taxed; if there's a loss, no tax is owed
+    const capitalGainsTax = grossGain > 0 ? capitalGainsTaxResult.tax : 0;
+    const netLiquidationValue = totalValue - capitalGainsTax;
+    const taxRate = capitalGainsTaxResult.taxRate;
     
     // Calculate net dividends with proper tax treatment
     const totalDividends = portfolios.reduce((sum, p) => {
@@ -59,6 +65,17 @@ export const PortfolioOverview = ({
 
     return [
       {
+        title: t('portfolio.netLiquidationValue'),
+        value: privacyMode ? "•••••" : formatCurrency(netLiquidationValue),
+        icon: Wallet,
+        description: privacyMode 
+          ? t('portfolio.afterTaxDesc', { rate: formatPercentage(taxRate) })
+          : grossGain > 0 
+            ? t('portfolio.afterCapitalGainsTax', { tax: formatCurrency(capitalGainsTax), rate: formatPercentage(taxRate) })
+            : t('portfolio.noTaxOnLoss'),
+        className: "text-primary",
+      },
+      {
         title: t('portfolio.totalValue'),
         value: privacyMode ? "•••••" : formatCurrency(totalValue),
         icon: DollarSign,
@@ -79,18 +96,11 @@ export const PortfolioOverview = ({
         icon: PiggyBank,
         description: privacyMode ? "" : t('portfolio.monthlyAvg', { amount: formatCurrency(monthlyDividends) }),
       },
-      {
-        title: t('portfolio.topPerformer'),
-        value: topPerformer?.symbol || t('portfolio.noData'),
-        icon: Award,
-        description: topPerformer ? formatPercentage(topPerformer.gain_loss_percent || 0) : t('portfolio.noData'),
-        className: "text-primary",
-      },
     ];
   }, [portfolios, privacyMode, userCountry, t]);
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
       {stats.map((stat) => {
         const Icon = stat.icon;
         return (

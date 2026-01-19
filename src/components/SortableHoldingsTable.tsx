@@ -23,6 +23,7 @@ import {
 import { formatCurrency, formatNumber, formatPercentage } from "@/lib/formatters";
 import { usePortfolio } from "@/hooks/usePortfolio";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { calculateCapitalGainsTax } from "@/lib/taxCalculations";
 
 interface AggregatedPosition {
   symbol: string;
@@ -45,12 +46,13 @@ interface HoldingsTableProps {
   onRefresh: () => void;
   highlightedId?: string | null;
   privacyMode?: boolean;
+  userCountry?: string;
 }
 
-type SortField = 'symbol' | 'quantity' | 'avgPrice' | 'currentPrice' | 'value' | 'gain' | 'dividend' | 'weight';
+type SortField = 'symbol' | 'quantity' | 'avgPrice' | 'currentPrice' | 'value' | 'netValue' | 'gain' | 'dividend' | 'weight';
 type SortDirection = 'asc' | 'desc';
 
-export const SortableHoldingsTable = ({ portfolios, aggregatedPositions, onRefresh, highlightedId, privacyMode = false }: HoldingsTableProps) => {
+export const SortableHoldingsTable = ({ portfolios, aggregatedPositions, onRefresh, highlightedId, privacyMode = false, userCountry = 'AT' }: HoldingsTableProps) => {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [mobileSheetPosition, setMobileSheetPosition] = useState<AggregatedPosition | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -88,6 +90,14 @@ export const SortableHoldingsTable = ({ portfolios, aggregatedPositions, onRefre
 
   const totalValue = aggregatedPositions.reduce((sum, p) => sum + (p.current_value_eur || 0), 0);
 
+  // Helper to calculate net value after capital gains tax for a position
+  const getPositionNetValue = (position: AggregatedPosition) => {
+    const marketValue = position.current_value_eur || 0;
+    const gain = position.gain_loss_eur || 0;
+    const tax = gain > 0 ? calculateCapitalGainsTax(gain, userCountry).tax : 0;
+    return marketValue - tax;
+  };
+
   const sortedPositions = useMemo(() => {
     return [...aggregatedPositions].sort((a, b) => {
       let aVal: number | string = 0;
@@ -113,6 +123,10 @@ export const SortableHoldingsTable = ({ portfolios, aggregatedPositions, onRefre
         case 'value':
           aVal = a.current_value_eur || 0;
           bVal = b.current_value_eur || 0;
+          break;
+        case 'netValue':
+          aVal = getPositionNetValue(a);
+          bVal = getPositionNetValue(b);
           break;
         case 'gain':
           aVal = a.gain_loss_percent || 0;
@@ -177,7 +191,10 @@ export const SortableHoldingsTable = ({ portfolios, aggregatedPositions, onRefre
                         <div className="text-xs text-muted-foreground truncate max-w-[150px]">{position.name}</div>
                       </div>
                       <div className="text-right">
-                        <div className="font-medium">{privacyMode ? '•••' : formatCurrency(position.current_value_eur || 0)}</div>
+                        <div className="font-medium text-primary">{privacyMode ? '•••' : formatCurrency(getPositionNetValue(position))}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {privacyMode ? '' : `(${formatCurrency(position.current_value_eur || 0)} gross)`}
+                        </div>
                         <div className={`text-xs ${position.gain_loss_percent && position.gain_loss_percent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                           {position.gain_loss_percent ? formatPercentage(position.gain_loss_percent) : '-'}
                         </div>
@@ -204,12 +221,12 @@ export const SortableHoldingsTable = ({ portfolios, aggregatedPositions, onRefre
                     <TableHead className="text-right">Tag</TableHead>
                     <TableHead className="text-right"><SortButton field="quantity">Qty</SortButton></TableHead>
                     <TableHead className="text-right"><SortButton field="avgPrice">Avg Price</SortButton></TableHead>
-                    <TableHead className="text-right"><SortButton field="currentPrice">Current Price</SortButton></TableHead>
-                    <TableHead className="text-right"><SortButton field="value">Value</SortButton></TableHead>
+                    <TableHead className="text-right"><SortButton field="currentPrice">Current</SortButton></TableHead>
+                    <TableHead className="text-right"><SortButton field="value">Gross</SortButton></TableHead>
+                    <TableHead className="text-right"><SortButton field="netValue">Net Value</SortButton></TableHead>
                     <TableHead className="text-right"><SortButton field="gain">Gain/Loss</SortButton></TableHead>
                     <TableHead className="text-right"><SortButton field="dividend">Dividend</SortButton></TableHead>
                     <TableHead className="text-right"><SortButton field="weight">Weight</SortButton></TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -262,6 +279,12 @@ export const SortableHoldingsTable = ({ portfolios, aggregatedPositions, onRefre
                         {privacyMode ? '•••' : formatCurrency(position.current_value_eur || 0)}
                       </TableCell>
                       <TableCell className="text-right">
+                        <div className="text-primary font-medium">
+                          {privacyMode ? '•••' : formatCurrency(getPositionNetValue(position))}
+                        </div>
+                        <div className="text-xs text-muted-foreground">after tax</div>
+                      </TableCell>
+                      <TableCell className="text-right">
                         <div className={position.gain_loss_eur && position.gain_loss_eur >= 0 ? "text-green-600" : "text-red-600"}>
                           <div>{privacyMode ? '•••' : formatCurrency(position.gain_loss_eur || 0)}</div>
                           <div className="text-xs">
@@ -290,16 +313,10 @@ export const SortableHoldingsTable = ({ portfolios, aggregatedPositions, onRefre
                         </div>
                       </TableCell>
                       <TableCell className="text-right">{formatNumber(weight, 1)}%</TableCell>
-                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="text-muted-foreground text-xs">
-                          {position.lots.length > 1 ? 'Multiple' : 'Single'}
-                        </div>
-                      </TableCell>
                     </TableRow>
-                    {/* Desktop inline expansion - hidden on mobile */}
                     {isExpanded && !isMobile && (
                       <TableRow>
-                        <TableCell colSpan={10} className="bg-muted/30 p-6">
+                        <TableCell colSpan={11} className="bg-muted/30 p-6">
                           <div className="space-y-6">
                             {/* Summary Cards */}
                             <div className="grid grid-cols-2 gap-6">
@@ -493,6 +510,7 @@ export const SortableHoldingsTable = ({ portfolios, aggregatedPositions, onRefre
           setMobileSheetPosition(null);
           setManualDivDialog({ open: true, position });
         }}
+        userCountry={userCountry}
       />
     </>
   );
