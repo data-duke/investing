@@ -122,6 +122,10 @@
     "cagrDisclaimer": "Past performance does not guarantee future results. Growth rates capped at 25%."
   },
   "portfolio": {
+    "netLiquidationValue": "Net Liquidation Value",
+    "afterCapitalGainsTax": "After {{tax}} ({{rate}}) capital gains tax",
+    "afterTaxDesc": "After {{rate}} capital gains tax",
+    "noTaxOnLoss": "No tax on losses",
     "totalValue": "Total Portfolio Value",
     "invested": "Invested: {{amount}}",
     "totalGainLoss": "Net Gain/Loss",
@@ -134,7 +138,9 @@
     "avgPurchasePrice": "Avg Purchase Price",
     "totalReturn": "Total Return",
     "returnPercent": "Return %",
-    "afterTax": "after tax"
+    "afterTax": "after tax",
+    "netValue": "Net Value",
+    "netValueAfterTax": "After tax"
   },
   "holdings": {
     "stock": "Stock",

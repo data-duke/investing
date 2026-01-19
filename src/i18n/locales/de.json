@@ -118,6 +118,10 @@
     "cagrDisclaimer": "Vergangene Wertentwicklung garantiert keine zukünftigen Ergebnisse. Wachstumsraten auf 25% begrenzt."
   },
   "portfolio": {
+    "netLiquidationValue": "Netto-Liquidationswert",
+    "afterCapitalGainsTax": "Nach {{tax}} ({{rate}}) Kapitalertragsteuer",
+    "afterTaxDesc": "Nach {{rate}} Kapitalertragsteuer",
+    "noTaxOnLoss": "Keine Steuer auf Verluste",
     "totalValue": "Gesamtportfoliowert",
     "invested": "Investiert: {{amount}}",
     "totalGainLoss": "Nettogewinn/-verlust",
@@ -130,7 +134,9 @@
     "avgPurchasePrice": "Ø Kaufpreis",
     "totalReturn": "Gesamtrendite",
     "returnPercent": "Rendite %",
-    "afterTax": "nach Steuern"
+    "afterTax": "nach Steuern",
+    "netValue": "Nettowert",
+    "netValueAfterTax": "Nach Steuern"
   },
   "holdings": {
     "stock": "Aktie",

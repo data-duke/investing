@@ -709,6 +709,7 @@ const Dashboard = () => {
               onRefresh={fetchPortfolios}
               highlightedId={highlightedId}
               privacyMode={privacyMode}
+              userCountry={userCountry}
             />
           </>
         )}
