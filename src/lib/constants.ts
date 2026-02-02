@@ -75,7 +75,9 @@ export interface AggregatedPosition {
     manual_dividend_eur?: number;
     dividend_last_fetched?: string;
     exchange_suffix?: string;
+    tag?: string;
     tags?: string[];
+    auto_tag_date?: string;
   }>;
 }
 

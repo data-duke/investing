@@ -24,21 +24,7 @@ import { formatCurrency, formatNumber, formatPercentage } from "@/lib/formatters
 import { usePortfolio } from "@/hooks/usePortfolio";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { calculateCapitalGainsTax } from "@/lib/taxCalculations";
-
-interface AggregatedPosition {
-  symbol: string;
-  name: string;
-  country: string;
-  totalQuantity: number;
-  totalOriginalInvestment: number;
-  avgOriginalPrice: number;
-  current_price_eur?: number;
-  current_value_eur?: number;
-  gain_loss_eur?: number;
-  gain_loss_percent?: number;
-  dividend_annual_eur?: number;
-  lots: Portfolio[];
-}
+import { AggregatedPosition } from "@/lib/constants";
 
 interface HoldingsTableProps {
   portfolios: Portfolio[];

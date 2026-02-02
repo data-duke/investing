@@ -39,19 +39,27 @@ export const PortfolioOverview = ({
     const taxRate = capitalGainsTaxResult.taxRate;
     
     // Calculate net dividends with proper tax treatment
+    // All dividends are now stored as GROSS, so apply tax uniformly
     const totalDividends = portfolios.reduce((sum, p) => {
-      // manual_dividend_eur is per-share gross, so apply tax
-      if (p.manual_dividend_eur) {
+      const grossDividendPerShare = p.manual_dividend_eur || 0;
+      const grossDividendTotal = p.dividend_annual_eur ?? 0;
+      
+      // If we have a manual dividend, calculate total from per-share * quantity
+      // Otherwise use the stored dividend_annual_eur (which is now gross total)
+      const grossToTax = grossDividendPerShare > 0 
+        ? grossDividendPerShare * Number(p.quantity)
+        : grossDividendTotal;
+      
+      if (grossToTax > 0) {
         const taxBreakdown = calculateDividendTax(
-          p.manual_dividend_eur,
+          grossToTax / Number(p.quantity), // per-share for tax calculation
           Number(p.quantity),
           p.country,
           userCountry
         );
         return sum + taxBreakdown.netDividend;
       }
-      // dividend_annual_eur from API should already be net (calculated during refresh)
-      return sum + (p.dividend_annual_eur ?? 0);
+      return sum;
     }, 0);
     
     const monthlyDividends = totalDividends / 12;

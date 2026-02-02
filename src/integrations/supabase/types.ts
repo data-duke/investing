@@ -224,6 +224,7 @@ export type Database = {
           exchange_rate: number | null
           name: string | null
           source: string | null
+          source_currency: string | null
           symbol: string
         }
         Insert: {
@@ -239,6 +240,7 @@ export type Database = {
           exchange_rate?: number | null
           name?: string | null
           source?: string | null
+          source_currency?: string | null
           symbol: string
         }
         Update: {
@@ -254,6 +256,7 @@ export type Database = {
           exchange_rate?: number | null
           name?: string | null
           source?: string | null
+          source_currency?: string | null
           symbol?: string
         }
         Relationships: []

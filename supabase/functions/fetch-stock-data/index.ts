@@ -80,6 +80,7 @@ async function updatePriceCache(
   name: string,
   exchangeRate: number,
   source: string,
+  sourceCurrency: string = 'USD',
   cagr5y?: number,
   dividendGrowth?: { growth1y?: number; growth3y?: number; growth5y?: number }
 ): Promise<void> {
@@ -92,6 +93,7 @@ async function updatePriceCache(
       name,
       exchange_rate: exchangeRate,
       source,
+      source_currency: sourceCurrency,
       cached_at: new Date().toISOString(),
     };
     
@@ -107,7 +109,7 @@ async function updatePriceCache(
     }
     
     await supabase.from('price_cache').upsert(updateData, { onConflict: 'symbol' });
-    console.log(`✓ Cache updated for ${symbol}`);
+    console.log(`✓ Cache updated for ${symbol} (${sourceCurrency})`);
   } catch (e) {
     console.warn('Cache update failed:', e);
   }
@@ -128,18 +130,49 @@ async function fetchJSON(url: string, logError = true) {
   return res.json();
 }
 
-async function fetchExchangeRate(): Promise<number> {
+// Supported currencies and their conversion rates to EUR
+type CurrencyCode = 'USD' | 'HKD' | 'GBP' | 'CAD' | 'CHF' | 'EUR';
+
+interface ExchangeRates {
+  USD: number;
+  HKD: number;
+  GBP: number;
+  CAD: number;
+  CHF: number;
+  EUR: number;
+}
+
+async function fetchExchangeRates(): Promise<ExchangeRates> {
   try {
-    const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+    const res = await fetch('https://api.exchangerate-api.com/v4/latest/EUR');
     if (!res.ok) throw new Error('Exchange rate fetch failed');
     const data = await res.json();
-    const rate = Number(data?.rates?.EUR);
-    if (!Number.isFinite(rate) || rate <= 0) throw new Error('Invalid EUR rate');
-    return rate;
+    
+    // API returns rates FROM EUR, we need rates TO EUR (1/rate)
+    return {
+      USD: 1 / Number(data?.rates?.USD || 1.09),
+      HKD: 1 / Number(data?.rates?.HKD || 8.5),
+      GBP: 1 / Number(data?.rates?.GBP || 0.86),
+      CAD: 1 / Number(data?.rates?.CAD || 1.48),
+      CHF: 1 / Number(data?.rates?.CHF || 0.95),
+      EUR: 1, // Already EUR
+    };
   } catch (e) {
-    console.warn('Failed to fetch live exchange rate, using fallback:', e);
-    return 0.92;
+    console.warn('Failed to fetch live exchange rates, using fallbacks:', e);
+    return {
+      USD: 0.92,
+      HKD: 0.118,
+      GBP: 1.16,
+      CAD: 0.68,
+      CHF: 1.05,
+      EUR: 1,
+    };
   }
+}
+
+async function fetchExchangeRate(): Promise<number> {
+  const rates = await fetchExchangeRates();
+  return rates.USD;
 }
 
 async function fetchAlphaJSON(url: string) {
@@ -650,55 +683,63 @@ serve(async (req) => {
       }
     }
 
-    let currentPriceUSD = 0;
+    let currentPriceLocal = 0;  // Price in source currency
+    let sourceCurrency: CurrencyCode = 'USD';
     let name = cleanSymbol;
     let dividendUSD = 0;
     let source = 'Unknown';
     const triedSources: string[] = [];
 
-    // Prefer FMP if key is available
+    // Prefer FMP if key is available (returns USD)
     if (FMP_API_KEY) {
       try {
         triedSources.push('FMP');
         const fmp = await fetchFromFMP(cleanSymbol);
-        currentPriceUSD = fmp.currentPrice;
+        currentPriceLocal = fmp.currentPrice;
         name = fmp.name || cleanSymbol;
         dividendUSD = fmp.dividend || 0;
         source = fmp.source;
+        sourceCurrency = 'USD';
       } catch (e) {
         console.warn('FMP fetch failed:', (e as Error).message);
       }
     }
 
-    // Fallback to Stooq if price is not yet set
-    if (!Number.isFinite(currentPriceUSD) || currentPriceUSD <= 0) {
+    // Fallback to Stooq if price is not yet set (returns USD for .us symbols)
+    if (!Number.isFinite(currentPriceLocal) || currentPriceLocal <= 0) {
       try {
         triedSources.push('Stooq');
         const stooq = await fetchFromStooq(cleanSymbol);
-        currentPriceUSD = stooq.currentPrice;
+        currentPriceLocal = stooq.currentPrice;
         name = stooq.name;
         dividendUSD = dividendUSD || 0;
         source = stooq.source;
+        sourceCurrency = 'USD';
       } catch (e) {
         console.warn('Stooq fetch failed:', (e as Error).message);
       }
     }
 
-    // Fallback to Yahoo Finance for OTC/international stocks
-    if (!Number.isFinite(currentPriceUSD) || currentPriceUSD <= 0) {
+    // Fallback to Yahoo Finance for OTC/international stocks (can return various currencies)
+    if (!Number.isFinite(currentPriceLocal) || currentPriceLocal <= 0) {
       try {
         triedSources.push('Yahoo');
         const yahoo = await fetchFromYahoo(cleanSymbol);
-        currentPriceUSD = yahoo.currentPrice;
+        currentPriceLocal = yahoo.currentPrice;
         name = yahoo.name;
         dividendUSD = dividendUSD || 0;
         source = yahoo.source;
+        // Map Yahoo currency to our supported currencies
+        const yahooCurrency = yahoo.currency?.toUpperCase() || 'USD';
+        sourceCurrency = ['USD', 'HKD', 'GBP', 'CAD', 'CHF', 'EUR'].includes(yahooCurrency) 
+          ? yahooCurrency as CurrencyCode 
+          : 'USD';
       } catch (e) {
         console.warn('Yahoo fetch failed:', (e as Error).message);
       }
     }
 
-    if (!Number.isFinite(currentPriceUSD) || currentPriceUSD <= 0) {
+    if (!Number.isFinite(currentPriceLocal) || currentPriceLocal <= 0) {
       throw new Error(`No price available for symbol: ${cleanSymbol}. Tried: ${triedSources.join(', ')}`);
     }
 
@@ -724,31 +765,37 @@ serve(async (req) => {
     }
 
     // Calculate CAGR and dividend growth in parallel
+    // Note: For non-USD stocks, CAGR calculation may need adjustment
+    const currentPriceForCagr = sourceCurrency === 'USD' ? currentPriceLocal : currentPriceLocal;
     const [cagr5y, dividendGrowth] = await Promise.all([
-      calculateCAGR(cleanSymbol, currentPriceUSD),
+      calculateCAGR(cleanSymbol, currentPriceForCagr),
       fetchDividendGrowth(cleanSymbol)
     ]);
 
-    // Fetch USD to EUR exchange rate
-    const usdToEur = await fetchExchangeRate();
+    // Fetch all exchange rates
+    const exchangeRates = await fetchExchangeRates();
+    const rateToEur = exchangeRates[sourceCurrency] || exchangeRates.USD;
     
-    // Convert prices to EUR
-    const currentPrice = currentPriceUSD * usdToEur;
-    const dividend = dividendUSD * usdToEur;
+    // Convert prices to EUR using the correct currency rate
+    const currentPrice = currentPriceLocal * rateToEur;
+    // Store the original currency price for reference, but label it as source currency
+    const currentPriceUSD = sourceCurrency === 'USD' ? currentPriceLocal : currentPriceLocal * (exchangeRates.USD / rateToEur);
+    const dividend = dividendUSD * exchangeRates.USD; // Dividends are typically in USD
 
-    console.log(`✓ Final: ${name} @ $${currentPriceUSD.toFixed(2)} (€${currentPrice.toFixed(2)}), Div: $${dividendUSD.toFixed(2)} (€${dividend.toFixed(2)}), CAGR: ${cagr5y ? (cagr5y * 100).toFixed(1) : 'N/A'}%, DivGrowth5Y: ${dividendGrowth.growth5y ? (dividendGrowth.growth5y * 100).toFixed(1) : 'N/A'}%, Source: ${source}`);
+    console.log(`✓ Final: ${name} @ ${currentPriceLocal.toFixed(2)} ${sourceCurrency} (€${currentPrice.toFixed(2)}), Div: $${dividendUSD.toFixed(2)} (€${dividend.toFixed(2)}), CAGR: ${cagr5y ? (cagr5y * 100).toFixed(1) : 'N/A'}%, DivGrowth5Y: ${dividendGrowth.growth5y ? (dividendGrowth.growth5y * 100).toFixed(1) : 'N/A'}%, Source: ${source}`);
 
-    // Update cache
-    await updatePriceCache(cleanSymbol, currentPrice, currentPriceUSD, dividendUSD, name, usdToEur, source, cagr5y, dividendGrowth);
+    // Update cache with source currency info
+    await updatePriceCache(cleanSymbol, currentPrice, currentPriceUSD, dividendUSD, name, rateToEur, source, sourceCurrency, cagr5y, dividendGrowth);
 
     const stockData: any = { 
       symbol: cleanSymbol, 
       currentPrice, 
       dividend, 
       name,
-      exchangeRate: usdToEur,
+      exchangeRate: rateToEur,
       currentPriceUSD,
-      source
+      source,
+      sourceCurrency,
     };
     
     if (cagr5y !== undefined) {

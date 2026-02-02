@@ -56,7 +56,7 @@ const SignUp = () => {
           }
         });
       } else {
-        navigate("/");
+        navigate("/dashboard");
       }
     }
   }, [user, navigate, addInvestment, toast, t]);
@@ -126,7 +126,7 @@ const SignUp = () => {
         title: t('auth.accountCreated'),
         description: t('auth.welcomeToTracker'),
       });
-      navigate("/");
+      navigate("/dashboard");
     }
 
     setIsLoading(false);
