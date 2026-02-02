@@ -318,30 +318,15 @@ const Dashboard = () => {
         const gainLoss = currentValue - Number(portfolio.original_investment_eur);
         const gainLossPercent = (gainLoss / Number(portfolio.original_investment_eur)) * 100;
 
-        let netDividend = 0;
-        if (portfolio.manual_dividend_eur) {
-          const taxBreakdown = calculateDividendTax(
-            portfolio.manual_dividend_eur,
-            Number(portfolio.quantity),
-            portfolio.country,
-            userCountry
-          );
-          netDividend = taxBreakdown.netDividend;
-        } else if (stockData.dividend) {
-          const taxBreakdown = calculateDividendTax(
-            stockData.dividend,
-            Number(portfolio.quantity),
-            portfolio.country,
-            userCountry
-          );
-          netDividend = taxBreakdown.netDividend;
-        }
+        // Store GROSS dividend in snapshots - tax is applied at display time
+        const grossDividendPerShare = portfolio.manual_dividend_eur || stockData.dividend || 0;
+        const grossDividendTotal = grossDividendPerShare * Number(portfolio.quantity);
 
         snapshotInserts.push({
           portfolio_id: portfolio.id,
           current_price_eur: currentPrice,
           current_value_eur: currentValue,
-          dividend_annual_eur: netDividend,
+          dividend_annual_eur: grossDividendTotal,
           exchange_rate: stockData.exchangeRate,
           snapshot_date: new Date().toISOString(),
         });
@@ -352,7 +337,7 @@ const Dashboard = () => {
           current_value_eur: currentValue,
           gain_loss_eur: gainLoss,
           gain_loss_percent: gainLossPercent,
-          dividend_annual_eur: netDividend,
+          dividend_annual_eur: grossDividendTotal,
         });
       } else {
         updated.push(portfolio);

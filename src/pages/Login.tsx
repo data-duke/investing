@@ -55,7 +55,7 @@ const Login = () => {
           }
         });
       } else {
-        navigate("/");
+        navigate("/dashboard");
       }
     }
   }, [user, navigate, addInvestment, toast, t]);
@@ -98,7 +98,7 @@ const Login = () => {
         title: t('auth.welcomeBack'),
         description: t('auth.successfulLogin'),
       });
-      navigate("/");
+      navigate("/dashboard");
     }
 
     setIsLoading(false);

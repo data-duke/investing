@@ -3,14 +3,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recha
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePrivacy } from "@/contexts/PrivacyContext";
 import { formatCurrency, formatPercentage } from "@/lib/formatters";
-
-interface AggregatedPosition {
-  symbol: string;
-  name: string;
-  totalQuantity: number;
-  totalOriginalInvestment: number;
-  current_value_eur?: number;
-}
+import { AggregatedPosition } from "@/lib/constants";
 
 interface AllocationChartProps {
   aggregatedPositions: AggregatedPosition[];

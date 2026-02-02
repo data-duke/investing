@@ -7,6 +7,7 @@ import { StockNewsSection } from "./StockNewsSection";
 import { formatCurrency, formatNumber, formatPercentage } from "@/lib/formatters";
 import { usePrivacy } from "@/contexts/PrivacyContext";
 import { calculateCapitalGainsTax } from "@/lib/taxCalculations";
+import { AggregatedPosition } from "@/lib/constants";
 import {
   Sheet,
   SheetContent,
@@ -14,21 +15,6 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
-
-interface AggregatedPosition {
-  symbol: string;
-  name: string;
-  country: string;
-  totalQuantity: number;
-  totalOriginalInvestment: number;
-  avgOriginalPrice: number;
-  current_price_eur?: number;
-  current_value_eur?: number;
-  gain_loss_eur?: number;
-  gain_loss_percent?: number;
-  dividend_annual_eur?: number;
-  lots: Portfolio[];
-}
 
 interface MobileStockDetailsSheetProps {
   position: AggregatedPosition | null;
