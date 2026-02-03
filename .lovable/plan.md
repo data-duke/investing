@@ -1,225 +1,135 @@
 
-# Regression Testing & Technical Debt Cleanup Plan
 
-## Issues Identified
+# Updated Fix Plan: Currency, Capital Gains Tax, Dividend Calendar, and Top Performer KPI
 
-### 1. Currency Conversion Bug for 2899.HK (Hong Kong Stock)
+## Issues to Address
 
-**Problem:** The stock `2899.HK` is priced in HKD, but the `fetch-stock-data` edge function only converts from USD to EUR. Looking at the price_cache:
-- `current_price_usd: 39.56` (this is actually HKD, mislabeled)
-- `current_price_eur: 33.34` (incorrectly converted using USD→EUR rate of 0.843)
+### Issue 1: 2899.HK Shows Incorrect Price (~34 HKD instead of ~4.4 EUR)
 
-The Yahoo Finance fallback correctly returns `currency: 'HKD'` but this metadata is ignored in the conversion logic.
+**Root Cause:** Stooq returns the price (39.56 HKD) but doesn't provide currency metadata. The code defaults to USD when Stooq is the source.
 
-**Root Cause:** Lines 732-737 in `fetch-stock-data/index.ts`:
-```typescript
-const usdToEur = await fetchExchangeRate(); // Only fetches USD→EUR
-const currentPrice = currentPriceUSD * usdToEur; // Assumes all prices are USD
-```
-
-**Solution:** Detect the source currency from Yahoo/FMP response and convert accordingly:
-1. Add HKD, GBP, CAD, CHF exchange rate fetching
-2. Store source currency in price_cache
-3. Convert from actual currency to EUR
+**Solution:** Add a `detectCurrencyFromSymbol()` helper to infer currency from the stock symbol suffix (`.HK` = HKD, `.L` = GBP, etc.) and use it when Stooq is the data source.
 
 ---
 
-### 2. Post-Login Redirect Goes to Index Instead of Dashboard
+### Issue 2: Some Stocks Show "After Tax" When There's No Gain
 
-**Problem:** After login/signup, users are redirected to `/` (calculator) instead of `/dashboard`.
+**Current Behavior:** Stocks with losses show "after tax" label, which is confusing since there's no tax on losses.
 
-**Files affected:**
-- `src/pages/Login.tsx` - Lines 58 and 101: `navigate("/")`
-- `src/pages/SignUp.tsx` - Lines 59 and 129: `navigate("/")`
-
-**Solution:** Change redirect to `/dashboard` for authenticated users.
+**Solution:** Display "no gain" instead of "after tax" for holdings with zero or negative gains.
 
 ---
 
-### 3. Chart Calculation Verification
+### Issue 3: Dividend Calendar Shows Ex-Date Instead of Payment Date
 
-**PortfolioChart.tsx:** ✅ Calculations appear correct
-- Properly tracks cumulative invested
-- Uses snapshot values from database
-- Handles pre-existing portfolios before date range
+**Current Behavior:** Calendar groups and displays events by ex-date.
 
-**AllocationChart.tsx:** ✅ Correct
-- Uses `current_value_eur` directly for allocation percentages
+**User Request:** Show payment date first (when you actually receive the money).
 
-**ProjectedAllocationChart.tsx:** ✅ Correct
-- Uses 5-year CAGR with max cap of 25%
-- Properly projects values
+**Solution:**
+- Group events by payment date (fall back to ex-date if unavailable)
+- Display payment date prominently in the date box
+- Show ex-date as secondary info
+- Mark estimated dates when payment date is unknown
 
 ---
 
-### 4. Dividend Calculation Verification
+### Issue 4: Top Performer KPI Missing (NEW)
 
-**Issue Found:** Mixed dividend handling between net and gross
+**Current Behavior:** The `topPerformer` calculation exists in `PortfolioOverview.tsx` (lines 68-72), the `Award` icon is imported, and translations exist, but the KPI was accidentally removed from the stats array.
 
-In `Dashboard.tsx` `refreshPrices()` (lines 321-338):
-```typescript
-// Calculates NET dividend and stores in snapshot
-const taxBreakdown = calculateDividendTax(...)
-netDividend = taxBreakdown.netDividend;
-```
-
-But in `PortfolioOverview.tsx` (lines 40-50):
-```typescript
-// Tries to apply tax AGAIN to already-net dividend
-if (p.manual_dividend_eur) {
-  const taxBreakdown = calculateDividendTax(...)
-  return sum + taxBreakdown.netDividend;
-}
-// This dividend_annual_eur is already net!
-return sum + (p.dividend_annual_eur ?? 0);
-```
-
-**Problem:** Manual dividends are taxed correctly, but API dividends get double-counted as already net.
-
-**Solution:** Standardize: Store gross dividends in DB, apply tax calculation at display time consistently.
+**Solution:** Add the Top Performer KPI back to the stats array as the 5th card.
 
 ---
 
-### 5. Technical Debt Items
+## Implementation Details
 
-**a) Duplicate AggregatedPosition interface definitions:**
-- `src/lib/constants.ts` (lines 49-80) - canonical
-- `src/components/SortableHoldingsTable.tsx` (lines 28-41)
-- `src/components/MobileStockDetailsSheet.tsx` (lines 18-31)
-- `src/components/AllocationChart.tsx` (lines 7-13)
-- `src/components/DividendCalendar.tsx` - uses import from constants
-
-**b) Legacy tag fields:**
-- Both `tag` (single) and `tags` (array) exist in Portfolio interface
-- `auto_tag_date` also exists separately
-
-**c) Missing TypeScript strict null checks:**
-- Many `portfolio.quantity` accessed without Number() conversion
-
----
-
-## Implementation Plan
-
-### Phase 1: Critical Fixes
-
-#### 1.1 Fix Currency Conversion for International Stocks
+### Fix 1: Currency Detection for Stooq
 
 **File: `supabase/functions/fetch-stock-data/index.ts`**
 
-```text
-Changes:
-1. Add new function: fetchMultiCurrencyRates()
-   - Fetch USD, HKD, GBP, CAD, CHF to EUR rates
-   
-2. Modify fetchFromYahoo() to return currency
-   - Already returns currency, just need to use it
-
-3. Update main handler (lines 650-740):
-   - Track source currency from each data source
-   - Convert using correct rate based on currency
-   - Store source currency in price_cache (add column)
-```
-
-**Database Migration:**
-```sql
-ALTER TABLE price_cache ADD COLUMN IF NOT EXISTS source_currency TEXT DEFAULT 'USD';
-```
-
-#### 1.2 Fix Post-Login Redirect
-
-**File: `src/pages/Login.tsx`**
-- Line 58: Change `navigate("/")` → `navigate("/dashboard")`
-- Line 101: Change `navigate("/")` → `navigate("/dashboard")`
-
-**File: `src/pages/SignUp.tsx`**
-- Line 59: Change `navigate("/")` → `navigate("/dashboard")`
-- Line 129: Change `navigate("/")` → `navigate("/dashboard")`
-
-### Phase 2: Dividend Calculation Standardization
-
-#### 2.1 Store Gross Dividends Consistently
-
-**File: `src/pages/Dashboard.tsx`**
-
-Modify `refreshPrices()` to store GROSS dividend per share:
+Add helper function:
 ```typescript
-// Instead of calculating net dividend, store gross
-const grossDividendPerShare = stockData.dividend || 0;
-const grossDividendTotal = grossDividendPerShare * Number(portfolio.quantity);
-
-snapshotInserts.push({
-  ...
-  dividend_annual_eur: grossDividendTotal, // GROSS, not net
-});
+function detectCurrencyFromSymbol(symbol: string): CurrencyCode {
+  const upper = symbol.toUpperCase();
+  if (upper.endsWith('.HK')) return 'HKD';
+  if (upper.endsWith('.L')) return 'GBP';
+  if (upper.endsWith('.TO') || upper.endsWith('.V')) return 'CAD';
+  if (upper.endsWith('.SW') || upper.endsWith('.VX')) return 'CHF';
+  if (upper.endsWith('.DE') || upper.endsWith('.F') || upper.endsWith('.MU')) return 'EUR';
+  if (upper.endsWith('.PA') || upper.endsWith('.AS') || upper.endsWith('.MI')) return 'EUR';
+  return 'USD'; // Default for US stocks
+}
 ```
 
-#### 2.2 Update PortfolioOverview to Apply Tax Uniformly
-
-**File: `src/components/PortfolioOverview.tsx`**
-
-```typescript
-const totalDividends = portfolios.reduce((sum, p) => {
-  const grossDividend = p.manual_dividend_eur 
-    ? p.manual_dividend_eur * Number(p.quantity)
-    : p.dividend_annual_eur ?? 0;
-  
-  const taxBreakdown = calculateDividendTax(
-    grossDividend / Number(p.quantity), // per-share
-    Number(p.quantity),
-    p.country,
-    userCountry
-  );
-  return sum + taxBreakdown.netDividend;
-}, 0);
-```
-
-### Phase 3: Technical Debt Cleanup
-
-#### 3.1 Consolidate AggregatedPosition Interface
-
-**Files to update:**
-- `src/components/SortableHoldingsTable.tsx` - Remove local interface, import from constants
-- `src/components/MobileStockDetailsSheet.tsx` - Remove local interface, import from constants
-- `src/components/AllocationChart.tsx` - Remove local interface, import from constants
-
-#### 3.2 Add AggregatedPosition Reexport
-
-**File: `src/lib/constants.ts`**
-Already has the canonical definition - just need to update imports.
-
-#### 3.3 Consistent Number Handling
-
-Add eslint rule or convert all `portfolio.quantity` to `Number(portfolio.quantity)` for safety.
+Update Stooq fallback to use detected currency instead of defaulting to USD.
 
 ---
 
-## Testing Checklist
+### Fix 2: Improve Capital Gains Tax Messaging
 
-After implementation:
+**File: `src/components/SortableHoldingsTable.tsx`**
 
-1. **Currency Conversion**
-   - [ ] Refresh 2899.HK and verify price shows in EUR (correctly converted from HKD)
-   - [ ] Test US stocks still work (USD→EUR)
-   - [ ] Test UK stocks (.L suffix) convert GBP→EUR
+Update the net value label:
+```typescript
+<div className="text-xs text-muted-foreground">
+  {(position.gain_loss_eur || 0) <= 0 ? 'no gain' : 'after tax'}
+</div>
+```
 
-2. **Login/Signup Flow**
-   - [ ] Login → lands on /dashboard
-   - [ ] Signup → lands on /dashboard
-   - [ ] Pending investment from calculator → lands on /dashboard with highlight
+---
 
-3. **Dividend Calculations**
-   - [ ] Manual dividend shows correct net after tax
-   - [ ] API-fetched dividend shows correct net after tax
-   - [ ] Portfolio overview annual dividends matches sum of positions
+### Fix 3: Dividend Calendar - Show Payment Date First
 
-4. **Charts**
-   - [ ] Portfolio performance chart shows correct invested vs value
-   - [ ] Allocation chart percentages sum to 100%
-   - [ ] Projected allocation uses CAGR correctly
+**File: `src/components/DividendCalendar.tsx`**
 
-5. **Mobile Experience**
-   - [ ] Stock details sheet shows Net Value (After Tax) correctly
-   - [ ] Holdings cards show net value prominently
+Changes:
+1. Group events by `paymentDate` (fall back to `exDate`)
+2. Sort events by payment date
+3. Display payment date prominently in date box
+4. Show "est." label when payment date is unknown
+5. Show ex-date as secondary info below event details
+
+---
+
+### Fix 4: Restore Top Performer KPI
+
+**File: `src/components/PortfolioOverview.tsx`**
+
+Add the 5th stat to the array (after annual dividends):
+
+```typescript
+{
+  title: t('portfolio.topPerformer'),
+  value: topPerformer?.symbol || t('portfolio.noData'),
+  icon: Award,
+  description: topPerformer 
+    ? `+${formatPercentage(topPerformer.gain_loss_percent || 0)}` 
+    : '',
+  className: "text-amber-600",
+},
+```
+
+Update the grid layout to accommodate 5 cards:
+```typescript
+<div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
+```
+
+---
+
+### Translation Updates
+
+**Files: `src/i18n/locales/en.json`, `de.json`, `sr.json`**
+
+Add new keys:
+```json
+{
+  "dividend": {
+    "exDate": "Ex-date",
+    "estimated": "est."
+  }
+}
+```
 
 ---
 
@@ -227,13 +137,32 @@ After implementation:
 
 | File | Changes |
 |------|---------|
-| `supabase/functions/fetch-stock-data/index.ts` | Multi-currency support, store source currency |
-| `src/pages/Login.tsx` | Redirect to /dashboard |
-| `src/pages/SignUp.tsx` | Redirect to /dashboard |
-| `src/pages/Dashboard.tsx` | Store gross dividends, not net |
-| `src/components/PortfolioOverview.tsx` | Apply tax to all dividends uniformly |
-| `src/components/SortableHoldingsTable.tsx` | Import AggregatedPosition from constants |
-| `src/components/MobileStockDetailsSheet.tsx` | Import AggregatedPosition from constants |
-| `src/components/AllocationChart.tsx` | Import AggregatedPosition from constants |
+| `supabase/functions/fetch-stock-data/index.ts` | Add `detectCurrencyFromSymbol()`, use for Stooq source |
+| `src/components/SortableHoldingsTable.tsx` | Show "no gain" for losses instead of "after tax" |
+| `src/components/DividendCalendar.tsx` | Show payment date first, ex-date as secondary |
+| `src/components/PortfolioOverview.tsx` | Add Top Performer KPI back, update grid to 5 columns |
+| `src/i18n/locales/en.json` | Add `dividend.exDate` translation |
+| `src/i18n/locales/de.json` | Add German translation |
+| `src/i18n/locales/sr.json` | Add Serbian translation |
 
-**Database Migration:** Add `source_currency` column to `price_cache`
+---
+
+## Testing Checklist
+
+1. **Currency Conversion**
+   - Clear cache for `2899.HK` and refresh → should show ~€4.67 (not €33)
+   
+2. **Capital Gains Tax Labels**
+   - Stocks with losses show "no gain"
+   - Stocks with gains show "after tax"
+
+3. **Dividend Calendar**
+   - Events grouped by payment date
+   - Payment date shown prominently
+   - Ex-date shown as secondary info
+
+4. **Top Performer KPI**
+   - 5th card displays with Award icon
+   - Shows stock symbol and gain percentage
+   - Amber/gold color styling
+
