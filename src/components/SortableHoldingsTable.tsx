@@ -268,7 +268,9 @@ export const SortableHoldingsTable = ({ portfolios, aggregatedPositions, onRefre
                         <div className="text-primary font-medium">
                           {privacyMode ? '•••' : formatCurrency(getPositionNetValue(position))}
                         </div>
-                        <div className="text-xs text-muted-foreground">after tax</div>
+                        <div className="text-xs text-muted-foreground">
+                          {(position.gain_loss_eur || 0) <= 0 ? 'no gain' : 'after tax'}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className={position.gain_loss_eur && position.gain_loss_eur >= 0 ? "text-green-600" : "text-red-600"}>

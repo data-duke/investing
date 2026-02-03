@@ -346,7 +346,9 @@
     "pending": "Pending",
     "paysOn": "Pays",
     "noUpcoming": "No upcoming dividends found for your holdings",
-    "noPast": "No past dividends found in the last 6 months"
+    "noPast": "No past dividends found in the last 6 months",
+    "exDate": "Ex-date",
+    "estimated": "est."
   },
   "tags": {
     "filterByTag": "Filter by tag",

@@ -86,6 +86,8 @@ export const DividendCalendar = ({ positions, privacyMode: privacyModeProp }: Di
           const amount = Number(div.dividend_amount) || 0;
           const quantity = position.totalQuantity;
           
+          // Use payment date for determining if past (fall back to ex-date)
+          const relevantDate = paymentDate || exDate;
           events.push({
             symbol: div.symbol,
             name: position.name,
@@ -94,13 +96,17 @@ export const DividendCalendar = ({ positions, privacyMode: privacyModeProp }: Di
             amount,
             quantity,
             totalAmount: amount * quantity,
-            isPast: exDate < now
+            isPast: relevantDate < now
           });
         }
       }
 
-      // Sort by ex-date
-      events.sort((a, b) => a.exDate.getTime() - b.exDate.getTime());
+      // Sort by payment date (fall back to ex-date)
+      events.sort((a, b) => {
+        const dateA = a.paymentDate || a.exDate;
+        const dateB = b.paymentDate || b.exDate;
+        return dateA.getTime() - dateB.getTime();
+      });
       
       setDividendEvents(events);
     } catch (e) {
@@ -110,19 +116,20 @@ export const DividendCalendar = ({ positions, privacyMode: privacyModeProp }: Di
     }
   };
 
-  // Group events by month
+  // Group events by month (using payment date, fall back to ex-date)
   const groupEventsByMonth = (events: DividendEvent[]): MonthGroup[] => {
     const groups = new Map<string, MonthGroup>();
     
     events.forEach(event => {
-      const date = event.exDate;
-      const key = `${date.getFullYear()}-${date.getMonth()}`;
-      const monthName = date.toLocaleDateString('en-US', { month: 'long' });
+      // Use payment date for grouping if available, otherwise fall back to ex-date
+      const displayDate = event.paymentDate || event.exDate;
+      const key = `${displayDate.getFullYear()}-${displayDate.getMonth()}`;
+      const monthName = displayDate.toLocaleDateString('en-US', { month: 'long' });
       
       if (!groups.has(key)) {
         groups.set(key, {
           month: monthName,
-          year: date.getFullYear(),
+          year: displayDate.getFullYear(),
           events: [],
           totalExpected: 0
         });
@@ -262,11 +269,14 @@ export const DividendCalendar = ({ positions, privacyMode: privacyModeProp }: Di
                       <div className="flex items-center gap-3">
                         <div className="flex flex-col items-center justify-center bg-background rounded-md p-2 min-w-[50px] border">
                           <span className="text-xs text-muted-foreground">
-                            {event.exDate.toLocaleDateString('en-US', { month: 'short' })}
+                            {(event.paymentDate || event.exDate).toLocaleDateString('en-US', { month: 'short' })}
                           </span>
                           <span className="text-lg font-bold">
-                            {event.exDate.getDate()}
+                            {(event.paymentDate || event.exDate).getDate()}
                           </span>
+                          {!event.paymentDate && (
+                            <span className="text-xs text-amber-500">{t('dividend.estimated')}</span>
+                          )}
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
@@ -293,6 +303,12 @@ export const DividendCalendar = ({ positions, privacyMode: privacyModeProp }: Di
                               {event.quantity} {t('common.shares')}
                             </span>
                           </div>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                            <Calendar className="h-3 w-3" />
+                            <span>
+                              {t('dividend.exDate')}: {event.exDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            </span>
+                          </div>
                         </div>
                       </div>
                       <div className="text-right">
@@ -302,14 +318,6 @@ export const DividendCalendar = ({ positions, privacyMode: privacyModeProp }: Di
                             {privacyMode ? '•••' : formatCurrency(event.totalAmount)}
                           </span>
                         </div>
-                        {event.paymentDate && (
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                            <Clock className="h-3 w-3" />
-                            <span>
-                              {t('dividend.paysOn')} {event.paymentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                            </span>
-                          </div>
-                        )}
                       </div>
                     </div>
                   ))}

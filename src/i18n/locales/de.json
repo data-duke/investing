@@ -325,7 +325,9 @@
     "pending": "Ausstehend",
     "paysOn": "Zahlung",
     "noUpcoming": "Keine bevorstehenden Dividenden für Ihre Positionen gefunden",
-    "noPast": "Keine vergangenen Dividenden in den letzten 6 Monaten gefunden"
+    "noPast": "Keine vergangenen Dividenden in den letzten 6 Monaten gefunden",
+    "exDate": "Ex-Tag",
+    "estimated": "gesch."
   },
   "tags": {
     "filterByTag": "Nach Tag filtern",

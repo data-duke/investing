@@ -142,6 +142,18 @@ interface ExchangeRates {
   EUR: number;
 }
 
+// Detect currency from stock symbol suffix (for sources like Stooq that don't provide currency)
+function detectCurrencyFromSymbol(symbol: string): CurrencyCode {
+  const upper = symbol.toUpperCase();
+  if (upper.endsWith('.HK')) return 'HKD';
+  if (upper.endsWith('.L')) return 'GBP';
+  if (upper.endsWith('.TO') || upper.endsWith('.V')) return 'CAD';
+  if (upper.endsWith('.SW') || upper.endsWith('.VX')) return 'CHF';
+  if (upper.endsWith('.DE') || upper.endsWith('.F') || upper.endsWith('.MU')) return 'EUR';
+  if (upper.endsWith('.PA') || upper.endsWith('.AS') || upper.endsWith('.MI')) return 'EUR';
+  return 'USD'; // Default for US stocks
+}
+
 async function fetchExchangeRates(): Promise<ExchangeRates> {
   try {
     const res = await fetch('https://api.exchangerate-api.com/v4/latest/EUR');
@@ -705,7 +717,7 @@ serve(async (req) => {
       }
     }
 
-    // Fallback to Stooq if price is not yet set (returns USD for .us symbols)
+    // Fallback to Stooq if price is not yet set (returns local currency prices)
     if (!Number.isFinite(currentPriceLocal) || currentPriceLocal <= 0) {
       try {
         triedSources.push('Stooq');
@@ -714,7 +726,9 @@ serve(async (req) => {
         name = stooq.name;
         dividendUSD = dividendUSD || 0;
         source = stooq.source;
-        sourceCurrency = 'USD';
+        // Stooq doesn't provide currency metadata - detect from symbol suffix
+        sourceCurrency = detectCurrencyFromSymbol(cleanSymbol);
+        console.log(`Stooq: Detected currency ${sourceCurrency} for ${cleanSymbol}`);
       } catch (e) {
         console.warn('Stooq fetch failed:', (e as Error).message);
       }
