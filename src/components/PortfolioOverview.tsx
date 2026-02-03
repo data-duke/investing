@@ -104,11 +104,20 @@ export const PortfolioOverview = ({
         icon: PiggyBank,
         description: privacyMode ? "" : t('portfolio.monthlyAvg', { amount: formatCurrency(monthlyDividends) }),
       },
+      {
+        title: t('portfolio.topPerformer'),
+        value: topPerformer?.symbol || t('portfolio.noData'),
+        icon: Award,
+        description: topPerformer 
+          ? `+${formatPercentage(topPerformer.gain_loss_percent || 0)}` 
+          : '',
+        className: "text-amber-600",
+      },
     ];
   }, [portfolios, privacyMode, userCountry, t]);
 
   return (
-    <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
       {stats.map((stat) => {
         const Icon = stat.icon;
         return (

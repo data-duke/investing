@@ -325,7 +325,9 @@
     "pending": "Na čekanju",
     "paysOn": "Isplata",
     "noUpcoming": "Nisu pronađene predstojeće dividende za vaše pozicije",
-    "noPast": "Nisu pronađene dividende u poslednjih 6 meseci"
+    "noPast": "Nisu pronađene dividende u poslednjih 6 meseci",
+    "exDate": "Ex-datum",
+    "estimated": "proc."
   },
   "tags": {
     "filterByTag": "Filtriraj po oznaci",
