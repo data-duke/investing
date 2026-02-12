@@ -1,168 +1,52 @@
 
 
-# Updated Fix Plan: Currency, Capital Gains Tax, Dividend Calendar, and Top Performer KPI
+# Fix: 2899.HK Still Showing ~33 in Portfolio
 
-## Issues to Address
+## Root Cause Found
 
-### Issue 1: 2899.HK Shows Incorrect Price (~34 HKD instead of ~4.4 EUR)
+The database investigation reveals the issue clearly:
 
-**Root Cause:** Stooq returns the price (39.56 HKD) but doesn't provide currency metadata. The code defaults to USD when Stooq is the source.
+- `original_price_eur` in the portfolios table: **4.4** (correct)
+- Latest snapshots (Feb 7-11): `current_price_eur: ~4.5` (correct, after the currency fix)
+- Old snapshots (Jan 6 - Feb 5): `current_price_eur: ~33` (corrupted -- HKD value stored as EUR)
 
-**Solution:** Add a `detectCurrencyFromSymbol()` helper to infer currency from the stock symbol suffix (`.HK` = HKD, `.L` = GBP, etc.) and use it when Stooq is the data source.
+The currency fix deployed earlier is working for **new** data, but **39 old snapshots** still contain the wrong HKD-as-EUR values. These corrupt snapshots cause:
+1. The Portfolio Performance chart to show inflated historical values
+2. Potentially stale cached data being displayed before a refresh
 
----
+## Fix Plan
 
-### Issue 2: Some Stocks Show "After Tax" When There's No Gain
+### Step 1: Clean Up Corrupted Historical Snapshots
 
-**Current Behavior:** Stocks with losses show "after tax" label, which is confusing since there's no tax on losses.
+Run a database migration to fix all old snapshots for `2899.HK` by dividing the stored `current_price_eur` by the approximate HKD/EUR rate (~8.25) to convert from the incorrectly stored HKD values to proper EUR values. Also recalculate `current_value_eur` accordingly.
 
-**Solution:** Display "no gain" instead of "after tax" for holdings with zero or negative gains.
-
----
-
-### Issue 3: Dividend Calendar Shows Ex-Date Instead of Payment Date
-
-**Current Behavior:** Calendar groups and displays events by ex-date.
-
-**User Request:** Show payment date first (when you actually receive the money).
-
-**Solution:**
-- Group events by payment date (fall back to ex-date if unavailable)
-- Display payment date prominently in the date box
-- Show ex-date as secondary info
-- Mark estimated dates when payment date is unknown
-
----
-
-### Issue 4: Top Performer KPI Missing (NEW)
-
-**Current Behavior:** The `topPerformer` calculation exists in `PortfolioOverview.tsx` (lines 68-72), the `Award` icon is imported, and translations exist, but the KPI was accidentally removed from the stats array.
-
-**Solution:** Add the Top Performer KPI back to the stats array as the 5th card.
-
----
-
-## Implementation Details
-
-### Fix 1: Currency Detection for Stooq
-
-**File: `supabase/functions/fetch-stock-data/index.ts`**
-
-Add helper function:
-```typescript
-function detectCurrencyFromSymbol(symbol: string): CurrencyCode {
-  const upper = symbol.toUpperCase();
-  if (upper.endsWith('.HK')) return 'HKD';
-  if (upper.endsWith('.L')) return 'GBP';
-  if (upper.endsWith('.TO') || upper.endsWith('.V')) return 'CAD';
-  if (upper.endsWith('.SW') || upper.endsWith('.VX')) return 'CHF';
-  if (upper.endsWith('.DE') || upper.endsWith('.F') || upper.endsWith('.MU')) return 'EUR';
-  if (upper.endsWith('.PA') || upper.endsWith('.AS') || upper.endsWith('.MI')) return 'EUR';
-  return 'USD'; // Default for US stocks
-}
+```sql
+-- Fix corrupted snapshots where HKD price was stored as EUR
+-- The correct conversion: HKD price / ~8.25 = EUR price
+-- We identify corrupt rows as those with current_price_eur > 10 (real EUR price is ~4.5)
+UPDATE portfolio_snapshots 
+SET 
+  current_price_eur = current_price_eur / 8.25,
+  current_value_eur = (current_price_eur / 8.25) * 22
+WHERE portfolio_id = '63698e6b-eec2-4a28-a6a4-18929778c1ba'
+  AND current_price_eur > 10;
 ```
 
-Update Stooq fallback to use detected currency instead of defaulting to USD.
+### Step 2: Clear Price Cache for 2899.HK
 
----
+Delete the stale price_cache entry so the next refresh fetches fresh data with the correct currency detection:
 
-### Fix 2: Improve Capital Gains Tax Messaging
-
-**File: `src/components/SortableHoldingsTable.tsx`**
-
-Update the net value label:
-```typescript
-<div className="text-xs text-muted-foreground">
-  {(position.gain_loss_eur || 0) <= 0 ? 'no gain' : 'after tax'}
-</div>
+```sql
+DELETE FROM price_cache WHERE symbol = '2899.HK';
 ```
 
----
+### Summary
 
-### Fix 3: Dividend Calendar - Show Payment Date First
+| Action | Details |
+|--------|---------|
+| Fix ~39 old snapshots | Divide HKD values by ~8.25 to get correct EUR |
+| Clear price cache | Force fresh fetch with currency detection |
+| No code changes needed | The edge function fix is already deployed and working |
 
-**File: `src/components/DividendCalendar.tsx`**
-
-Changes:
-1. Group events by `paymentDate` (fall back to `exDate`)
-2. Sort events by payment date
-3. Display payment date prominently in date box
-4. Show "est." label when payment date is unknown
-5. Show ex-date as secondary info below event details
-
----
-
-### Fix 4: Restore Top Performer KPI
-
-**File: `src/components/PortfolioOverview.tsx`**
-
-Add the 5th stat to the array (after annual dividends):
-
-```typescript
-{
-  title: t('portfolio.topPerformer'),
-  value: topPerformer?.symbol || t('portfolio.noData'),
-  icon: Award,
-  description: topPerformer 
-    ? `+${formatPercentage(topPerformer.gain_loss_percent || 0)}` 
-    : '',
-  className: "text-amber-600",
-},
-```
-
-Update the grid layout to accommodate 5 cards:
-```typescript
-<div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
-```
-
----
-
-### Translation Updates
-
-**Files: `src/i18n/locales/en.json`, `de.json`, `sr.json`**
-
-Add new keys:
-```json
-{
-  "dividend": {
-    "exDate": "Ex-date",
-    "estimated": "est."
-  }
-}
-```
-
----
-
-## Summary of Files to Modify
-
-| File | Changes |
-|------|---------|
-| `supabase/functions/fetch-stock-data/index.ts` | Add `detectCurrencyFromSymbol()`, use for Stooq source |
-| `src/components/SortableHoldingsTable.tsx` | Show "no gain" for losses instead of "after tax" |
-| `src/components/DividendCalendar.tsx` | Show payment date first, ex-date as secondary |
-| `src/components/PortfolioOverview.tsx` | Add Top Performer KPI back, update grid to 5 columns |
-| `src/i18n/locales/en.json` | Add `dividend.exDate` translation |
-| `src/i18n/locales/de.json` | Add German translation |
-| `src/i18n/locales/sr.json` | Add Serbian translation |
-
----
-
-## Testing Checklist
-
-1. **Currency Conversion**
-   - Clear cache for `2899.HK` and refresh → should show ~€4.67 (not €33)
-   
-2. **Capital Gains Tax Labels**
-   - Stocks with losses show "no gain"
-   - Stocks with gains show "after tax"
-
-3. **Dividend Calendar**
-   - Events grouped by payment date
-   - Payment date shown prominently
-   - Ex-date shown as secondary info
-
-4. **Top Performer KPI**
-   - 5th card displays with Award icon
-   - Shows stock symbol and gain percentage
-   - Amber/gold color styling
+After this fix, refreshing the portfolio will show correct EUR values for 2899.HK in both the current display and historical charts.
 
