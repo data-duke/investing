@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Calendar, ChevronLeft, ChevronRight, DollarSign, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { DividendMonthlyChart } from "./DividendMonthlyChart";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/lib/formatters";
 import { useTranslation } from "react-i18next";
@@ -225,6 +226,9 @@ export const DividendCalendar = ({ positions, privacyMode: privacyModeProp }: Di
                 </Button>
               </div>
             </div>
+
+            <DividendMonthlyChart dividendEvents={dividendEvents} privacyMode={privacyMode} />
+
         {monthGroups.length === 0 ? (
           <div className="text-center py-8 space-y-4">
             <div className="flex items-center justify-center gap-4">

@@ -327,7 +327,9 @@
     "noUpcoming": "Keine bevorstehenden Dividenden für Ihre Positionen gefunden",
     "noPast": "Keine vergangenen Dividenden in den letzten 6 Monaten gefunden",
     "exDate": "Ex-Tag",
-    "estimated": "gesch."
+    "estimated": "gesch.",
+    "monthlyIncome": "Monatliche Dividendeneinnahmen",
+    "noIncome": "Keine Einnahmen"
   },
   "tags": {
     "filterByTag": "Nach Tag filtern",

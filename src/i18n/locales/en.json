@@ -348,7 +348,9 @@
     "noUpcoming": "No upcoming dividends found for your holdings",
     "noPast": "No past dividends found in the last 6 months",
     "exDate": "Ex-date",
-    "estimated": "est."
+    "estimated": "est.",
+    "monthlyIncome": "Monthly Dividend Income",
+    "noIncome": "No income"
   },
   "tags": {
     "filterByTag": "Filter by tag",
