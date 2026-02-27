@@ -7,6 +7,29 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function resolveSafeOrigin(originHeader: string | null): string {
+  const siteUrl = Deno.env.get("SITE_URL")?.trim();
+  const additionalOrigins = (Deno.env.get("ADDITIONAL_ALLOWED_ORIGINS") ?? "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  const allowedOrigins = new Set<string>([
+    ...(siteUrl ? [siteUrl] : []),
+    ...additionalOrigins,
+  ]);
+
+  if (originHeader && allowedOrigins.has(originHeader)) {
+    return originHeader;
+  }
+
+  if (siteUrl) {
+    return siteUrl;
+  }
+
+  throw new Error("Missing SITE_URL configuration");
+}
+
 const logStep = (step: string) => {
   // Security: Avoid logging sensitive details like emails, user IDs, customer IDs
   console.log(`[customer-portal] ${step}`);
@@ -48,7 +71,7 @@ serve(async (req) => {
     const customerId = customers.data[0].id;
     logStep("Customer found");
 
-    const origin = req.headers.get("origin") || "http://localhost:3000";
+    const origin = resolveSafeOrigin(req.headers.get("origin"));
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: customerId,
       return_url: `${origin}/dashboard`,

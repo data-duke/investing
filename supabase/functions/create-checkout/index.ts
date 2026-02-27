@@ -7,6 +7,29 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function resolveSafeOrigin(originHeader: string | null): string {
+  const siteUrl = Deno.env.get("SITE_URL")?.trim();
+  const additionalOrigins = (Deno.env.get("ADDITIONAL_ALLOWED_ORIGINS") ?? "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  const allowedOrigins = new Set<string>([
+    ...(siteUrl ? [siteUrl] : []),
+    ...additionalOrigins,
+  ]);
+
+  if (originHeader && allowedOrigins.has(originHeader)) {
+    return originHeader;
+  }
+
+  if (siteUrl) {
+    return siteUrl;
+  }
+
+  throw new Error("Missing SITE_URL configuration");
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -31,6 +54,8 @@ serve(async (req) => {
       customerId = customers.data[0].id;
     }
 
+    const safeOrigin = resolveSafeOrigin(req.headers.get("origin"));
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
@@ -41,8 +66,8 @@ serve(async (req) => {
         },
       ],
       mode: "subscription",
-      success_url: `${req.headers.get("origin")}/dashboard?upgraded=true`,
-      cancel_url: `${req.headers.get("origin")}/dashboard`,
+      success_url: `${safeOrigin}/dashboard?upgraded=true`,
+      cancel_url: `${safeOrigin}/dashboard`,
     });
 
     return new Response(JSON.stringify({ url: session.url }), {
