@@ -182,5 +182,15 @@ export const PortfolioOverview = ({
     );
   };
 
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
+        {stats.mainStats.map(renderCard)}
+      </div>
+      <div className="grid gap-4 grid-cols-2">
+        {stats.withdrawalStats.map(renderCard)}
+      </div>
+    </div>
+  );
 };
 
