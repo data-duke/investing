@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Portfolio } from "@/hooks/usePortfolio";
-import { TrendingUp, DollarSign, PiggyBank, Award, Wallet } from "lucide-react";
+import { TrendingUp, DollarSign, PiggyBank, Award, Wallet, Percent, ArrowUpFromLine } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { formatCurrency, formatPercentage } from "@/lib/formatters";
@@ -71,7 +71,25 @@ export const PortfolioOverview = ({
       return currentGain > bestGain ? current : best;
     }, portfolios[0]);
 
-    return [
+    // Calculate per-position KPIs for profitable positions only
+    let safeWithdrawalTotal = 0;
+    let availableProfitTotal = 0;
+
+    portfolios.forEach(p => {
+      const invested = Number(p.original_investment_eur);
+      const marketValue = p.current_value_eur || 0;
+      const grossGainPos = marketValue - invested;
+
+      if (grossGainPos > 0) {
+        const taxResult = calculateCapitalGainsTax(grossGainPos, userCountry);
+        const netValuePos = marketValue - taxResult.tax;
+
+        safeWithdrawalTotal += netValuePos * 0.04;
+        availableProfitTotal += netValuePos - invested;
+      }
+    });
+
+    const mainStats = [
       {
         title: t('portfolio.netLiquidationValue'),
         value: privacyMode ? "•••••" : formatCurrency(netLiquidationValue),
@@ -114,38 +132,65 @@ export const PortfolioOverview = ({
         className: "text-amber-600",
       },
     ];
+
+    const withdrawalStats = [
+      {
+        title: t('portfolio.safeWithdrawal'),
+        value: privacyMode ? "•••••" : formatCurrency(safeWithdrawalTotal),
+        icon: Percent,
+        description: privacyMode ? "" : t('portfolio.safeWithdrawalDesc'),
+        className: "text-emerald-600",
+      },
+      {
+        title: t('portfolio.availableProfit'),
+        value: privacyMode ? "•••••" : formatCurrency(availableProfitTotal),
+        icon: ArrowUpFromLine,
+        description: privacyMode ? "" : t('portfolio.availableProfitDesc'),
+        className: availableProfitTotal > 0 ? "text-green-600" : "text-muted-foreground",
+      },
+    ];
+
+    return { mainStats, withdrawalStats };
   }, [portfolios, privacyMode, userCountry, t]);
 
-  return (
-    <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
-      {stats.map((stat) => {
-        const Icon = stat.icon;
-        return (
-          <Card key={stat.title}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-              <Icon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <>
-                  <Skeleton className="h-7 w-24 mb-1" />
-                  <Skeleton className="h-4 w-32" />
-                </>
-              ) : (
-                <>
-                  <div className={`text-2xl font-bold ${stat.className || ''}`}>
-                    {stat.value}
-                  </div>
-                  {stat.description && (
-                    <p className="text-xs text-muted-foreground">{stat.description}</p>
-                  )}
-                </>
+  const renderCard = (stat: { title: string; value: string; icon: any; description?: string; className?: string }) => {
+    const Icon = stat.icon;
+    return (
+      <Card key={stat.title}>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+          <Icon className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <>
+              <Skeleton className="h-7 w-24 mb-1" />
+              <Skeleton className="h-4 w-32" />
+            </>
+          ) : (
+            <>
+              <div className={`text-2xl font-bold ${stat.className || ''}`}>
+                {stat.value}
+              </div>
+              {stat.description && (
+                <p className="text-xs text-muted-foreground">{stat.description}</p>
               )}
-            </CardContent>
-          </Card>
-        );
-      })}
+            </>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
+        {stats.mainStats.map(renderCard)}
+      </div>
+      <div className="grid gap-4 grid-cols-2">
+        {stats.withdrawalStats.map(renderCard)}
+      </div>
     </div>
   );
 };
+
