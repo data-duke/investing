@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Portfolio } from "@/hooks/usePortfolio";
 import { TrendingUp, DollarSign, PiggyBank, Award, Wallet, Percent, ArrowUpFromLine } from "lucide-react";
@@ -27,32 +27,25 @@ export const PortfolioOverview = ({
     const totalInvested = portfolios.reduce((sum, p) => sum + Number(p.original_investment_eur), 0);
     const grossGain = totalValue - totalInvested;
     
-    // Apply capital gains tax to get net gain
     const capitalGainsTaxResult = calculateCapitalGainsTax(grossGain, userCountry);
     const netGain = capitalGainsTaxResult.netGain;
     const totalGainPercent = totalInvested > 0 ? (netGain / totalInvested) * 100 : 0;
     
-    // Calculate Net Liquidation Value (what you get if you sell everything today)
-    // Only gains are taxed; if there's a loss, no tax is owed
     const capitalGainsTax = grossGain > 0 ? capitalGainsTaxResult.tax : 0;
     const netLiquidationValue = totalValue - capitalGainsTax;
     const taxRate = capitalGainsTaxResult.taxRate;
     
-    // Calculate net dividends with proper tax treatment
-    // All dividends are now stored as GROSS, so apply tax uniformly
     const totalDividends = portfolios.reduce((sum, p) => {
       const grossDividendPerShare = p.manual_dividend_eur || 0;
       const grossDividendTotal = p.dividend_annual_eur ?? 0;
       
-      // If we have a manual dividend, calculate total from per-share * quantity
-      // Otherwise use the stored dividend_annual_eur (which is now gross total)
       const grossToTax = grossDividendPerShare > 0 
         ? grossDividendPerShare * Number(p.quantity)
         : grossDividendTotal;
       
       if (grossToTax > 0) {
         const taxBreakdown = calculateDividendTax(
-          grossToTax / Number(p.quantity), // per-share for tax calculation
+          grossToTax / Number(p.quantity),
           Number(p.quantity),
           p.country,
           userCountry
@@ -71,7 +64,6 @@ export const PortfolioOverview = ({
       return currentGain > bestGain ? current : best;
     }, portfolios[0]);
 
-    // Calculate per-position KPIs for profitable positions only
     let safeWithdrawalTotal = 0;
     let availableProfitTotal = 0;
 
@@ -83,114 +75,134 @@ export const PortfolioOverview = ({
       if (grossGainPos > 0) {
         const taxResult = calculateCapitalGainsTax(grossGainPos, userCountry);
         const netValuePos = marketValue - taxResult.tax;
-
         safeWithdrawalTotal += netValuePos * 0.04;
         availableProfitTotal += netValuePos - invested;
       }
     });
 
-    const mainStats = [
-      {
-        title: t('portfolio.netLiquidationValue'),
-        value: privacyMode ? "•••••" : formatCurrency(netLiquidationValue),
-        icon: Wallet,
-        description: privacyMode 
-          ? t('portfolio.afterTaxDesc', { rate: formatPercentage(taxRate) })
-          : grossGain > 0 
-            ? t('portfolio.afterCapitalGainsTax', { tax: formatCurrency(capitalGainsTax), rate: formatPercentage(taxRate) })
-            : t('portfolio.noTaxOnLoss'),
-        className: "text-primary",
-      },
-      {
-        title: t('portfolio.totalValue'),
-        value: privacyMode ? "•••••" : formatCurrency(totalValue),
-        icon: DollarSign,
-        description: privacyMode 
-          ? `${formatPercentage(totalGainPercent)} ${t('portfolio.totalGainLoss').toLowerCase()}`
-          : t('portfolio.invested', { amount: formatCurrency(totalInvested) }),
-      },
-      {
-        title: t('portfolio.totalGainLoss'),
-        value: privacyMode ? formatPercentage(totalGainPercent) : formatCurrency(netGain),
-        icon: TrendingUp,
-        description: privacyMode ? "" : `${formatPercentage(totalGainPercent)} ${t('portfolio.afterTax')}`,
-        className: netGain >= 0 ? "text-green-600" : "text-red-600",
-      },
-      {
-        title: t('portfolio.annualDividends'),
-        value: privacyMode ? `${formatPercentage(dividendYield)} yield` : formatCurrency(totalDividends),
-        icon: PiggyBank,
-        description: privacyMode ? "" : t('portfolio.monthlyAvg', { amount: formatCurrency(monthlyDividends) }),
-      },
-      {
-        title: t('portfolio.topPerformer'),
-        value: topPerformer?.symbol || t('portfolio.noData'),
-        icon: Award,
-        description: topPerformer 
-          ? `+${formatPercentage(topPerformer.gain_loss_percent || 0)}` 
-          : '',
-        className: "text-amber-600",
-      },
-    ];
-
-    const withdrawalStats = [
-      {
-        title: t('portfolio.safeWithdrawal'),
-        value: privacyMode ? "•••••" : formatCurrency(safeWithdrawalTotal),
-        icon: Percent,
-        description: privacyMode ? "" : t('portfolio.safeWithdrawalDesc'),
-        className: "text-emerald-600",
-      },
-      {
-        title: t('portfolio.availableProfit'),
-        value: privacyMode ? "•••••" : formatCurrency(availableProfitTotal),
-        icon: ArrowUpFromLine,
-        description: privacyMode ? "" : t('portfolio.availableProfitDesc'),
-        className: availableProfitTotal > 0 ? "text-green-600" : "text-muted-foreground",
-      },
-    ];
-
-    return { mainStats, withdrawalStats };
+    return {
+      netLiquidationValue, capitalGainsTax, taxRate, grossGain,
+      totalValue, totalInvested, netGain, totalGainPercent,
+      totalDividends, monthlyDividends, dividendYield,
+      topPerformer,
+      safeWithdrawalTotal, availableProfitTotal,
+    };
   }, [portfolios, privacyMode, userCountry, t]);
 
-  const renderCard = (stat: { title: string; value: string; icon: any; description?: string; className?: string }) => {
-    const Icon = stat.icon;
+  if (isLoading) {
     return (
-      <Card key={stat.title}>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-          <Icon className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <>
-              <Skeleton className="h-7 w-24 mb-1" />
-              <Skeleton className="h-4 w-32" />
-            </>
-          ) : (
-            <>
-              <div className={`text-2xl font-bold ${stat.className || ''}`}>
-                {stat.value}
-              </div>
-              {stat.description && (
-                <p className="text-xs text-muted-foreground">{stat.description}</p>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
+      <div className="space-y-3">
+        <Card><CardContent className="p-4"><Skeleton className="h-20 w-full" /></CardContent></Card>
+        <Card><CardContent className="p-4"><Skeleton className="h-12 w-full" /></CardContent></Card>
+      </div>
     );
-  };
+  }
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
-        {stats.mainStats.map(renderCard)}
-      </div>
-      <div className="grid gap-4 grid-cols-2">
-        {stats.withdrawalStats.map(renderCard)}
-      </div>
+    <div className="space-y-3">
+      {/* Section 1: Primary Stats */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="grid grid-cols-3 divide-x divide-border">
+            {/* Net Liquidation */}
+            <div className="pr-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Wallet className="h-3.5 w-3.5 text-primary" />
+                <span className="text-[11px] font-medium text-muted-foreground truncate">
+                  {t('portfolio.netLiquidationValue')}
+                </span>
+              </div>
+              <div className="text-base font-bold text-primary">
+                {privacyMode ? "•••••" : formatCurrency(stats.netLiquidationValue)}
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {privacyMode 
+                  ? t('portfolio.afterTaxDesc', { rate: formatPercentage(stats.taxRate) })
+                  : stats.grossGain > 0 
+                    ? `${formatCurrency(stats.capitalGainsTax)} tax (${formatPercentage(stats.taxRate)})`
+                    : t('portfolio.noTaxOnLoss')}
+              </p>
+            </div>
+
+            {/* Gain/Loss */}
+            <div className="px-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-[11px] font-medium text-muted-foreground truncate">
+                  {t('portfolio.totalGainLoss')}
+                </span>
+              </div>
+              <div className={`text-base font-bold ${stats.netGain >= 0 ? "text-green-600" : "text-red-600"}`}>
+                {privacyMode ? formatPercentage(stats.totalGainPercent) : formatCurrency(stats.netGain)}
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {privacyMode ? "" : `${formatPercentage(stats.totalGainPercent)} · ${t('portfolio.invested', { amount: formatCurrency(stats.totalInvested) })}`}
+              </p>
+            </div>
+
+            {/* Dividends */}
+            <div className="pl-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <PiggyBank className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-[11px] font-medium text-muted-foreground truncate">
+                  {t('portfolio.annualDividends')}
+                </span>
+              </div>
+              <div className="text-base font-bold">
+                {privacyMode ? `${formatPercentage(stats.dividendYield)} yield` : formatCurrency(stats.totalDividends)}
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {privacyMode ? "" : t('portfolio.monthlyAvg', { amount: formatCurrency(stats.monthlyDividends) })}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Section 2: Secondary Stats */}
+      <Card>
+        <CardContent className="p-3">
+          <div className="grid grid-cols-3 divide-x divide-border">
+            {/* Top Performer */}
+            <div className="pr-3 flex items-center gap-2">
+              <Award className="h-4 w-4 text-amber-500 shrink-0" />
+              <div className="min-w-0">
+                <div className="text-xs font-medium text-muted-foreground truncate">{t('portfolio.topPerformer')}</div>
+                <div className="text-sm font-bold text-amber-600 truncate">
+                  {stats.topPerformer?.symbol || t('portfolio.noData')}
+                  {stats.topPerformer && (
+                    <span className="text-[10px] font-normal text-muted-foreground ml-1">
+                      +{formatPercentage(stats.topPerformer.gain_loss_percent || 0)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 4% Safe Withdrawal */}
+            <div className="px-3 flex items-center gap-2">
+              <Percent className="h-4 w-4 text-emerald-500 shrink-0" />
+              <div className="min-w-0">
+                <div className="text-xs font-medium text-muted-foreground truncate">{t('portfolio.safeWithdrawal')}</div>
+                <div className="text-sm font-bold text-emerald-600">
+                  {privacyMode ? "•••••" : `${formatCurrency(stats.safeWithdrawalTotal)}/yr`}
+                </div>
+              </div>
+            </div>
+
+            {/* Available Profit */}
+            <div className="pl-3 flex items-center gap-2">
+              <ArrowUpFromLine className="h-4 w-4 text-green-500 shrink-0" />
+              <div className="min-w-0">
+                <div className="text-xs font-medium text-muted-foreground truncate">{t('portfolio.availableProfit')}</div>
+                <div className={`text-sm font-bold ${stats.availableProfitTotal > 0 ? "text-green-600" : "text-muted-foreground"}`}>
+                  {privacyMode ? "•••••" : formatCurrency(stats.availableProfitTotal)}
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
-
