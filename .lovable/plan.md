@@ -1,67 +1,66 @@
 
 
-# Add Monthly Dividend Income Bar Chart
+# Add 2 New KPIs: Safe Withdrawal & Available Profit
 
-## Overview
+## What These KPIs Show
 
-Add a bar chart showing expected dividend income by month for the current year, placed inside the existing `DividendCalendar` collapsible section — right above the event list. The chart uses data already available in the component (`dividendEvents`), so no new API calls or database changes are needed.
+Both KPIs only consider positions that are **net positive after tax** (net liquidation value > original investment).
+
+1. **4% Safe Withdrawal** — 4% of the net value of all profitable positions. This is the amount you could sell annually following the 4% rule while keeping your principal intact.
+   - Example: Invested €1,000 → net value €1,200 → 4% × €1,200 = **€48**
+
+2. **Available Profit** — The sum of net gains across all profitable positions. This is the cash you could extract right now by selling only the profit portion.
+   - Example: Invested €1,000 → net value €1,200 → **€200** available
 
 ## Implementation
 
-### New Component: `src/components/DividendMonthlyChart.tsx`
+### File: `src/components/PortfolioOverview.tsx`
 
-A bar chart using `recharts` (already installed) that:
-- Takes the full `dividendEvents` array and `privacyMode` as props
-- Builds a 12-month array (Jan–Dec of the current year) with total expected dividend income per month
-- Uses `paymentDate` (falls back to `exDate`) for month assignment
-- Renders a `BarChart` with green-colored bars and month labels on the X-axis
-- Shows EUR amounts on Y-axis (hidden in privacy mode)
-- Custom tooltip showing the month name and formatted EUR amount
-- Highlights the current month bar with a slightly different shade
-- Compact height (~180px) so it doesn't dominate the calendar section
+Add per-position net value calculation inside the `useMemo`:
 
-### Modify: `src/components/DividendCalendar.tsx`
+```typescript
+// For each position, calculate its individual net value after capital gains tax
+let safeWithdrawalTotal = 0;
+let availableProfitTotal = 0;
 
-- Import and render `DividendMonthlyChart` inside `CollapsibleContent`, between the upcoming/past toggle buttons and the event list
-- Pass `dividendEvents` (all events, not filtered) and `privacyMode` as props
-- The chart always shows the full year view regardless of the upcoming/past toggle
-
-### Translation Updates
-
-Add keys to `en.json`, `de.json`, `sr.json`:
-- `dividend.monthlyIncome`: "Monthly Dividend Income"
-- `dividend.noIncome`: "No income"
-
-## Technical Details
-
-### Chart Data Structure
-```text
-[
-  { month: "Jan", amount: 0 },
-  { month: "Feb", amount: 19.58 },   // e.g. CAT payout
-  { month: "Mar", amount: 45.20 },
-  ...12 months
-]
+portfolios.forEach(p => {
+  const invested = Number(p.original_investment_eur);
+  const marketValue = p.current_value_eur || 0;
+  const grossGainPos = marketValue - invested;
+  
+  if (grossGainPos > 0) {
+    const taxResult = calculateCapitalGainsTax(grossGainPos, userCountry);
+    const netValuePos = marketValue - taxResult.tax; // net liquidation for this position
+    
+    safeWithdrawalTotal += netValuePos * 0.04;
+    availableProfitTotal += netValuePos - invested;
+  }
+});
 ```
 
-### Component Hierarchy
-```text
-DividendCalendar (existing)
-  +-- Collapsible
-       +-- Toggle buttons (upcoming/past)
-       +-- DividendMonthlyChart (NEW)  <-- all events, full year
-       +-- Event list (filtered by toggle)
-```
+Add 2 new stat cards (using `Percent` and `ArrowUpFromLine` icons from lucide-react). Update grid to `lg:grid-cols-7` (or keep 5 cols with the 2 extra cards wrapping on a second row — better for mobile).
 
-### Files to Create/Modify
+### Layout Approach
+
+Given 7 cards would be cramped, use a **two-row layout**:
+- Row 1 (existing 5 KPIs): `grid-cols-2 lg:grid-cols-5`
+- Row 2 (new 2 KPIs): `grid-cols-2` — placed below the main KPIs
+
+This keeps the dashboard clean and groups the "withdrawal" KPIs together.
+
+### Translation Keys (en/de/sr)
+
+- `portfolio.safeWithdrawal`: "4% Safe Withdrawal" / "4% Sichere Entnahme" / "4% Sigurno Povlačenje"
+- `portfolio.safeWithdrawalDesc`: "Annual amount from profitable positions" / ...
+- `portfolio.availableProfit`: "Available Profit" / "Verfügbarer Gewinn" / "Dostupan Profit"
+- `portfolio.availableProfitDesc`: "Net gains you can extract now" / ...
+
+### Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/components/DividendMonthlyChart.tsx` | New: bar chart component |
-| `src/components/DividendCalendar.tsx` | Import and render the chart |
-| `src/i18n/locales/en.json` | Add translation keys |
-| `src/i18n/locales/de.json` | Add German translations |
-| `src/i18n/locales/sr.json` | Add Serbian translations |
-
-No database changes or new API calls required — the chart uses the existing `dividendEvents` data.
+| `src/components/PortfolioOverview.tsx` | Add per-position net calc, 2 new KPI cards in second row |
+| `src/i18n/locales/en.json` | Add 4 translation keys |
+| `src/i18n/locales/de.json` | German translations |
+| `src/i18n/locales/sr.json` | Serbian translations |
 
