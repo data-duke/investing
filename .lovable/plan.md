@@ -1,66 +1,79 @@
 
 
-# Add 2 New KPIs: Safe Withdrawal & Available Profit
+# Redesign KPI Layout + Calculation Reference
 
-## What These KPIs Show
+## Current Problem
+- 7 separate cards across 3 visual rows on mobile (2+2+1+2)
+- "Top Performer" sits alone on its own row
+- Bottom 2 cards feel disconnected from the rest
+- Too much vertical space consumed before the user reaches their holdings
 
-Both KPIs only consider positions that are **net positive after tax** (net liquidation value > original investment).
+## Proposed Layout: Compact Two-Section Design
 
-1. **4% Safe Withdrawal** — 4% of the net value of all profitable positions. This is the amount you could sell annually following the 4% rule while keeping your principal intact.
-   - Example: Invested €1,000 → net value €1,200 → 4% × €1,200 = **€48**
+### Section 1: Primary Stats (single card with internal grid)
+One card containing the 3 core financial metrics in a compact row layout:
 
-2. **Available Profit** — The sum of net gains across all profitable positions. This is the cash you could extract right now by selling only the profit portion.
-   - Example: Invested €1,000 → net value €1,200 → **€200** available
-
-## Implementation
-
-### File: `src/components/PortfolioOverview.tsx`
-
-Add per-position net value calculation inside the `useMemo`:
-
-```typescript
-// For each position, calculate its individual net value after capital gains tax
-let safeWithdrawalTotal = 0;
-let availableProfitTotal = 0;
-
-portfolios.forEach(p => {
-  const invested = Number(p.original_investment_eur);
-  const marketValue = p.current_value_eur || 0;
-  const grossGainPos = marketValue - invested;
-  
-  if (grossGainPos > 0) {
-    const taxResult = calculateCapitalGainsTax(grossGainPos, userCountry);
-    const netValuePos = marketValue - taxResult.tax; // net liquidation for this position
-    
-    safeWithdrawalTotal += netValuePos * 0.04;
-    availableProfitTotal += netValuePos - invested;
-  }
-});
+```text
+┌─────────────────────────────────────────┐
+│  Net Liquidation    Gain/Loss   Divid.  │
+│  €36,313.92        -€261.82    €1,313   │
+│  Invested: €36,575  -0.72%     €109/mo  │
+└─────────────────────────────────────────┘
 ```
 
-Add 2 new stat cards (using `Percent` and `ArrowUpFromLine` icons from lucide-react). Update grid to `lg:grid-cols-7` (or keep 5 cols with the 2 extra cards wrapping on a second row — better for mobile).
+On mobile (393px), this becomes a 3-column mini-grid inside one card. Each metric is a compact block — title, value, subtitle — no card borders between them, just subtle dividers.
 
-### Layout Approach
+### Section 2: Secondary Stats (horizontal strip)
+A slim horizontal strip with 3 items inline: Top Performer, 4% Withdrawal, Available Profit.
 
-Given 7 cards would be cramped, use a **two-row layout**:
-- Row 1 (existing 5 KPIs): `grid-cols-2 lg:grid-cols-5`
-- Row 2 (new 2 KPIs): `grid-cols-2` — placed below the main KPIs
+```text
+┌──────────────┬──────────────┬──────────────┐
+│ 🏆 CAT       │ 4% Rule      │ Avail Profit │
+│ +47.92%      │ €441.77/yr   │ €1,658.27    │
+└──────────────┴──────────────┴──────────────┘
+```
 
-This keeps the dashboard clean and groups the "withdrawal" KPIs together.
+On mobile: 3 equal columns, compact text, no full Card wrapper — just a single card with 3 sections.
 
-### Translation Keys (en/de/sr)
+### Result
+- **Before**: 7 cards, ~4 scroll screens of KPIs
+- **After**: 2 cards, ~1.5 scroll screens — clean and scannable
 
-- `portfolio.safeWithdrawal`: "4% Safe Withdrawal" / "4% Sichere Entnahme" / "4% Sigurno Povlačenje"
-- `portfolio.safeWithdrawalDesc`: "Annual amount from profitable positions" / ...
-- `portfolio.availableProfit`: "Available Profit" / "Verfügbarer Gewinn" / "Dostupan Profit"
-- `portfolio.availableProfitDesc`: "Net gains you can extract now" / ...
+## Calculation Reference (Last 2 KPIs)
 
-### Files to Modify
+Both only consider positions where `grossGain > 0` (market value > invested):
+
+### 4% Safe Withdrawal
+```
+For each position where marketValue > invested:
+  grossGain = marketValue - invested
+  tax = calculateCapitalGainsTax(grossGain, country).tax
+  netValue = marketValue - tax          // what you'd get if you sold
+  withdrawal += netValue * 0.04         // 4% of that
+
+Total = sum of all profitable positions' 4% net values
+```
+Example: Invested €1,000, market €1,200, tax 27.5% on €200 gain = €55 tax, net = €1,145, 4% = **€45.80**
+
+### Available Profit
+```
+For each position where marketValue > invested:
+  grossGain = marketValue - invested
+  tax = calculateCapitalGainsTax(grossGain, country).tax
+  netValue = marketValue - tax
+  profit += netValue - invested         // extractable cash above principal
+
+Total = sum of all profitable positions' net gains
+```
+Example: Same position → €1,145 - €1,000 = **€145** available
+
+**Key point**: Both exclude losing positions entirely. A stock down 20% contributes €0 to both KPIs.
+
+## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/components/PortfolioOverview.tsx` | Add per-position net calc, 2 new KPI cards in second row |
-| `src/i18n/locales/en.json` | Add 4 translation keys |
-| `src/i18n/locales/de.json` | German translations |
-| `src/i18n/locales/sr.json` | Serbian translations |
+| `src/components/PortfolioOverview.tsx` | Replace 7 separate cards with 2 consolidated cards using internal grid layouts |
+
+No calculation logic changes — only UI restructuring.
 
