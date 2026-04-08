@@ -103,12 +103,12 @@ export const PortfolioOverview = ({
       {/* Section 1: Primary Stats */}
       <Card>
         <CardContent className="p-4">
-          <div className="grid grid-cols-3 divide-x divide-border">
+          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border">
             {/* Net Liquidation */}
-            <div className="pr-3">
+            <div className="pb-3 md:pb-0 md:pr-3">
               <div className="flex items-center gap-1.5 mb-1">
                 <Wallet className="h-3.5 w-3.5 text-primary" />
-                <span className="text-[11px] font-medium text-muted-foreground truncate">
+                <span className="text-[11px] font-medium text-muted-foreground">
                   {t('portfolio.netLiquidationValue')}
                 </span>
               </div>
@@ -125,10 +125,10 @@ export const PortfolioOverview = ({
             </div>
 
             {/* Gain/Loss */}
-            <div className="px-3">
+            <div className="py-3 md:py-0 md:px-3">
               <div className="flex items-center gap-1.5 mb-1">
                 <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-[11px] font-medium text-muted-foreground truncate">
+                <span className="text-[11px] font-medium text-muted-foreground">
                   {t('portfolio.totalGainLoss')}
                 </span>
               </div>
@@ -141,10 +141,10 @@ export const PortfolioOverview = ({
             </div>
 
             {/* Dividends */}
-            <div className="pl-3">
+            <div className="pt-3 md:pt-0 md:pl-3">
               <div className="flex items-center gap-1.5 mb-1">
                 <PiggyBank className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-[11px] font-medium text-muted-foreground truncate">
+                <span className="text-[11px] font-medium text-muted-foreground">
                   {t('portfolio.annualDividends')}
                 </span>
               </div>
