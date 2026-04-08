@@ -162,13 +162,13 @@ export const PortfolioOverview = ({
       {/* Section 2: Secondary Stats */}
       <Card>
         <CardContent className="p-3">
-          <div className="grid grid-cols-3 divide-x divide-border">
+          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border">
             {/* Top Performer */}
-            <div className="pr-3 flex items-center gap-2">
+            <div className="pb-2 md:pb-0 md:pr-3 flex items-center gap-2">
               <Award className="h-4 w-4 text-amber-500 shrink-0" />
-              <div className="min-w-0">
-                <div className="text-xs font-medium text-muted-foreground truncate">{t('portfolio.topPerformer')}</div>
-                <div className="text-sm font-bold text-amber-600 truncate">
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-medium text-muted-foreground">{t('portfolio.topPerformer')}</div>
+                <div className="text-sm font-bold text-amber-600">
                   {stats.topPerformer?.symbol || t('portfolio.noData')}
                   {stats.topPerformer && (
                     <span className="text-[10px] font-normal text-muted-foreground ml-1">
@@ -180,10 +180,10 @@ export const PortfolioOverview = ({
             </div>
 
             {/* 4% Safe Withdrawal */}
-            <div className="px-3 flex items-center gap-2">
+            <div className="py-2 md:py-0 md:px-3 flex items-center gap-2">
               <Percent className="h-4 w-4 text-emerald-500 shrink-0" />
-              <div className="min-w-0">
-                <div className="text-xs font-medium text-muted-foreground truncate">{t('portfolio.safeWithdrawal')}</div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-medium text-muted-foreground">{t('portfolio.safeWithdrawal')}</div>
                 <div className="text-sm font-bold text-emerald-600">
                   {privacyMode ? "•••••" : `${formatCurrency(stats.safeWithdrawalTotal)}/yr`}
                 </div>
@@ -191,10 +191,10 @@ export const PortfolioOverview = ({
             </div>
 
             {/* Available Profit */}
-            <div className="pl-3 flex items-center gap-2">
+            <div className="pt-2 md:pt-0 md:pl-3 flex items-center gap-2">
               <ArrowUpFromLine className="h-4 w-4 text-green-500 shrink-0" />
-              <div className="min-w-0">
-                <div className="text-xs font-medium text-muted-foreground truncate">{t('portfolio.availableProfit')}</div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-medium text-muted-foreground">{t('portfolio.availableProfit')}</div>
                 <div className={`text-sm font-bold ${stats.availableProfitTotal > 0 ? "text-green-600" : "text-muted-foreground"}`}>
                   {privacyMode ? "•••••" : formatCurrency(stats.availableProfitTotal)}
                 </div>
