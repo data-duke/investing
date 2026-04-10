@@ -1,55 +1,40 @@
 
 
-# Mobile-Optimized KPI Layout Redesign
+# Add "Unlimited" Share Expiration Option
 
-## Problem
-On iPhone 16 (393px), the 3-column grids cause:
-- All labels truncated ("Neto likvidaci...", "Neto dobit...", "4% Sigu...")
-- Secondary stats are unreadable with icon + label + value crammed together
-- Text overflows and wraps awkwardly
+## Change
 
-## Solution: Responsive Grid with Mobile Stacking
+Add a new expiration option that creates a share link with no expiry (or a very far future date like year 9999).
 
-### Primary Stats Card
-- **Mobile** (`< md`): Stack as 1 column with 3 horizontal rows, each showing icon + full label on left, value + subtitle on right. Divided by `divide-y`.
-- **Desktop** (`md+`): Keep current 3-column side-by-side layout with `divide-x`.
+## Implementation
 
-### Secondary Stats Card
-- **Mobile**: Same 1-column stacked rows — icon + label left, value right. Compact single-line per metric.
-- **Desktop**: Keep current 3-column inline layout.
+### 1. `src/lib/constants.ts`
+Add a new option to `SHARE_EXPIRATION_OPTIONS`:
+```typescript
+{ label: 'Unlimited', value: -1 },
+```
+Using `-1` as a sentinel value to indicate "no expiration."
 
-### Visual approach on mobile
-```text
-┌──────────────────────────────┐
-│ 💰 Net Liquidation           │
-│    36.313,92 €               │
-│    No tax on losses          │
-├──────────────────────────────┤
-│ 📈 Net Gain/Loss             │
-│    -261,82 €                 │
-│    -0.72% · Invested: 36.5k  │
-├──────────────────────────────┤
-│ 🐷 Annual Dividends          │
-│    1.313,76 €                │
-│    109,48 €/month avg        │
-└──────────────────────────────┘
-
-┌──────────────────────────────┐
-│ 🏆 Top Performer    CAT +47% │
-├──────────────────────────────┤
-│ %  4% Withdrawal   441,77€/yr│
-├──────────────────────────────┤
-│ ↑  Available Profit 1.658€   │
-└──────────────────────────────┘
+### 2. `src/components/ShareDialog.tsx`
+Update the expiration calculation (around line 83-84):
+```typescript
+const hours = parseInt(expirationHours);
+const expiresAt = hours === -1
+  ? new Date('9999-12-31T23:59:59Z')
+  : new Date(Date.now() + hours * 3600000);
 ```
 
-Labels are fully visible. Values have room to breathe. On desktop (md+), it stays compact as the current 3-column layout.
+### 3. `src/components/ManageSharesDialog.tsx`
+Update the `isExpired` check and expiration display to handle the far-future date gracefully — show "Never" instead of "Expires in 7973 years."
 
-## File to Modify
+### 4. Translation files (`en.json`, `de.json`, `sr.json`)
+Add `share.never` key: "Never" / "Nie" / "Nikada"
 
+### Files to modify
 | File | Change |
 |------|--------|
-| `src/components/PortfolioOverview.tsx` | Add responsive classes: `grid-cols-1 md:grid-cols-3`, switch dividers `divide-y md:divide-y-0 md:divide-x`, adjust padding per breakpoint |
-
-No logic changes — purely CSS/layout restructuring.
+| `src/lib/constants.ts` | Add `{ label: 'Unlimited', value: -1 }` option |
+| `src/components/ShareDialog.tsx` | Handle `-1` sentinel for far-future expiry |
+| `src/components/ManageSharesDialog.tsx` | Show "Never" for unlimited links |
+| `src/i18n/locales/en.json`, `de.json`, `sr.json` | Add translation keys |
 
