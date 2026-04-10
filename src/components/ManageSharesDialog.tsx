@@ -99,7 +99,8 @@ export const ManageSharesDialog = ({
     window.open(`${window.location.origin}/share/${token}`, "_blank");
   };
 
-  const isExpired = (expiresAt: string) => new Date(expiresAt) < new Date();
+  const isUnlimited = (expiresAt: string) => new Date(expiresAt).getFullYear() >= 9999;
+  const isExpired = (expiresAt: string) => !isUnlimited(expiresAt) && new Date(expiresAt) < new Date();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -155,17 +156,15 @@ export const ManageSharesDialog = ({
                         {share.view_count} {t("share.views")}
                       </span>
                       <span>
-                        {isExpired(share.expires_at)
-                          ? t("share.expiredAgo", {
-                              time: formatDistanceToNow(
-                                new Date(share.expires_at)
-                              ),
-                            })
-                          : t("share.expiresIn", {
-                              time: formatDistanceToNow(
-                                new Date(share.expires_at)
-                              ),
-                            })}
+                        {isUnlimited(share.expires_at)
+                          ? t("share.never")
+                          : isExpired(share.expires_at)
+                            ? t("share.expiredAgo", {
+                                time: formatDistanceToNow(new Date(share.expires_at)),
+                              })
+                            : t("share.expiresIn", {
+                                time: formatDistanceToNow(new Date(share.expires_at)),
+                              })}
                       </span>
                     </div>
                   </div>

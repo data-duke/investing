@@ -43,6 +43,7 @@ export const SHARE_EXPIRATION_OPTIONS = [
   { label: '24 hours', value: 24 },
   { label: '7 days', value: 24 * 7 },
   { label: '30 days', value: 24 * 30 },
+  { label: 'Unlimited', value: -1 },
 ] as const;
 
 // Aggregated position interface - single source of truth

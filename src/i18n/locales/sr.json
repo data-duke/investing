@@ -252,12 +252,14 @@
     "US": "Sjedinjene Države",
     "UK": "Ujedinjeno Kraljevstvo",
     "CH": "Švajcarska",
-    "RS": "Srbija"
+    "RS": "Srbija",
+    "CA": "Kanada"
   },
   "analysis": {
     "investmentSummary": "Rezime investicije",
     "currentPrice": "Trenutna cena",
     "sharesOwned": "Broj akcija",
+    "shares": "Akcije",
     "originallyInvested": "Prvobitno investirano",
     "currentValue": "Trenutna vrednost",
     "unrealizedGainLoss": "Nerealizovani dobitak/gubitak",
@@ -265,6 +267,7 @@
     "grossAnnualDividend": "Bruto godišnja dividenda",
     "taxRate": "Poreska stopa",
     "netAnnualDividend": "Neto godišnja dividenda",
+    "netDividend": "Neto dividenda",
     "futureValueProjections": "Projekcije buduće vrednosti",
     "basedOnCAGR": "Bazirano na {{cagr}}% procenjenom CAGR-u",
     "in1Year": "Za 1 godinu",
@@ -299,15 +302,6 @@
     },
     "thinking": "Razmišljam...",
     "typeQuestion": "Unesite pitanje..."
-  },
-  "countries": {
-    "AT": "Austrija",
-    "DE": "Nemačka",
-    "US": "Sjedinjene Države",
-    "UK": "Ujedinjeno Kraljevstvo",
-    "CH": "Švajcarska",
-    "RS": "Srbija",
-    "CA": "Kanada"
   },
   "toast": {
     "investmentSaved": "Investicija sačuvana!",
@@ -386,7 +380,9 @@
     "wantToTrack": "Želite da pratite svoje investicije?",
     "createYourPortfolio": "Kreirajte besplatan nalog.",
     "signUpFree": "Besplatna registracija",
-    "expiresOn": "Ističe {{date}}"
+    "expiresOn": "Ističe {{date}}",
+    "never": "Nikada ne ističe",
+    "linkNeverExpires": "Ovaj link nikada ne ističe"
   },
   "table": {
     "symbol": "Simbol",
@@ -438,30 +434,5 @@
     "placeholder": "npr. 'Analiziraj €5000 u AAPL za Austriju'",
     "quickPrompts": "Brzi početak:",
     "analyzing": "Analiziranje..."
-  },
-  "analysis": {
-    "investmentSummary": "Rezime investicije",
-    "currentPrice": "Trenutna cena",
-    "sharesOwned": "Broj akcija",
-    "shares": "Akcije",
-    "originallyInvested": "Prvobitno investirano",
-    "currentValue": "Trenutna vrednost",
-    "unrealizedGainLoss": "Nerealizovani dobitak/gubitak",
-    "dividendDetails": "Detalji dividendi",
-    "grossAnnualDividend": "Bruto godišnja dividenda",
-    "taxRate": "Poreska stopa",
-    "netAnnualDividend": "Neto godišnja dividenda",
-    "netDividend": "Neto dividenda",
-    "futureValueProjections": "Projekcije buduće vrednosti",
-    "basedOnCAGR": "Bazirano na {{cagr}}% procenjenom CAGR-u",
-    "in1Year": "Za 1 godinu",
-    "in3Years": "Za 3 godine",
-    "in5Years": "Za 5 godina",
-    "disclaimer": "Projekcije su procene bazirane na istorijskim prosecima i ne garantuju buduće prinose.",
-    "saveToPortfolio": "Sačuvaj u portfolio",
-    "signUpToSave": "Registrujte se da biste sačuvali ovu investiciju u svom portfoliu",
-    "basedOnMarketAverage": "Bazirano na 8% tržišnom proseku",
-    "basedOnHistoricalCAGR": "Bazirano na {{cagr}}% istorijskom CAGR-u",
-    "crossBorderTax": "Prekogranični porez ({{stockCountry}} → {{investorCountry}})"
   }
 }

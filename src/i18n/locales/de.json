@@ -252,7 +252,8 @@
     "US": "Vereinigte Staaten",
     "UK": "Vereinigtes Königreich",
     "CH": "Schweiz",
-    "RS": "Serbien"
+    "RS": "Serbien",
+    "CA": "Kanada"
   },
   "analysis": {
     "investmentSummary": "Investment-Zusammenfassung",
@@ -299,15 +300,6 @@
     },
     "thinking": "Denke nach...",
     "typeQuestion": "Stellen Sie Ihre Frage..."
-  },
-  "countries": {
-    "AT": "Österreich",
-    "DE": "Deutschland",
-    "US": "Vereinigte Staaten",
-    "UK": "Vereinigtes Königreich",
-    "CH": "Schweiz",
-    "RS": "Serbien",
-    "CA": "Kanada"
   },
   "toast": {
     "investmentSaved": "Investment gespeichert!",
@@ -386,7 +378,9 @@
     "wantToTrack": "Möchten Sie Ihre eigenen Investments verfolgen?",
     "createYourPortfolio": "Erstellen Sie ein kostenloses Konto.",
     "signUpFree": "Kostenlos registrieren",
-    "expiresOn": "Läuft ab am {{date}}"
+    "expiresOn": "Läuft ab am {{date}}",
+    "never": "Läuft nie ab",
+    "linkNeverExpires": "Dieser Link läuft nie ab"
   },
   "table": {
     "symbol": "Symbol",
