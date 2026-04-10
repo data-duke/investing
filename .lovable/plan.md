@@ -1,40 +1,57 @@
 
 
-# Add "Unlimited" Share Expiration Option
+# Fix: Shared View Data Mismatch
 
-## Change
+## Root Cause
 
-Add a new expiration option that creates a share link with no expiry (or a very far future date like year 9999).
+Two differences between the owner's Dashboard and the `get-shared-view` edge function cause the shared portfolio to show different numbers:
 
-## Implementation
+### 1. Manual dividends ignored
+- **Dashboard** (line 134): `portfolio.manual_dividend_eur ?? snap.dividend_annual_eur`
+- **Edge function** (line 119): `snap.dividend_annual_eur || 0`
+- If the owner set a manual dividend override, the shared view ignores it.
 
-### 1. `src/lib/constants.ts`
-Add a new option to `SHARE_EXPIRATION_OPTIONS`:
+### 2. Dividend aggregation formula differs
+- **Dashboard** (lines 193-202): When aggregating by symbol, it checks `manual_dividend_eur` and multiplies it by quantity (`manual_dividend_eur * quantity`), treating it as a per-share value.
+- **Edge function** (lines 127-145): Just sums `dividend_annual_eur` from the snapshot — no manual override, no per-share multiplication.
+
+## Fix
+
+Update `supabase/functions/get-shared-view/index.ts` to mirror the Dashboard logic:
+
+### Enrichment step (around line 105-119)
 ```typescript
-{ label: 'Unlimited', value: -1 },
+// Use manual dividend override if set, same as dashboard
+const dividend = portfolio.manual_dividend_eur != null
+  ? portfolio.manual_dividend_eur
+  : Number(snap.dividend_annual_eur);
+return {
+  ...portfolio,
+  // ...existing fields...
+  dividend_annual_eur: dividend,
+};
 ```
-Using `-1` as a sentinel value to indicate "no expiration."
 
-### 2. `src/components/ShareDialog.tsx`
-Update the expiration calculation (around line 83-84):
+And in the fallback (no snapshot):
 ```typescript
-const hours = parseInt(expirationHours);
-const expiresAt = hours === -1
-  ? new Date('9999-12-31T23:59:59Z')
-  : new Date(Date.now() + hours * 3600000);
+dividend_annual_eur: portfolio.manual_dividend_eur ?? 0,
 ```
 
-### 3. `src/components/ManageSharesDialog.tsx`
-Update the `isExpired` check and expiration display to handle the far-future date gracefully — show "Never" instead of "Expires in 7973 years."
+### Aggregation step (around lines 127-160)
+Mirror the Dashboard's dividend aggregation:
+```typescript
+const dividend = p.manual_dividend_eur != null
+  ? p.manual_dividend_eur * Number(p.quantity)
+  : p.dividend_annual_eur ?? 0;
+```
 
-### 4. Translation files (`en.json`, `de.json`, `sr.json`)
-Add `share.never` key: "Never" / "Nie" / "Nikada"
+Apply this both for initial grouping and for the `existing` accumulation branch.
 
-### Files to modify
+## Files to Modify
+
 | File | Change |
 |------|--------|
-| `src/lib/constants.ts` | Add `{ label: 'Unlimited', value: -1 }` option |
-| `src/components/ShareDialog.tsx` | Handle `-1` sentinel for far-future expiry |
-| `src/components/ManageSharesDialog.tsx` | Show "Never" for unlimited links |
-| `src/i18n/locales/en.json`, `de.json`, `sr.json` | Add translation keys |
+| `supabase/functions/get-shared-view/index.ts` | Apply manual dividend override in enrichment + aggregation steps |
+
+No database or frontend changes needed — the edge function simply needs to match the Dashboard's existing logic.
 
