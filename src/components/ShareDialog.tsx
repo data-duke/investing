@@ -80,8 +80,10 @@ export const ShareDialog = ({
     setIsCreating(true);
 
     try {
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + parseInt(expirationHours));
+      const hours = parseInt(expirationHours);
+      const expiresAt = hours === -1
+        ? new Date('9999-12-31T23:59:59Z')
+        : new Date(Date.now() + hours * 3600000);
 
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
@@ -257,7 +259,9 @@ export const ShareDialog = ({
               </div>
             </div>
             <p className="text-sm text-muted-foreground">
-              {t("share.linkExpiresIn", { hours: expirationHours })}
+              {expirationHours === "-1"
+                ? t("share.linkNeverExpires")
+                : t("share.linkExpiresIn", { hours: expirationHours })}
             </p>
           </div>
         )}
