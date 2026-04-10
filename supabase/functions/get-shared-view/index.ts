@@ -104,6 +104,10 @@ serve(async (req) => {
 
         if (snapshots && snapshots.length > 0) {
           const snap = snapshots[0];
+          // Use manual dividend override if set, same as dashboard
+          const dividend = portfolio.manual_dividend_eur != null
+            ? portfolio.manual_dividend_eur
+            : Number(snap.dividend_annual_eur) || 0;
           return {
             ...portfolio,
             current_price_eur: Number(snap.current_price_eur),
@@ -116,7 +120,7 @@ serve(async (req) => {
                 Number(portfolio.original_investment_eur)) /
                 Number(portfolio.original_investment_eur)) *
               100,
-            dividend_annual_eur: Number(snap.dividend_annual_eur) || 0,
+            dividend_annual_eur: dividend,
           };
         }
 
@@ -126,7 +130,7 @@ serve(async (req) => {
           current_value_eur: Number(portfolio.original_investment_eur),
           gain_loss_eur: 0,
           gain_loss_percent: 0,
-          dividend_annual_eur: 0,
+          dividend_annual_eur: portfolio.manual_dividend_eur ?? 0,
         };
       })
     );
@@ -134,6 +138,11 @@ serve(async (req) => {
     // Aggregate by symbol
     const grouped = new Map();
     enrichedPortfolios.forEach((p) => {
+      // Mirror dashboard logic: manual_dividend_eur is per-share, multiply by quantity
+      const lotDividend = p.manual_dividend_eur != null
+        ? p.manual_dividend_eur * Number(p.quantity)
+        : p.dividend_annual_eur ?? 0;
+
       const existing = grouped.get(p.symbol);
       if (existing) {
         existing.totalQuantity += Number(p.quantity);
@@ -143,10 +152,8 @@ serve(async (req) => {
           existing.current_value_eur =
             (existing.current_value_eur || 0) + p.current_value_eur;
         }
-        if (p.dividend_annual_eur) {
-          existing.dividend_annual_eur =
-            (existing.dividend_annual_eur || 0) + p.dividend_annual_eur;
-        }
+        existing.dividend_annual_eur =
+          (existing.dividend_annual_eur || 0) + lotDividend;
       } else {
         grouped.set(p.symbol, {
           symbol: p.symbol,
@@ -157,7 +164,7 @@ serve(async (req) => {
           avgOriginalPrice: 0,
           current_price_eur: p.current_price_eur,
           current_value_eur: p.current_value_eur,
-          dividend_annual_eur: p.dividend_annual_eur,
+          dividend_annual_eur: lotDividend,
           lots: [p],
         });
       }
