@@ -104,6 +104,10 @@ serve(async (req) => {
 
         if (snapshots && snapshots.length > 0) {
           const snap = snapshots[0];
+          // Use manual dividend override if set, same as dashboard
+          const dividend = portfolio.manual_dividend_eur != null
+            ? portfolio.manual_dividend_eur
+            : Number(snap.dividend_annual_eur) || 0;
           return {
             ...portfolio,
             current_price_eur: Number(snap.current_price_eur),
@@ -116,7 +120,7 @@ serve(async (req) => {
                 Number(portfolio.original_investment_eur)) /
                 Number(portfolio.original_investment_eur)) *
               100,
-            dividend_annual_eur: Number(snap.dividend_annual_eur) || 0,
+            dividend_annual_eur: dividend,
           };
         }
 
@@ -126,7 +130,7 @@ serve(async (req) => {
           current_value_eur: Number(portfolio.original_investment_eur),
           gain_loss_eur: 0,
           gain_loss_percent: 0,
-          dividend_annual_eur: 0,
+          dividend_annual_eur: portfolio.manual_dividend_eur ?? 0,
         };
       })
     );
