@@ -138,6 +138,11 @@ serve(async (req) => {
     // Aggregate by symbol
     const grouped = new Map();
     enrichedPortfolios.forEach((p) => {
+      // Mirror dashboard logic: manual_dividend_eur is per-share, multiply by quantity
+      const lotDividend = p.manual_dividend_eur != null
+        ? p.manual_dividend_eur * Number(p.quantity)
+        : p.dividend_annual_eur ?? 0;
+
       const existing = grouped.get(p.symbol);
       if (existing) {
         existing.totalQuantity += Number(p.quantity);
@@ -147,10 +152,8 @@ serve(async (req) => {
           existing.current_value_eur =
             (existing.current_value_eur || 0) + p.current_value_eur;
         }
-        if (p.dividend_annual_eur) {
-          existing.dividend_annual_eur =
-            (existing.dividend_annual_eur || 0) + p.dividend_annual_eur;
-        }
+        existing.dividend_annual_eur =
+          (existing.dividend_annual_eur || 0) + lotDividend;
       } else {
         grouped.set(p.symbol, {
           symbol: p.symbol,
@@ -161,7 +164,7 @@ serve(async (req) => {
           avgOriginalPrice: 0,
           current_price_eur: p.current_price_eur,
           current_value_eur: p.current_value_eur,
-          dividend_annual_eur: p.dividend_annual_eur,
+          dividend_annual_eur: lotDividend,
           lots: [p],
         });
       }
