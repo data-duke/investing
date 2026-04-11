@@ -48,6 +48,7 @@ const Dashboard = () => {
   const [userCountry, setUserCountry] = useState<string>('AT');
   const [refreshProgress, setRefreshProgress] = useState<{ current: number; total: number } | null>(null);
   const [cagrData, setCagrData] = useState<Record<string, number>>({});
+  const [previousStats, setPreviousStats] = useState<{ totalValue: number; netGain: number; totalDividends: number } | null>(null);
   const { toast } = useToast();
 
   // Fetch user's tax residence country
