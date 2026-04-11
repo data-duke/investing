@@ -1,57 +1,65 @@
 
 
-# Fix: Shared View Data Mismatch
+# Align Shared View + Add YoY Change Indicators to KPIs
 
-## Root Cause
+## Part 1: Fix Shared View Data Mismatch
+*(Carried over from previous approved plan)*
 
-Two differences between the owner's Dashboard and the `get-shared-view` edge function cause the shared portfolio to show different numbers:
+### Edge Function (`supabase/functions/get-shared-view/index.ts`)
+- Fetch owner's `residence_country` from profiles table (fallback `AT`)
+- Compute dashboard-equivalent metrics: `netLiquidationValue`, `netGain`, `totalDividendsNet`, `topPerformer`, `safeWithdrawalTotal`, `availableProfitTotal` using the same tax formulas
+- Return these alongside existing fields
 
-### 1. Manual dividends ignored
-- **Dashboard** (line 134): `portfolio.manual_dividend_eur ?? snap.dividend_annual_eur`
-- **Edge function** (line 119): `snap.dividend_annual_eur || 0`
-- If the owner set a manual dividend override, the shared view ignores it.
+### Shared Page (`src/pages/SharedView.tsx`)
+- Replace the 4-card gross summary with the same 2-card KPI layout used in the dashboard (Primary: Net Liquidation, Net Gain/Loss, Net Dividends; Secondary: Top Performer, 4% Withdrawal, Available Profit)
+- Use shared formatters from `src/lib/formatters.ts`
+- Respect `show_values` toggle for privacy
 
-### 2. Dividend aggregation formula differs
-- **Dashboard** (lines 193-202): When aggregating by symbol, it checks `manual_dividend_eur` and multiplies it by quantity (`manual_dividend_eur * quantity`), treating it as a per-share value.
-- **Edge function** (lines 127-145): Just sums `dividend_annual_eur` from the snapshot — no manual override, no per-share multiplication.
+## Part 2: Year-over-Year Change Indicators (NEW)
 
-## Fix
+### Concept
+Each primary KPI shows a small badge with an up/down arrow and percentage change compared to the portfolio value exactly 1 year ago. Example: Net Liquidation shows `↑ 12.3%` in green or `↓ 5.1%` in red.
 
-Update `supabase/functions/get-shared-view/index.ts` to mirror the Dashboard logic:
+### Data Source
+Query `portfolio_snapshots` for snapshots closest to `today - 365 days` for each portfolio. Compare:
+- **Net Liquidation YoY**: current net liquidation vs. 1-year-ago total value minus capital gains tax at that time
+- **Gain/Loss YoY**: current net gain vs. 1-year-ago net gain (absolute change)
+- **Dividends YoY**: current annual dividends vs. 1-year-ago annual dividends
 
-### Enrichment step (around line 105-119)
-```typescript
-// Use manual dividend override if set, same as dashboard
-const dividend = portfolio.manual_dividend_eur != null
-  ? portfolio.manual_dividend_eur
-  : Number(snap.dividend_annual_eur);
-return {
-  ...portfolio,
-  // ...existing fields...
-  dividend_annual_eur: dividend,
-};
-```
+### Implementation
 
-And in the fallback (no snapshot):
-```typescript
-dividend_annual_eur: portfolio.manual_dividend_eur ?? 0,
-```
+#### Dashboard (`src/pages/Dashboard.tsx`)
+- In `loadInitialData`, also fetch one snapshot per portfolio closest to `snapshot_date ≤ (today - 1 year)`, ordered descending, limit 1
+- Compute `previousTotalValue` from those snapshots
+- Pass `previousStats` (or individual YoY deltas) to `PortfolioOverview`
 
-### Aggregation step (around lines 127-160)
-Mirror the Dashboard's dividend aggregation:
-```typescript
-const dividend = p.manual_dividend_eur != null
-  ? p.manual_dividend_eur * Number(p.quantity)
-  : p.dividend_annual_eur ?? 0;
-```
+#### PortfolioOverview (`src/components/PortfolioOverview.tsx`)
+- Accept optional `previousStats?: { totalValue: number; netGain: number; totalDividends: number }` prop
+- For each primary KPI, if `previousStats` is available, render a small inline badge:
+  ```text
+  ┌─────────────────────────────┐
+  │ 💰 Net Liquidation          │
+  │    36.313,92 €  ↑ 8.2%     │
+  │    No tax on losses         │
+  └─────────────────────────────┘
+  ```
+- Use `TrendingUp` / `TrendingDown` icons from lucide-react, colored green/red, with `text-[10px]` sizing
 
-Apply this both for initial grouping and for the `existing` accumulation branch.
+#### Shared View
+- The edge function also fetches 1-year-ago snapshots and computes the same deltas
+- SharedView displays them identically
+
+### Edge cases
+- If no snapshot exists from ~1 year ago, don't show the YoY badge (graceful fallback)
+- For new portfolios (< 1 year old), no indicator shown
 
 ## Files to Modify
 
 | File | Change |
 |------|--------|
-| `supabase/functions/get-shared-view/index.ts` | Apply manual dividend override in enrichment + aggregation steps |
-
-No database or frontend changes needed — the edge function simply needs to match the Dashboard's existing logic.
+| `supabase/functions/get-shared-view/index.ts` | Add owner tax residence lookup, compute net KPIs, fetch 1yr-ago snapshots for YoY |
+| `src/pages/SharedView.tsx` | Replace gross summary with dashboard KPI layout + YoY badges |
+| `src/pages/Dashboard.tsx` | Fetch 1yr-ago snapshots, compute `previousStats`, pass to `PortfolioOverview` |
+| `src/components/PortfolioOverview.tsx` | Accept `previousStats` prop, render YoY change badges on primary KPIs |
+| `src/i18n/locales/en.json`, `de.json`, `sr.json` | Add translation keys for YoY labels |
 
