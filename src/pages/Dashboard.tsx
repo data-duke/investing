@@ -48,6 +48,7 @@ const Dashboard = () => {
   const [userCountry, setUserCountry] = useState<string>('AT');
   const [refreshProgress, setRefreshProgress] = useState<{ current: number; total: number } | null>(null);
   const [cagrData, setCagrData] = useState<Record<string, number>>({});
+  const [previousStats, setPreviousStats] = useState<{ totalValue: number; netGain: number; totalDividends: number } | null>(null);
   const { toast } = useToast();
 
   // Fetch user's tax residence country
@@ -115,10 +116,15 @@ const Dashboard = () => {
         setEnrichedPortfolios([]);
         setAggregatedPositions([]);
         setIsLoadingEnriched(false);
+        setPreviousStats(null);
         return;
       }
 
       setIsLoadingEnriched(true);
+
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      const oneYearAgoISO = oneYearAgo.toISOString();
 
       const enriched = await Promise.all(
         portfolios.map(async (portfolio) => {
@@ -152,6 +158,45 @@ const Dashboard = () => {
         })
       );
 
+      // Fetch 1yr-ago snapshots for YoY
+      let prevTotalValue = 0;
+      let prevTotalDividend = 0;
+      let hasOldData = false;
+
+      await Promise.all(
+        portfolios.map(async (portfolio) => {
+          const { data: oldSnaps } = await supabase
+            .from('portfolio_snapshots')
+            .select('current_value_eur, dividend_annual_eur')
+            .eq('portfolio_id', portfolio.id)
+            .lte('snapshot_date', oneYearAgoISO)
+            .order('snapshot_date', { ascending: false })
+            .limit(1);
+
+          if (oldSnaps && oldSnaps.length > 0) {
+            hasOldData = true;
+            prevTotalValue += Number(oldSnaps[0].current_value_eur);
+            prevTotalDividend += Number(oldSnaps[0].dividend_annual_eur || 0);
+          }
+        })
+      );
+
+      if (hasOldData) {
+        const totalOriginal = portfolios.reduce((s, p) => s + Number(p.original_investment_eur), 0);
+        const prevGrossGain = prevTotalValue - totalOriginal;
+        // Simple net gain calc using same country tax
+        const { calculateCapitalGainsTax: calcCGT } = await import('@/lib/taxCalculations');
+        const prevCgt = calcCGT(prevGrossGain, userCountry);
+        const prevNetLiq = prevTotalValue - (prevGrossGain > 0 ? prevCgt.tax : 0);
+        setPreviousStats({
+          totalValue: prevNetLiq,
+          netGain: prevCgt.netGain,
+          totalDividends: prevTotalDividend,
+        });
+      } else {
+        setPreviousStats(null);
+      }
+
       setEnrichedPortfolios(enriched);
       aggregatePositions(enriched);
       setIsLoadingEnriched(false);
@@ -160,7 +205,7 @@ const Dashboard = () => {
     if (!loading) {
       loadInitialData();
     }
-  }, [portfolios, loading]);
+  }, [portfolios, loading, userCountry]);
 
   // Helper to get all tags from a portfolio (including legacy fields)
   const getPortfolioTags = (portfolio: Portfolio): string[] => {
@@ -647,7 +692,7 @@ const Dashboard = () => {
               </div>
             </div>
 
-            <PortfolioOverview portfolios={filteredPortfolios} isLoading={isLoadingEnriched} privacyMode={privacyMode} userCountry={userCountry} />
+            <PortfolioOverview portfolios={filteredPortfolios} isLoading={isLoadingEnriched} privacyMode={privacyMode} userCountry={userCountry} previousStats={previousStats} />
 
             <TagFilterBar
               allTags={allTags}

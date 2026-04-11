@@ -140,7 +140,8 @@
     "returnPercent": "Prinos %",
     "afterTax": "posle poreza",
     "netValue": "Neto vrednost",
-    "netValueAfterTax": "Posle poreza"
+    "netValueAfterTax": "Posle poreza",
+    "yoy": "g/g"
   },
   "holdings": {
     "stock": "Akcija",

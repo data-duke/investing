@@ -1,24 +1,44 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Portfolio } from "@/hooks/usePortfolio";
-import { TrendingUp, DollarSign, PiggyBank, Award, Wallet, Percent, ArrowUpFromLine } from "lucide-react";
+import { TrendingUp, TrendingDown, PiggyBank, Award, Wallet, Percent, ArrowUpFromLine } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { formatCurrency, formatPercentage } from "@/lib/formatters";
 import { calculateDividendTax, calculateCapitalGainsTax } from "@/lib/taxCalculations";
+
+interface PreviousStats {
+  totalValue: number;
+  netGain: number;
+  totalDividends: number;
+}
 
 interface PortfolioOverviewProps {
   portfolios: Portfolio[];
   isLoading?: boolean;
   privacyMode?: boolean;
   userCountry?: string;
+  previousStats?: PreviousStats | null;
 }
+
+const YoYBadge = ({ current, previous }: { current: number; previous: number }) => {
+  if (previous === 0) return null;
+  const change = ((current - previous) / Math.abs(previous)) * 100;
+  const isPositive = change >= 0;
+  return (
+    <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium ${isPositive ? "text-green-600" : "text-red-600"}`}>
+      {isPositive ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
+      {isPositive ? "+" : ""}{change.toFixed(1)}%
+    </span>
+  );
+};
 
 export const PortfolioOverview = ({ 
   portfolios, 
   isLoading = false, 
   privacyMode = false,
-  userCountry = 'AT'
+  userCountry = 'AT',
+  previousStats = null,
 }: PortfolioOverviewProps) => {
   const { t } = useTranslation();
 
@@ -112,8 +132,13 @@ export const PortfolioOverview = ({
                   {t('portfolio.netLiquidationValue')}
                 </span>
               </div>
-              <div className="text-base font-bold text-primary">
-                {privacyMode ? "•••••" : formatCurrency(stats.netLiquidationValue)}
+              <div className="flex items-center gap-2">
+                <div className="text-base font-bold text-primary">
+                  {privacyMode ? "•••••" : formatCurrency(stats.netLiquidationValue)}
+                </div>
+                {previousStats && previousStats.totalValue > 0 && (
+                  <YoYBadge current={stats.netLiquidationValue} previous={previousStats.totalValue} />
+                )}
               </div>
               <p className="text-[10px] text-muted-foreground mt-0.5">
                 {privacyMode 
@@ -132,8 +157,13 @@ export const PortfolioOverview = ({
                   {t('portfolio.totalGainLoss')}
                 </span>
               </div>
-              <div className={`text-base font-bold ${stats.netGain >= 0 ? "text-green-600" : "text-red-600"}`}>
-                {privacyMode ? formatPercentage(stats.totalGainPercent) : formatCurrency(stats.netGain)}
+              <div className="flex items-center gap-2">
+                <div className={`text-base font-bold ${stats.netGain >= 0 ? "text-green-600" : "text-red-600"}`}>
+                  {privacyMode ? formatPercentage(stats.totalGainPercent) : formatCurrency(stats.netGain)}
+                </div>
+                {previousStats && previousStats.netGain !== 0 && (
+                  <YoYBadge current={stats.netGain} previous={previousStats.netGain} />
+                )}
               </div>
               <p className="text-[10px] text-muted-foreground mt-0.5">
                 {privacyMode ? "" : `${formatPercentage(stats.totalGainPercent)} · ${t('portfolio.invested', { amount: formatCurrency(stats.totalInvested) })}`}
@@ -148,8 +178,13 @@ export const PortfolioOverview = ({
                   {t('portfolio.annualDividends')}
                 </span>
               </div>
-              <div className="text-base font-bold">
-                {privacyMode ? `${formatPercentage(stats.dividendYield)} yield` : formatCurrency(stats.totalDividends)}
+              <div className="flex items-center gap-2">
+                <div className="text-base font-bold">
+                  {privacyMode ? `${formatPercentage(stats.dividendYield)} yield` : formatCurrency(stats.totalDividends)}
+                </div>
+                {previousStats && previousStats.totalDividends > 0 && (
+                  <YoYBadge current={stats.totalDividends} previous={previousStats.totalDividends} />
+                )}
               </div>
               <p className="text-[10px] text-muted-foreground mt-0.5">
                 {privacyMode ? "" : t('portfolio.monthlyAvg', { amount: formatCurrency(stats.monthlyDividends) })}

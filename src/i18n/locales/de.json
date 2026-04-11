@@ -140,7 +140,8 @@
     "returnPercent": "Rendite %",
     "afterTax": "nach Steuern",
     "netValue": "Nettowert",
-    "netValueAfterTax": "Nach Steuern"
+    "netValueAfterTax": "Nach Steuern",
+    "yoy": "gg. Vorjahr"
   },
   "holdings": {
     "stock": "Aktie",
