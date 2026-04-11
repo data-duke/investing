@@ -692,7 +692,7 @@ const Dashboard = () => {
               </div>
             </div>
 
-            <PortfolioOverview portfolios={filteredPortfolios} isLoading={isLoadingEnriched} privacyMode={privacyMode} userCountry={userCountry} />
+            <PortfolioOverview portfolios={filteredPortfolios} isLoading={isLoadingEnriched} privacyMode={privacyMode} userCountry={userCountry} previousStats={previousStats} />
 
             <TagFilterBar
               allTags={allTags}

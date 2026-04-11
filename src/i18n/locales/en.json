@@ -144,7 +144,8 @@
     "returnPercent": "Return %",
     "afterTax": "after tax",
     "netValue": "Net Value",
-    "netValueAfterTax": "After tax"
+    "netValueAfterTax": "After tax",
+    "yoy": "YoY"
   },
   "holdings": {
     "stock": "Stock",
