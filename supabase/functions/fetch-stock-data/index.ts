@@ -656,6 +656,34 @@ async function fetchFromYahoo(symbol: string) {
   throw new Error(`Yahoo: No valid price found for ${symbol}`);
 }
 
+// Alpha Vantage GLOBAL_QUOTE fallback — handles dotted US tickers (BRK.B, BF.B) reliably
+async function fetchFromAlphaVantage(symbol: string) {
+  if (!ALPHA_VANTAGE_API_KEY) throw new Error('Alpha Vantage key missing');
+  const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${encodeURIComponent(symbol)}&apikey=${ALPHA_VANTAGE_API_KEY}`;
+  const data = await fetchAlphaJSON(url);
+  const quote = data?.['Global Quote'] || data?.['Globalquote'];
+  if (!quote || typeof quote !== 'object') throw new Error('Alpha Vantage: empty quote');
+  const priceStr = quote['05. price'];
+  const price = Number(priceStr);
+  if (!Number.isFinite(price) || price <= 0) throw new Error('Alpha Vantage: invalid price');
+  return { currentPrice: price, name: symbol, dividend: 0, source: 'AlphaVantage' };
+}
+
+// Stale-cache fallback: read price_cache regardless of TTL
+async function readStaleCache(symbol: string) {
+  try {
+    const { data } = await supabase
+      .from('price_cache')
+      .select('*')
+      .eq('symbol', symbol)
+      .single();
+    if (!data) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
