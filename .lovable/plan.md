@@ -1,65 +1,39 @@
+# Fix: BRK.B Position Shows No Price on Dashboard
 
+## Root cause (confirmed from edge logs)
 
-# Align Shared View + Add YoY Change Indicators to KPIs
+`fetch-stock-data` for `BRK.B` returns no price. Live fetches:
 
-## Part 1: Fix Shared View Data Mismatch
-*(Carried over from previous approved plan)*
+- **FMP**: HTTP 403 (API key/plan rejected)
+- **Stooq**: tried `brk.b`, `brk.b.us`, `brk-b`, `brk-b.us` → all returned "No valid price found"
+- **Yahoo**: scrape failed (HTML structure / bot block)
 
-### Edge Function (`supabase/functions/get-shared-view/index.ts`)
-- Fetch owner's `residence_country` from profiles table (fallback `AT`)
-- Compute dashboard-equivalent metrics: `netLiquidationValue`, `netGain`, `totalDividendsNet`, `topPerformer`, `safeWithdrawalTotal`, `availableProfitTotal` using the same tax formulas
-- Return these alongside existing fields
+There is a 45h-old cache entry (€404.78) but the code marks it expired and refuses to use it as fallback.
 
-### Shared Page (`src/pages/SharedView.tsx`)
-- Replace the 4-card gross summary with the same 2-card KPI layout used in the dashboard (Primary: Net Liquidation, Net Gain/Loss, Net Dividends; Secondary: Top Performer, 4% Withdrawal, Available Profit)
-- Use shared formatters from `src/lib/formatters.ts`
-- Respect `show_values` toggle for privacy
+So the position renders without `current_price_eur`, breaking value, gain/loss and KPIs for that holding.
 
-## Part 2: Year-over-Year Change Indicators (NEW)
+## Fix (3 layers, in `supabase/functions/fetch-stock-data/index.ts`)
 
-### Concept
-Each primary KPI shows a small badge with an up/down arrow and percentage change compared to the portfolio value exactly 1 year ago. Example: Net Liquidation shows `↑ 12.3%` in green or `↓ 5.1%` in red.
+### 1. Make Stooq actually parse `brk-b.us`
+The Stooq CSV endpoint (`stooq.com/q/l/?s=brk-b.us&f=sd2t2ohlcv&h&e=csv`) does return data for BRK-B; current code likely rejects rows where `Open/High/Low` are `N/D` but `Close` is valid. Loosen the validator to accept a row when `Close` is a positive number, regardless of OHLC nulls.
 
-### Data Source
-Query `portfolio_snapshots` for snapshots closest to `today - 365 days` for each portfolio. Compare:
-- **Net Liquidation YoY**: current net liquidation vs. 1-year-ago total value minus capital gains tax at that time
-- **Gain/Loss YoY**: current net gain vs. 1-year-ago net gain (absolute change)
-- **Dividends YoY**: current annual dividends vs. 1-year-ago annual dividends
+### 2. Add Alpha Vantage as a real fallback in the chain
+`ALPHA_VANTAGE_API_KEY` is already configured. Add a `GLOBAL_QUOTE` call (`function=GLOBAL_QUOTE&symbol=BRK.B`) after Yahoo fails. Alpha Vantage handles dotted US tickers natively.
 
-### Implementation
+### 3. Stale-cache safety net
+If FMP + Stooq + Yahoo + Alpha Vantage all fail AND a `price_cache` row exists (even if older than 15 min TTL), return that cached price with a flag `stale: true` instead of throwing. Better to show yesterday's price than a blank position.
 
-#### Dashboard (`src/pages/Dashboard.tsx`)
-- In `loadInitialData`, also fetch one snapshot per portfolio closest to `snapshot_date ≤ (today - 1 year)`, ordered descending, limit 1
-- Compute `previousTotalValue` from those snapshots
-- Pass `previousStats` (or individual YoY deltas) to `PortfolioOverview`
-
-#### PortfolioOverview (`src/components/PortfolioOverview.tsx`)
-- Accept optional `previousStats?: { totalValue: number; netGain: number; totalDividends: number }` prop
-- For each primary KPI, if `previousStats` is available, render a small inline badge:
-  ```text
-  ┌─────────────────────────────┐
-  │ 💰 Net Liquidation          │
-  │    36.313,92 €  ↑ 8.2%     │
-  │    No tax on losses         │
-  └─────────────────────────────┘
-  ```
-- Use `TrendingUp` / `TrendingDown` icons from lucide-react, colored green/red, with `text-[10px]` sizing
-
-#### Shared View
-- The edge function also fetches 1-year-ago snapshots and computes the same deltas
-- SharedView displays them identically
-
-### Edge cases
-- If no snapshot exists from ~1 year ago, don't show the YoY badge (graceful fallback)
-- For new portfolios (< 1 year old), no indicator shown
-
-## Files to Modify
+## Files changed
 
 | File | Change |
 |------|--------|
-| `supabase/functions/get-shared-view/index.ts` | Add owner tax residence lookup, compute net KPIs, fetch 1yr-ago snapshots for YoY |
-| `src/pages/SharedView.tsx` | Replace gross summary with dashboard KPI layout + YoY badges |
-| `src/pages/Dashboard.tsx` | Fetch 1yr-ago snapshots, compute `previousStats`, pass to `PortfolioOverview` |
-| `src/components/PortfolioOverview.tsx` | Accept `previousStats` prop, render YoY change badges on primary KPIs |
-| `src/i18n/locales/en.json`, `de.json`, `sr.json` | Add translation keys for YoY labels |
+| `supabase/functions/fetch-stock-data/index.ts` | Loosen Stooq row validator; add Alpha Vantage `GLOBAL_QUOTE` fallback step; fall back to expired cache when all live providers fail |
 
+No DB migration, no frontend change, no new secret needed.
+
+## Verification
+
+After deploy:
+1. Call `fetch-stock-data` with `symbol=BRK.B` via curl → expect a non-zero `current_price_eur` and a fresh `price_cache` row.
+2. Reload the dashboard → BRK.B shows market value, gain/loss, and contributes to KPIs.
+3. Check `fetch-stock-data` logs: should show either `Stooq:` success or `AlphaVantage:` success for BRK.B.
