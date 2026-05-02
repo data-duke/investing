@@ -656,6 +656,34 @@ async function fetchFromYahoo(symbol: string) {
   throw new Error(`Yahoo: No valid price found for ${symbol}`);
 }
 
+// Alpha Vantage GLOBAL_QUOTE fallback — handles dotted US tickers (BRK.B, BF.B) reliably
+async function fetchFromAlphaVantage(symbol: string) {
+  if (!ALPHA_VANTAGE_API_KEY) throw new Error('Alpha Vantage key missing');
+  const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${encodeURIComponent(symbol)}&apikey=${ALPHA_VANTAGE_API_KEY}`;
+  const data = await fetchAlphaJSON(url);
+  const quote = data?.['Global Quote'] || data?.['Globalquote'];
+  if (!quote || typeof quote !== 'object') throw new Error('Alpha Vantage: empty quote');
+  const priceStr = quote['05. price'];
+  const price = Number(priceStr);
+  if (!Number.isFinite(price) || price <= 0) throw new Error('Alpha Vantage: invalid price');
+  return { currentPrice: price, name: symbol, dividend: 0, source: 'AlphaVantage' };
+}
+
+// Stale-cache fallback: read price_cache regardless of TTL
+async function readStaleCache(symbol: string) {
+  try {
+    const { data } = await supabase
+      .from('price_cache')
+      .select('*')
+      .eq('symbol', symbol)
+      .single();
+    if (!data) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -753,7 +781,39 @@ serve(async (req) => {
       }
     }
 
+    // Fallback to Alpha Vantage GLOBAL_QUOTE — handles dotted US tickers (BRK.B, BF.B)
+    if ((!Number.isFinite(currentPriceLocal) || currentPriceLocal <= 0) && ALPHA_VANTAGE_API_KEY) {
+      try {
+        triedSources.push('AlphaVantage');
+        const av = await fetchFromAlphaVantage(cleanSymbol);
+        currentPriceLocal = av.currentPrice;
+        if (name === cleanSymbol) name = av.name;
+        source = av.source;
+        sourceCurrency = 'USD';
+      } catch (e) {
+        console.warn('Alpha Vantage fetch failed:', (e as Error).message);
+      }
+    }
+
+    // Final fallback: stale cache (any age) — better than blank position
     if (!Number.isFinite(currentPriceLocal) || currentPriceLocal <= 0) {
+      const stale = await readStaleCache(cleanSymbol);
+      if (stale && Number(stale.current_price_eur) > 0) {
+        const ageMin = (Date.now() - new Date(stale.cached_at).getTime()) / 60000;
+        console.warn(`⚠ Returning STALE cached price for ${cleanSymbol} (${ageMin.toFixed(0)} min old) — all live providers failed`);
+        return new Response(JSON.stringify({
+          symbol: cleanSymbol,
+          currentPrice: Number(stale.current_price_eur),
+          currentPriceUSD: Number(stale.current_price_usd),
+          dividend: Number(stale.dividend_usd) * Number(stale.exchange_rate),
+          name: stale.name || cleanSymbol,
+          exchangeRate: Number(stale.exchange_rate),
+          source: `${stale.source} (stale)`,
+          sourceCurrency: stale.source_currency || 'USD',
+          stale: true,
+          staleAgeMinutes: Math.round(ageMin),
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
       throw new Error(`No price available for symbol: ${cleanSymbol}. Tried: ${triedSources.join(', ')}`);
     }
 
