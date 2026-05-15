@@ -20,6 +20,8 @@ const FMP_BASES = [
 // Cache TTL in minutes
 const CACHE_TTL_MINUTES = 15;
 const CAGR_CACHE_HOURS = 24;
+const PROVIDER_TIMEOUT_MS = 2500;
+const ENRICHMENT_TIMEOUT_MS = 2500;
 
 // In-memory dividend cache with 24h TTL (for edge function runtime)
 const dividendCache = new Map<string, { dividendUSD: number; cachedAt: number }>();
@@ -116,7 +118,7 @@ async function updatePriceCache(
 }
 
 async function fetchJSON(url: string, logError = true) {
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (compatible; LovableBot/1.0; +https://lovable.dev)'
     },
@@ -128,6 +130,38 @@ async function fetchJSON(url: string, logError = true) {
     throw new Error(`External API request failed with status ${res.status}`);
   }
   return res.json();
+}
+
+async function fetchWithTimeout(url: string, init: RequestInit = {}, timeoutMs = PROVIDER_TIMEOUT_MS): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (error) {
+    if ((error as Error).name === 'AbortError') {
+      throw new Error(`External API request timed out after ${timeoutMs}ms`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string, fallback: T): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((resolve) => {
+        timeoutId = setTimeout(() => {
+          console.warn(`${label} timed out after ${timeoutMs}ms, using fallback`);
+          resolve(fallback);
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 }
 
 // Supported currencies and their conversion rates to EUR
