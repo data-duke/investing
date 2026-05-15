@@ -718,6 +718,26 @@ async function readStaleCache(symbol: string) {
   }
 }
 
+function staleCachePayload(symbol: string, stale: any) {
+  const exchangeRate = Number(stale.exchange_rate || 1);
+  const ageMin = (Date.now() - new Date(stale.cached_at).getTime()) / 60000;
+  return {
+    symbol,
+    currentPrice: Number(stale.current_price_eur),
+    currentPriceUSD: Number(stale.current_price_usd),
+    dividend: Number(stale.dividend_usd || 0) * exchangeRate,
+    name: stale.name || symbol,
+    exchangeRate,
+    source: `${stale.source || 'cache'} (stale)`,
+    sourceCurrency: stale.source_currency || 'USD',
+    stale: true,
+    staleAgeMinutes: Math.round(ageMin),
+    cagr5y: stale.cagr_5y ? Number(stale.cagr_5y) : undefined,
+    dividendGrowth1y: stale.dividend_growth_1y ? Number(stale.dividend_growth_1y) : undefined,
+    dividendGrowth5y: stale.dividend_growth_5y ? Number(stale.dividend_growth_5y) : undefined,
+  };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
