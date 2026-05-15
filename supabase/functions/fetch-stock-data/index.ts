@@ -20,7 +20,7 @@ const FMP_BASES = [
 // Cache TTL in minutes
 const CACHE_TTL_MINUTES = 15;
 const CAGR_CACHE_HOURS = 24;
-const PROVIDER_TIMEOUT_MS = 2500;
+const PROVIDER_TIMEOUT_MS = 1500;
 const ENRICHMENT_TIMEOUT_MS = 2500;
 
 // In-memory dividend cache with 24h TTL (for edge function runtime)
@@ -614,13 +614,16 @@ async function fetchFromStooq(symbol: string) {
     return price;
   };
 
+  const lower = symbol.toLowerCase();
+  const dashVariant = symbol.replace('.', '-').toLowerCase();
+  const dotVariant = symbol.replace('-', '.').toLowerCase();
   const symbolVariants = [
-    symbol.toLowerCase(),
-    `${symbol.toLowerCase()}.us`,
-    symbol.replace('-', '.').toLowerCase(),
-    `${symbol.replace('-', '.').toLowerCase()}.us`,
-    symbol.replace('.', '-').toLowerCase(),
-    `${symbol.replace('.', '-').toLowerCase()}.us`,
+    `${dashVariant}.us`,
+    `${lower}.us`,
+    lower,
+    dashVariant,
+    dotVariant,
+    `${dotVariant}.us`,
   ];
   
   const uniqueVariants = [...new Set(symbolVariants)];
