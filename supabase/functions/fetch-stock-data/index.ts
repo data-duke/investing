@@ -459,7 +459,7 @@ async function calculateCAGRFromYahoo(symbol: string): Promise<number | undefine
     const startDate = endDate - (5 * 365 * 24 * 60 * 60); // 5 years ago
     
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${startDate}&period2=${endDate}&interval=1mo`;
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LovableBot/1.0)' }
     });
     
@@ -598,7 +598,7 @@ async function fetchFromFMP(symbol: string) {
 async function fetchFromStooq(symbol: string) {
   const tryOnce = async (sym: string) => {
     const url = `https://stooq.com/q/l/?s=${encodeURIComponent(sym)}&f=sd2t2ohlcv&h&e=csv`;
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     if (!res.ok) throw new Error(`Stooq request failed: ${res.status}`);
     const csv = await res.text();
     const lines = csv.trim().split(/\r?\n/);
@@ -642,7 +642,7 @@ async function fetchFromStooq(symbol: string) {
 async function fetchFromYahoo(symbol: string) {
   const trySymbol = async (sym: string) => {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`;
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; LovableBot/1.0)'
       }
