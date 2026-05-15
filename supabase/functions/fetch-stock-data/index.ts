@@ -190,7 +190,7 @@ function detectCurrencyFromSymbol(symbol: string): CurrencyCode {
 
 async function fetchExchangeRates(): Promise<ExchangeRates> {
   try {
-    const res = await fetch('https://api.exchangerate-api.com/v4/latest/EUR');
+    const res = await fetchWithTimeout('https://api.exchangerate-api.com/v4/latest/EUR');
     if (!res.ok) throw new Error('Exchange rate fetch failed');
     const data = await res.json();
     
@@ -222,7 +222,7 @@ async function fetchExchangeRate(): Promise<number> {
 }
 
 async function fetchAlphaJSON(url: string) {
-  const res = await fetch(url);
+  const res = await fetchWithTimeout(url);
   if (!res.ok) throw new Error('External API request failed');
   const data = await res.json();
   
@@ -309,7 +309,7 @@ async function fetchDividendGrowth(symbol: string): Promise<{
     const startDate = endDate - (6 * 365 * 24 * 60 * 60); // 6 years ago
     
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${startDate}&period2=${endDate}&interval=1mo&events=div`;
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LovableBot/1.0)' }
     });
     
