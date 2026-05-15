@@ -821,6 +821,12 @@ serve(async (req) => {
       }
     }
 
+    if ((!Number.isFinite(currentPriceLocal) || currentPriceLocal <= 0) && staleCached && Number(staleCached.current_price_eur) > 0) {
+      const payload = staleCachePayload(cleanSymbol, staleCached);
+      console.warn(`⚠ Returning STALE cached price for ${cleanSymbol} (${payload.staleAgeMinutes} min old) after primary providers failed`);
+      return new Response(JSON.stringify(payload), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     // Fallback to Yahoo Finance for OTC/international stocks (can return various currencies)
     if (!Number.isFinite(currentPriceLocal) || currentPriceLocal <= 0) {
       try {
@@ -874,7 +880,7 @@ serve(async (req) => {
         dividendUSD = cached.dividendUSD;
       } else {
         console.log('Attempting Alpha Vantage dividend fetch...');
-        const avResult = await fetchDividendFromAV(cleanSymbol);
+        const avResult = await withTimeout(fetchDividendFromAV(cleanSymbol), ENRICHMENT_TIMEOUT_MS, `Alpha Vantage dividend fetch for ${cleanSymbol}`, { dividend: 0 });
         if (avResult.dividend > 0) {
           dividendUSD = avResult.dividend;
           dividendCache.set(cleanSymbol, { dividendUSD, cachedAt: now });
@@ -889,8 +895,8 @@ serve(async (req) => {
     // Note: For non-USD stocks, CAGR calculation may need adjustment
     const currentPriceForCagr = sourceCurrency === 'USD' ? currentPriceLocal : currentPriceLocal;
     const [cagr5y, dividendGrowth] = await Promise.all([
-      calculateCAGR(cleanSymbol, currentPriceForCagr),
-      fetchDividendGrowth(cleanSymbol)
+      withTimeout(calculateCAGR(cleanSymbol, currentPriceForCagr), ENRICHMENT_TIMEOUT_MS, `CAGR calculation for ${cleanSymbol}`, undefined),
+      withTimeout(fetchDividendGrowth(cleanSymbol), ENRICHMENT_TIMEOUT_MS, `Dividend growth calculation for ${cleanSymbol}`, {})
     ]);
 
     // Fetch all exchange rates
