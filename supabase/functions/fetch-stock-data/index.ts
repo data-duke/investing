@@ -777,6 +777,8 @@ serve(async (req) => {
       }
     }
 
+    const staleCached = await readStaleCache(cleanSymbol);
+
     let currentPriceLocal = 0;  // Price in source currency
     let sourceCurrency: CurrencyCode = 'USD';
     let name = cleanSymbol;
@@ -851,22 +853,10 @@ serve(async (req) => {
 
     // Final fallback: stale cache (any age) — better than blank position
     if (!Number.isFinite(currentPriceLocal) || currentPriceLocal <= 0) {
-      const stale = await readStaleCache(cleanSymbol);
-      if (stale && Number(stale.current_price_eur) > 0) {
-        const ageMin = (Date.now() - new Date(stale.cached_at).getTime()) / 60000;
-        console.warn(`⚠ Returning STALE cached price for ${cleanSymbol} (${ageMin.toFixed(0)} min old) — all live providers failed`);
-        return new Response(JSON.stringify({
-          symbol: cleanSymbol,
-          currentPrice: Number(stale.current_price_eur),
-          currentPriceUSD: Number(stale.current_price_usd),
-          dividend: Number(stale.dividend_usd) * Number(stale.exchange_rate),
-          name: stale.name || cleanSymbol,
-          exchangeRate: Number(stale.exchange_rate),
-          source: `${stale.source} (stale)`,
-          sourceCurrency: stale.source_currency || 'USD',
-          stale: true,
-          staleAgeMinutes: Math.round(ageMin),
-        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (staleCached && Number(staleCached.current_price_eur) > 0) {
+        const payload = staleCachePayload(cleanSymbol, staleCached);
+        console.warn(`⚠ Returning STALE cached price for ${cleanSymbol} (${payload.staleAgeMinutes} min old) — all live providers failed`);
+        return new Response(JSON.stringify(payload), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       throw new Error(`No price available for symbol: ${cleanSymbol}. Tried: ${triedSources.join(', ')}`);
     }
