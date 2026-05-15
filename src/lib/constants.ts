@@ -32,7 +32,7 @@ export const REFRESH_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 export const PRICE_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
 // Max concurrent API requests
-export const MAX_CONCURRENT_REQUESTS = 5;
+export const MAX_CONCURRENT_REQUESTS = 2;
 
 // Maximum tags per stock
 export const MAX_TAGS_PER_STOCK = 5;

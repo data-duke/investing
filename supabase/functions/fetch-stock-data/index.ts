@@ -20,6 +20,8 @@ const FMP_BASES = [
 // Cache TTL in minutes
 const CACHE_TTL_MINUTES = 15;
 const CAGR_CACHE_HOURS = 24;
+const PROVIDER_TIMEOUT_MS = 1500;
+const ENRICHMENT_TIMEOUT_MS = 2500;
 
 // In-memory dividend cache with 24h TTL (for edge function runtime)
 const dividendCache = new Map<string, { dividendUSD: number; cachedAt: number }>();
@@ -116,7 +118,7 @@ async function updatePriceCache(
 }
 
 async function fetchJSON(url: string, logError = true) {
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (compatible; LovableBot/1.0; +https://lovable.dev)'
     },
@@ -128,6 +130,38 @@ async function fetchJSON(url: string, logError = true) {
     throw new Error(`External API request failed with status ${res.status}`);
   }
   return res.json();
+}
+
+async function fetchWithTimeout(url: string, init: RequestInit = {}, timeoutMs = PROVIDER_TIMEOUT_MS): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (error) {
+    if ((error as Error).name === 'AbortError') {
+      throw new Error(`External API request timed out after ${timeoutMs}ms`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string, fallback: T): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((resolve) => {
+        timeoutId = setTimeout(() => {
+          console.warn(`${label} timed out after ${timeoutMs}ms, using fallback`);
+          resolve(fallback);
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 }
 
 // Supported currencies and their conversion rates to EUR
@@ -156,7 +190,7 @@ function detectCurrencyFromSymbol(symbol: string): CurrencyCode {
 
 async function fetchExchangeRates(): Promise<ExchangeRates> {
   try {
-    const res = await fetch('https://api.exchangerate-api.com/v4/latest/EUR');
+    const res = await fetchWithTimeout('https://api.exchangerate-api.com/v4/latest/EUR');
     if (!res.ok) throw new Error('Exchange rate fetch failed');
     const data = await res.json();
     
@@ -188,7 +222,7 @@ async function fetchExchangeRate(): Promise<number> {
 }
 
 async function fetchAlphaJSON(url: string) {
-  const res = await fetch(url);
+  const res = await fetchWithTimeout(url);
   if (!res.ok) throw new Error('External API request failed');
   const data = await res.json();
   
@@ -275,7 +309,7 @@ async function fetchDividendGrowth(symbol: string): Promise<{
     const startDate = endDate - (6 * 365 * 24 * 60 * 60); // 6 years ago
     
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${startDate}&period2=${endDate}&interval=1mo&events=div`;
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LovableBot/1.0)' }
     });
     
@@ -425,7 +459,7 @@ async function calculateCAGRFromYahoo(symbol: string): Promise<number | undefine
     const startDate = endDate - (5 * 365 * 24 * 60 * 60); // 5 years ago
     
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${startDate}&period2=${endDate}&interval=1mo`;
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LovableBot/1.0)' }
     });
     
@@ -564,7 +598,7 @@ async function fetchFromFMP(symbol: string) {
 async function fetchFromStooq(symbol: string) {
   const tryOnce = async (sym: string) => {
     const url = `https://stooq.com/q/l/?s=${encodeURIComponent(sym)}&f=sd2t2ohlcv&h&e=csv`;
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     if (!res.ok) throw new Error(`Stooq request failed: ${res.status}`);
     const csv = await res.text();
     const lines = csv.trim().split(/\r?\n/);
@@ -580,13 +614,16 @@ async function fetchFromStooq(symbol: string) {
     return price;
   };
 
+  const lower = symbol.toLowerCase();
+  const dashVariant = symbol.replace('.', '-').toLowerCase();
+  const dotVariant = symbol.replace('-', '.').toLowerCase();
   const symbolVariants = [
-    symbol.toLowerCase(),
-    `${symbol.toLowerCase()}.us`,
-    symbol.replace('-', '.').toLowerCase(),
-    `${symbol.replace('-', '.').toLowerCase()}.us`,
-    symbol.replace('.', '-').toLowerCase(),
-    `${symbol.replace('.', '-').toLowerCase()}.us`,
+    `${dashVariant}.us`,
+    `${lower}.us`,
+    lower,
+    dashVariant,
+    dotVariant,
+    `${dotVariant}.us`,
   ];
   
   const uniqueVariants = [...new Set(symbolVariants)];
@@ -608,7 +645,7 @@ async function fetchFromStooq(symbol: string) {
 async function fetchFromYahoo(symbol: string) {
   const trySymbol = async (sym: string) => {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`;
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; LovableBot/1.0)'
       }
@@ -684,6 +721,26 @@ async function readStaleCache(symbol: string) {
   }
 }
 
+function staleCachePayload(symbol: string, stale: any) {
+  const exchangeRate = Number(stale.exchange_rate || 1);
+  const ageMin = (Date.now() - new Date(stale.cached_at).getTime()) / 60000;
+  return {
+    symbol,
+    currentPrice: Number(stale.current_price_eur),
+    currentPriceUSD: Number(stale.current_price_usd),
+    dividend: Number(stale.dividend_usd || 0) * exchangeRate,
+    name: stale.name || symbol,
+    exchangeRate,
+    source: `${stale.source || 'cache'} (stale)`,
+    sourceCurrency: stale.source_currency || 'USD',
+    stale: true,
+    staleAgeMinutes: Math.round(ageMin),
+    cagr5y: stale.cagr_5y ? Number(stale.cagr_5y) : undefined,
+    dividendGrowth1y: stale.dividend_growth_1y ? Number(stale.dividend_growth_1y) : undefined,
+    dividendGrowth5y: stale.dividend_growth_5y ? Number(stale.dividend_growth_5y) : undefined,
+  };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -722,6 +779,8 @@ serve(async (req) => {
         });
       }
     }
+
+    const staleCached = await readStaleCache(cleanSymbol);
 
     let currentPriceLocal = 0;  // Price in source currency
     let sourceCurrency: CurrencyCode = 'USD';
@@ -762,6 +821,12 @@ serve(async (req) => {
       }
     }
 
+    if ((!Number.isFinite(currentPriceLocal) || currentPriceLocal <= 0) && staleCached && Number(staleCached.current_price_eur) > 0) {
+      const payload = staleCachePayload(cleanSymbol, staleCached);
+      console.warn(`⚠ Returning STALE cached price for ${cleanSymbol} (${payload.staleAgeMinutes} min old) after primary providers failed`);
+      return new Response(JSON.stringify(payload), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     // Fallback to Yahoo Finance for OTC/international stocks (can return various currencies)
     if (!Number.isFinite(currentPriceLocal) || currentPriceLocal <= 0) {
       try {
@@ -797,22 +862,10 @@ serve(async (req) => {
 
     // Final fallback: stale cache (any age) — better than blank position
     if (!Number.isFinite(currentPriceLocal) || currentPriceLocal <= 0) {
-      const stale = await readStaleCache(cleanSymbol);
-      if (stale && Number(stale.current_price_eur) > 0) {
-        const ageMin = (Date.now() - new Date(stale.cached_at).getTime()) / 60000;
-        console.warn(`⚠ Returning STALE cached price for ${cleanSymbol} (${ageMin.toFixed(0)} min old) — all live providers failed`);
-        return new Response(JSON.stringify({
-          symbol: cleanSymbol,
-          currentPrice: Number(stale.current_price_eur),
-          currentPriceUSD: Number(stale.current_price_usd),
-          dividend: Number(stale.dividend_usd) * Number(stale.exchange_rate),
-          name: stale.name || cleanSymbol,
-          exchangeRate: Number(stale.exchange_rate),
-          source: `${stale.source} (stale)`,
-          sourceCurrency: stale.source_currency || 'USD',
-          stale: true,
-          staleAgeMinutes: Math.round(ageMin),
-        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (staleCached && Number(staleCached.current_price_eur) > 0) {
+        const payload = staleCachePayload(cleanSymbol, staleCached);
+        console.warn(`⚠ Returning STALE cached price for ${cleanSymbol} (${payload.staleAgeMinutes} min old) — all live providers failed`);
+        return new Response(JSON.stringify(payload), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       throw new Error(`No price available for symbol: ${cleanSymbol}. Tried: ${triedSources.join(', ')}`);
     }
@@ -827,7 +880,7 @@ serve(async (req) => {
         dividendUSD = cached.dividendUSD;
       } else {
         console.log('Attempting Alpha Vantage dividend fetch...');
-        const avResult = await fetchDividendFromAV(cleanSymbol);
+        const avResult = await withTimeout(fetchDividendFromAV(cleanSymbol), ENRICHMENT_TIMEOUT_MS, `Alpha Vantage dividend fetch for ${cleanSymbol}`, { dividend: 0 });
         if (avResult.dividend > 0) {
           dividendUSD = avResult.dividend;
           dividendCache.set(cleanSymbol, { dividendUSD, cachedAt: now });
@@ -842,8 +895,8 @@ serve(async (req) => {
     // Note: For non-USD stocks, CAGR calculation may need adjustment
     const currentPriceForCagr = sourceCurrency === 'USD' ? currentPriceLocal : currentPriceLocal;
     const [cagr5y, dividendGrowth] = await Promise.all([
-      calculateCAGR(cleanSymbol, currentPriceForCagr),
-      fetchDividendGrowth(cleanSymbol)
+      withTimeout(calculateCAGR(cleanSymbol, currentPriceForCagr), ENRICHMENT_TIMEOUT_MS, `CAGR calculation for ${cleanSymbol}`, undefined),
+      withTimeout(fetchDividendGrowth(cleanSymbol), ENRICHMENT_TIMEOUT_MS, `Dividend growth calculation for ${cleanSymbol}`, {})
     ]);
 
     // Fetch all exchange rates
