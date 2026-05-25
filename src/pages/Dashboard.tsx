@@ -393,7 +393,7 @@ const Dashboard = () => {
       } else {
         updated.push({
           ...portfolio,
-          price_source: portfolio.price_source ?? 'snapshot',
+          price_source: 'snapshot',
           price_stale: true,
         });
       }
