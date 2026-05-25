@@ -25,6 +25,7 @@ import { usePortfolio } from "@/hooks/usePortfolio";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { calculateCapitalGainsTax } from "@/lib/taxCalculations";
 import { AggregatedPosition } from "@/lib/constants";
+import { PriceSourceBadge } from "./PriceSourceBadge";
 
 interface HoldingsTableProps {
   portfolios: Portfolio[];
