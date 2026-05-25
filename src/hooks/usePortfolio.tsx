@@ -24,6 +24,10 @@ export interface Portfolio {
   // Legacy fields - still supported for backwards compatibility
   tag?: string;
   auto_tag_date?: string;
+  // Non-persisted: provider/freshness metadata from latest refresh
+  price_source?: string;
+  price_stale?: boolean;
+  price_age_minutes?: number;
 }
 
 export const usePortfolio = () => {
