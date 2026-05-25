@@ -1,28 +1,33 @@
-# Fix Prices Not Loading
+## Goal
 
-## Problem
-Prices are failing because the refresh flow starts several `fetch-stock-data` calls at once, each function then performs multiple slow external provider calls and extra enrichment (dividend/CAGR/growth). The latest direct test for `BRK.B` timed out before the function reached the stale-cache fallback.
+Show, for every position on the Dashboard, a small badge next to the current price that indicates:
+- whether the price is **fresh** or **stale** (cached fallback)
+- **which provider** supplied it (FMP, Stooq, Yahoo, Alpha Vantage, Cache)
 
-## Plan
+This is a UI-only change. The `fetch-stock-data` edge function already returns `source` and (when applicable) `stale` + `staleAgeMinutes`; right now Dashboard drops those fields.
 
-### 1. Make `fetch-stock-data` return a price quickly
-- Check stale `price_cache` immediately after the fresh-cache check.
-- If live providers cannot return a price quickly, return the last cached price instead of waiting through every slow enrichment step.
-- Add per-provider request timeouts so one provider cannot block the whole function.
+## Changes
 
-### 2. Prevent dashboard refresh overload
-- Lower dashboard price refresh concurrency from 5 to a safer value, likely 2.
-- Keep deduplication by symbol so duplicate lots still only fetch once.
+### 1. Carry provider/stale metadata through the client
+- `src/services/stockApi.ts` — extend `StockData` with `source?: string`, `stale?: boolean`, `staleAgeMinutes?: number`.
+- `src/hooks/usePortfolio.tsx` and `src/lib/constants.ts` — add optional, non-persisted fields to `Portfolio` and `AggregatedPosition`: `price_source?`, `price_stale?`, `price_age_minutes?`.
+- `src/pages/Dashboard.tsx` — when applying refreshed prices, copy these three fields onto the in-memory `Portfolio` object (no DB schema changes; not stored in snapshots). When a refresh fails and we fall back to the latest snapshot, set `price_source = 'snapshot'` and `price_stale = true`.
 
-### 3. Skip slow enrichment when using fallback data
-- If returning stale cache, do not run dividend/CAGR/growth calls.
-- Keep existing cached dividend/CAGR fields where available.
+### 2. New small UI component
+- `src/components/PriceSourceBadge.tsx` — renders a compact badge:
+  - Fresh → subtle `secondary` style, label = provider short name (e.g. "FMP", "Yahoo", "Stooq", "AV").
+  - Stale → `outline` style with warning color, label = "Stale".
+  - Wrapped in a `Tooltip` showing full provider name and, if stale, the age (e.g. "Cached 2h ago — live providers unavailable").
 
-### 4. Verify the fix
-- Deploy `fetch-stock-data`.
-- Test `BRK.B` and a normal ticker through the live function.
-- Confirm dashboard refresh receives non-zero prices instead of blank values.
+### 3. Render the badge
+- `src/components/SortableHoldingsTable.tsx` — next to the current price cell, render `<PriceSourceBadge .../>` when `position.price_source` is set.
+- `src/components/HoldingsTable.tsx` — same, next to the current price.
+- `src/components/MobileStockDetailsSheet.tsx` — show the badge next to "Current Price" in the Position Summary card.
 
-## Files to change
-- `supabase/functions/fetch-stock-data/index.ts`
-- `src/lib/constants.ts`
+### 4. i18n
+- Add a couple of strings (`portfolio.priceFresh`, `portfolio.priceStale`, `portfolio.priceSourceTooltip`) to `en.json`, `de.json`, `sr.json`.
+
+## Out of scope
+- No edge function changes; `fetch-stock-data` already exposes `source`/`stale`.
+- No DB/snapshot schema changes — metadata is per-refresh, in-memory only.
+- No change to refresh logic, tax math, or aggregation.
