@@ -259,7 +259,10 @@ export const SortableHoldingsTable = ({ portfolios, aggregatedPositions, onRefre
                       <TableCell className="text-right">{formatNumber(position.totalQuantity)}</TableCell>
                       <TableCell className="text-right">{privacyMode ? '•••' : formatCurrency(position.avgOriginalPrice)}</TableCell>
                       <TableCell className="text-right">
-                        {privacyMode ? '•••' : (position.current_price_eur ? formatCurrency(position.current_price_eur) : '-')}
+                        <div className="inline-flex items-center gap-1.5 justify-end">
+                          <span>{privacyMode ? '•••' : (position.current_price_eur ? formatCurrency(position.current_price_eur) : '-')}</span>
+                          <PriceSourceBadge source={position.price_source} stale={position.price_stale} ageMinutes={position.price_age_minutes} />
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         {privacyMode ? '•••' : formatCurrency(position.current_value_eur || 0)}
