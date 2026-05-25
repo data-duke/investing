@@ -59,6 +59,9 @@ export interface AggregatedPosition {
   gain_loss_eur?: number;
   gain_loss_percent?: number;
   dividend_annual_eur?: number;
+  price_source?: string;
+  price_stale?: boolean;
+  price_age_minutes?: number;
   lots: Array<{
     id: string;
     symbol: string;

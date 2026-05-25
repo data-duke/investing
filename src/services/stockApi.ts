@@ -8,6 +8,8 @@ export interface StockData {
   exchangeRate?: number;
   currentPriceUSD?: number;
   source?: string;
+  stale?: boolean;
+  staleAgeMinutes?: number;
   cagr5y?: number;
 }
 
