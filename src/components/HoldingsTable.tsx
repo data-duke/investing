@@ -8,6 +8,7 @@ import { ChevronDown, ChevronUp, Trash2, Pencil, DollarSign, TrendingUp, Trendin
 import { StockNewsSection } from "./StockNewsSection";
 import { EditInvestmentDialog } from "./EditInvestmentDialog";
 import { ManualDividendDialog } from "./ManualDividendDialog";
+import { PriceSourceBadge } from "./PriceSourceBadge";
 import { Fragment } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTranslation } from "react-i18next";
@@ -151,7 +152,10 @@ export const HoldingsTable = ({ portfolios, aggregatedPositions, onRefresh, high
                       <TableCell className="text-right">{position.totalQuantity.toFixed(2)}</TableCell>
                       <TableCell className="text-right">€{position.avgOriginalPrice.toFixed(2)}</TableCell>
                       <TableCell className="text-right">
-                        {position.current_price_eur ? `€${position.current_price_eur.toFixed(2)}` : '-'}
+                        <div className="inline-flex items-center gap-1.5 justify-end">
+                          <span>{position.current_price_eur ? `€${position.current_price_eur.toFixed(2)}` : '-'}</span>
+                          <PriceSourceBadge source={position.price_source} stale={position.price_stale} ageMinutes={position.price_age_minutes} />
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         €{(position.current_value_eur || 0).toFixed(2)}

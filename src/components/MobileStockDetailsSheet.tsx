@@ -8,6 +8,7 @@ import { formatCurrency, formatNumber, formatPercentage } from "@/lib/formatters
 import { usePrivacy } from "@/contexts/PrivacyContext";
 import { calculateCapitalGainsTax } from "@/lib/taxCalculations";
 import { AggregatedPosition } from "@/lib/constants";
+import { PriceSourceBadge } from "./PriceSourceBadge";
 import {
   Sheet,
   SheetContent,
@@ -103,9 +104,12 @@ export const MobileStockDetailsSheet = ({
                 <span className="text-muted-foreground">Avg Purchase Price</span>
                 <span>{privacyMode ? '•••' : formatCurrency(position.avgOriginalPrice)}</span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Current Price</span>
-                <span>{privacyMode ? '•••' : (position.current_price_eur ? formatCurrency(position.current_price_eur) : '-')}</span>
+                <div className="inline-flex items-center gap-1.5">
+                  <span>{privacyMode ? '•••' : (position.current_price_eur ? formatCurrency(position.current_price_eur) : '-')}</span>
+                  <PriceSourceBadge source={position.price_source} stale={position.price_stale} ageMinutes={position.price_age_minutes} />
+                </div>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Total Invested</span>
