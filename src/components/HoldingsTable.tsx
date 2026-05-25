@@ -37,6 +37,9 @@ interface AggregatedPosition {
   dividend_annual_eur?: number;
   dividend_growth_1y?: number;
   dividend_growth_5y?: number;
+  price_source?: string;
+  price_stale?: boolean;
+  price_age_minutes?: number;
   lots: Portfolio[];
 }
 
