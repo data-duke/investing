@@ -255,6 +255,9 @@ const Dashboard = () => {
           current_price_eur: p.current_price_eur,
           current_value_eur: p.current_value_eur,
           dividend_annual_eur: dividend,
+          price_source: p.price_source,
+          price_stale: p.price_stale,
+          price_age_minutes: p.price_age_minutes,
           lots: [p],
         });
       }
@@ -383,9 +386,16 @@ const Dashboard = () => {
           gain_loss_eur: gainLoss,
           gain_loss_percent: gainLossPercent,
           dividend_annual_eur: grossDividendTotal,
+          price_source: stockData.source,
+          price_stale: stockData.stale,
+          price_age_minutes: stockData.staleAgeMinutes,
         });
       } else {
-        updated.push(portfolio);
+        updated.push({
+          ...portfolio,
+          price_source: portfolio.price_source ?? 'snapshot',
+          price_stale: true,
+        });
       }
     }
 
@@ -482,6 +492,9 @@ const Dashboard = () => {
               current_price_eur: p.current_price_eur,
               current_value_eur: p.current_value_eur,
               dividend_annual_eur: dividend,
+              price_source: p.price_source,
+              price_stale: p.price_stale,
+              price_age_minutes: p.price_age_minutes,
               lots: [p],
             });
           }
