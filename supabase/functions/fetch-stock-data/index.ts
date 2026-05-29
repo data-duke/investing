@@ -811,7 +811,7 @@ serve(async (req) => {
         const stooq = await fetchFromStooq(cleanSymbol);
         currentPriceLocal = stooq.currentPrice;
         name = stooq.name;
-        dividendUSD = dividendUSD || 0;
+        // dividend not provided by Stooq
         source = stooq.source;
         // Stooq doesn't provide currency metadata - detect from symbol suffix
         sourceCurrency = detectCurrencyFromSymbol(cleanSymbol);
@@ -830,7 +830,7 @@ serve(async (req) => {
         const yahoo = await fetchFromYahoo(cleanSymbol);
         currentPriceLocal = yahoo.currentPrice;
         name = yahoo.name;
-        dividendUSD = dividendUSD || 0;
+        // dividend not provided by Yahoo here
         source = yahoo.source;
         // Map Yahoo currency to our supported currencies
         const yahooCurrency = yahoo.currency?.toUpperCase() || 'USD';
