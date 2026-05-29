@@ -303,31 +303,46 @@ serve(async (req) => {
       };
     }
 
+    const hideValues = share.show_values === false;
+    const maskedPositions = hideValues
+      ? positions.map((p: any) => ({
+          ...p,
+          totalOriginalInvestment: null,
+          avgOriginalPrice: null,
+          current_price_eur: null,
+          current_value_eur: null,
+          gain_loss_eur: null,
+          dividend_annual_eur: null,
+          old_value_eur: null,
+          old_dividend_eur: null,
+        }))
+      : positions;
+
     const result = {
       name: share.name,
       tags: share.tags,
       expires_at: share.expires_at,
       show_values: share.show_values,
-      positions,
+      positions: maskedPositions,
       // Raw totals (legacy)
-      totalValue,
-      totalGainLoss: grossGain,
+      totalValue: hideValues ? null : totalValue,
+      totalGainLoss: hideValues ? null : grossGain,
       totalGainLossPercent: totalOriginal > 0 ? (grossGain / totalOriginal) * 100 : 0,
-      totalDividend: totalDividendsNet,
+      totalDividend: hideValues ? null : totalDividendsNet,
       // Net metrics (dashboard-equivalent)
-      netLiquidationValue,
-      capitalGainsTax: grossGain > 0 ? cgTax.tax : 0,
+      netLiquidationValue: hideValues ? null : netLiquidationValue,
+      capitalGainsTax: hideValues ? null : (grossGain > 0 ? cgTax.tax : 0),
       taxRate: cgTax.taxRate,
-      grossGain,
-      netGain,
+      grossGain: hideValues ? null : grossGain,
+      netGain: hideValues ? null : netGain,
       totalGainPercent: totalOriginal > 0 ? (netGain / totalOriginal) * 100 : 0,
-      totalDividendsNet,
-      monthlyDividends: totalDividendsNet / 12,
+      totalDividendsNet: hideValues ? null : totalDividendsNet,
+      monthlyDividends: hideValues ? null : totalDividendsNet / 12,
       dividendYield: totalValue > 0 ? (totalDividendsNet / totalValue) * 100 : 0,
       topPerformer: topPerformer ? { symbol: topPerformer.symbol, gain_loss_percent: topPerformer.gain_loss_percent } : null,
-      safeWithdrawalTotal,
-      availableProfitTotal,
-      previousStats,
+      safeWithdrawalTotal: hideValues ? null : safeWithdrawalTotal,
+      availableProfitTotal: hideValues ? null : availableProfitTotal,
+      previousStats: hideValues ? null : previousStats,
     };
 
     return new Response(JSON.stringify(result), {
