@@ -20,7 +20,7 @@ const FMP_BASES = [
 // Cache TTL in minutes
 const CACHE_TTL_MINUTES = 15;
 const CAGR_CACHE_HOURS = 24;
-const PROVIDER_TIMEOUT_MS = 1500;
+const PROVIDER_TIMEOUT_MS = 2500;
 const ENRICHMENT_TIMEOUT_MS = 2500;
 
 // In-memory dividend cache with 24h TTL (for edge function runtime)
@@ -821,11 +821,7 @@ serve(async (req) => {
       }
     }
 
-    if ((!Number.isFinite(currentPriceLocal) || currentPriceLocal <= 0) && staleCached && Number(staleCached.current_price_eur) > 0) {
-      const payload = staleCachePayload(cleanSymbol, staleCached);
-      console.warn(`⚠ Returning STALE cached price for ${cleanSymbol} (${payload.staleAgeMinutes} min old) after primary providers failed`);
-      return new Response(JSON.stringify(payload), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
+    // (Removed early stale-cache return — we now always try Yahoo + Alpha Vantage before falling back to stale cache.)
 
     // Fallback to Yahoo Finance for OTC/international stocks (can return various currencies)
     if (!Number.isFinite(currentPriceLocal) || currentPriceLocal <= 0) {
@@ -869,6 +865,8 @@ serve(async (req) => {
       }
       throw new Error(`No price available for symbol: ${cleanSymbol}. Tried: ${triedSources.join(', ')}`);
     }
+
+    console.log(`Provider chain for ${cleanSymbol}: tried [${triedSources.join(', ')}] → source=${source}, price=${currentPriceLocal} ${sourceCurrency}`);
 
     // Try Alpha Vantage for dividends if we don't have them yet
     if ((!dividendUSD || dividendUSD <= 0) && ALPHA_VANTAGE_API_KEY) {
