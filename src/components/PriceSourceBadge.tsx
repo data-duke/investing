@@ -40,7 +40,8 @@ const formatAge = (minutes?: number) => {
 export const PriceSourceBadge = ({ source, stale, ageMinutes, className }: PriceSourceBadgeProps) => {
   if (!source) return null;
 
-  const key = source.toLowerCase();
+  // Normalize: "Stooq (cached)", "Stooq", "stooq" all → "stooq"
+  const key = source.split(/[\s(]/)[0].toLowerCase();
   const short = PROVIDER_LABEL[key] ?? source;
   const full = PROVIDER_FULL[key] ?? source;
 
