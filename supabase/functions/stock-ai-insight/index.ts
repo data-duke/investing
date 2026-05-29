@@ -35,7 +35,27 @@ serve(async (req) => {
     }
 
     const { symbol, stockName, question, stockData } = await req.json();
-    
+
+    // Input validation
+    if (!question || typeof question !== 'string' || question.length === 0 || question.length > 1000) {
+      return new Response(JSON.stringify({ error: 'Invalid question (1-1000 chars required)' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (!symbol || typeof symbol !== 'string' || symbol.length > 15 || !/^[A-Z0-9.:\-]+$/i.test(symbol)) {
+      return new Response(JSON.stringify({ error: 'Invalid symbol' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (stockName && (typeof stockName !== 'string' || stockName.length > 200)) {
+      return new Response(JSON.stringify({ error: 'Invalid stockName' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
