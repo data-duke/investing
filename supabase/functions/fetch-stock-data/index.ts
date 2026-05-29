@@ -866,6 +866,8 @@ serve(async (req) => {
       throw new Error(`No price available for symbol: ${cleanSymbol}. Tried: ${triedSources.join(', ')}`);
     }
 
+    console.log(`Provider chain for ${cleanSymbol}: tried [${triedSources.join(', ')}] → source=${source}, price=${currentPriceLocal} ${sourceCurrency}`);
+
     // Try Alpha Vantage for dividends if we don't have them yet
     if ((!dividendUSD || dividendUSD <= 0) && ALPHA_VANTAGE_API_KEY) {
       const cached = dividendCache.get(cleanSymbol);
